@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.49.7",
+    "@types/node": "^22.15.21",
+    "expo-sqlite": "^15.2.10"
+  }
+}
