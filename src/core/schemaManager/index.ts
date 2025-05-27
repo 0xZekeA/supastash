@@ -1,4 +1,4 @@
-import { getSupaStashDb } from "../../db/dbInitializer";
+import { getSupaStashDb } from "@/db/dbInitializer";
 
 export async function defineLocalSchema(
   tableName: string,
@@ -6,7 +6,9 @@ export async function defineLocalSchema(
   deletePreviousSchema = false
 ) {
   if (!schema.id) {
-    throw new Error(`'id' column is required for table ${tableName}`);
+    throw new Error(
+      `[Supastash] 'id' of type UUID column is required for table ${tableName}`
+    );
   }
 
   try {

@@ -1,4 +1,4 @@
-import { getSupaStashDb } from "../../db/dbInitializer";
+import { getSupaStashDb } from "@/db/dbInitializer";
 
 export async function createSyncStatus() {
   const db = await getSupaStashDb();

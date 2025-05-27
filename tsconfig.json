@@ -17,6 +17,10 @@
     "rootDir": "./src",
     "noEmitOnError": true,
     "jsx": "react-native",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "types": ["node"]
   },
   "include": ["src/**/*"],

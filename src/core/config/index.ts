@@ -5,12 +5,12 @@ let _config: SupastashConfig = {
   supabaseClient: null,
 };
 
-const configureSupastash = (config: Partial<SupastashConfig>) => {
+function configureSupastash(config: Partial<SupastashConfig>) {
   _config = {
     ..._config,
     ...config,
   };
-};
+}
 
 // Get the current config
 export function getSupastashConfig(): SupastashConfig {

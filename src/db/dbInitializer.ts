@@ -1,5 +1,5 @@
+import { getSupastashConfig } from "@/core/config";
 import * as SQLite from "expo-sqlite";
-import { getSupastashConfig } from "../core/config";
 
 let db: SQLite.SQLiteDatabase | null = null;
 
