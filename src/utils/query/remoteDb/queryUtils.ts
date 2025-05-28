@@ -3,6 +3,7 @@ import { CrudMethods, PayloadData } from "@/types/query.types";
 /**
  * Gets filter key for supabase call
  *
+ * @param op - The operator to map
  * @returns
  */
 export function operatorMap(
@@ -35,6 +36,10 @@ export function operatorMap(
 /**
  * Gets method for supabase call
  *
+ * @param query - The query to modify
+ * @param method - The method to call
+ * @param select - The columns to select
+ * @param payload - The payload to insert
  * @returns query
  */
 export function getMethod(
@@ -51,7 +56,7 @@ export function getMethod(
     case "update":
       return (query = query.update(payload!));
     case "delete":
-      return (query = query.delete());
+      return (query = query.update({ deleted_at: new Date().toISOString() }));
     default:
       throw new Error("No method defined for Supastash query");
   }

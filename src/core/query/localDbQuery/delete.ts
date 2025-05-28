@@ -5,6 +5,9 @@ import { assertTableExists } from "@/utils/tableValidator";
 
 /**
  * Soft delete: Sets `deleted_at` timestamp based on provided filters.
+ * @param table - The name of the table to delete from
+ * @param filters - The filters to apply to the delete query
+ * @returns The result of the delete query
  */
 export async function deleteData(
   table: string,
@@ -36,17 +39,21 @@ export async function deleteData(
 
 /**
  * Hard delete: Permanently removes a row by its `id`.
+ * @param table - The name of the table to delete from
+ * @param id - The id of the row to delete
+ * @returns The result of the delete query
  */
-export async function permanentlyDeleteItem(
+export async function permanentlyDeleteData(
   table: string,
-  id: string
+  filters: FilterCalls[] | null
 ): Promise<SupatashDeleteResult> {
   await assertTableExists(table);
 
   try {
     const db = await getSupaStashDb();
+    const { clause, values: filterValues } = buildWhereClause(filters ?? []);
 
-    await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [id]);
+    await db.runAsync(`DELETE FROM ${table} ${clause}`, filterValues);
 
     return { error: null } as any;
   } catch (error) {

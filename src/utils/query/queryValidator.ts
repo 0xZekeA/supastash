@@ -1,5 +1,9 @@
 import { SupastashQuery } from "@/types/query.types";
 
+/**
+ * Validates the query
+ * @param state - The query to validate
+ */
 export function validateQuery(state: SupastashQuery) {
   if (!state.table) {
     throw new Error("Table name is required");
@@ -17,7 +21,13 @@ export function validateQuery(state: SupastashQuery) {
     throw new Error("No data was added to update query");
   }
 
-  if (state.method === "delete" && state.filters?.length === 0) {
-    throw new Error("No filters were added to delete query");
+  if (
+    (state.method === "delete" || state.method === "update") &&
+    (!state.filters || state.filters.length === 0)
+  ) {
+    throw new Error(`
+        Filters are required to perform this operation.
+        Please add filters to the ${state.method} query on table ${state.table}
+    `);
   }
 }

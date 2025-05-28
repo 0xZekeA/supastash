@@ -6,6 +6,11 @@ import { assertTableExists } from "@/utils/tableValidator";
 /**
  * Selects one or many rows from the local database.
  *
+ * @param table - The name of the table to select from
+ * @param select - The columns to select
+ * @param filters - The filters to apply to the select query
+ * @param limit - The limit to apply to the select query
+ * @param isSingle - Whether to return a single row or multiple rows
  * @returns a data / error object
  */
 export async function selectData<T extends boolean>(

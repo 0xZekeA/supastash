@@ -1,7 +1,14 @@
 import { getSupastashConfig } from "@/core/config";
 import { SupabaseQueryReturn, SupastashQuery } from "@/types/query.types";
 import { getMethod, operatorMap } from "@/utils/query/remoteDb/queryUtils";
+import { permanentlyDeleteData } from "../localDbQuery/delete";
+import { updateData } from "../localDbQuery/update";
 
+/**
+ * Queries the supabase database
+ * @param state - The state of the query
+ * @returns The result of the query
+ */
 export async function querySupabase<T extends boolean>(
   state: SupastashQuery & { isSingle: T }
 ): Promise<SupabaseQueryReturn<T>> {
@@ -9,10 +16,11 @@ export async function querySupabase<T extends boolean>(
 
   if (!getSupastashConfig().supabaseClient) {
     throw new Error(`
-        [Supastash] Supabase Client is required to perform this operation.
+        Supabase Client is required to perform this operation.
         Please add Supabase Client to the config file
     `);
   }
+
   const supabase = getSupastashConfig().supabaseClient;
 
   let query = supabase.from(table);
@@ -37,6 +45,13 @@ export async function querySupabase<T extends boolean>(
   }
 
   const result = await query;
+
+  if (!result.error && method !== "select") {
+    await updateData(table, { synced_at: new Date().toISOString() }, filters); // Update the local database with the synced_at timestamp
+    if (method === "delete") {
+      await permanentlyDeleteData(table, filters); // Permanently delete the data from the local database
+    }
+  }
 
   return result;
 }

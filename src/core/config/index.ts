@@ -5,6 +5,10 @@ let _config: SupastashConfig = {
   supabaseClient: null,
 };
 
+/**
+ * Configures the supastash client
+ * @param config - The config to configure
+ */
 function configureSupastash(config: Partial<SupastashConfig>) {
   _config = {
     ..._config,
@@ -12,12 +16,18 @@ function configureSupastash(config: Partial<SupastashConfig>) {
   };
 }
 
-// Get the current config
+/**
+ * Gets the supastash config
+ * @returns The supastash config
+ */
 export function getSupastashConfig(): SupastashConfig {
   return _config;
 }
 
-// Define the config
+/**
+ * Defines the supastash config
+ * @param config - The config to define
+ */
 export function defineSupastashConfig(config: {
   dbOptions: Partial<SupastashConfig> & {
     onSchemaInit?: () => void;

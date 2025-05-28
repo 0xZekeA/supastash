@@ -5,6 +5,11 @@ import {
 } from "@/types/query.types";
 import getLocalMethod from "@/utils/query/localDb/getLocalMethod";
 
+/**
+ * Queries the local database
+ * @param state - The state of the query
+ * @returns The result of the query
+ */
 export async function queryLocalDb<T extends CrudMethods, U extends boolean>(
   state: SupastashQuery & { method: T; isSingle: U }
 ): Promise<MethodReturnTypeMap<U>[T]> {

@@ -7,9 +7,18 @@ import {
 } from "@/types/query.types";
 import SupaStashCrudBuilder from "./crud";
 
+/**
+ * Builder for the supastash query
+ * @param T - The method to call
+ * @param U - Whether to return a single row or multiple rows
+ */
 export class SupaStashQueryBuilder<T extends CrudMethods, U extends boolean> {
   private readonly query: SupastashQuery & { isSingle: U; method: T };
 
+  /**
+   * Constructor for the supastash query builder
+   * @param query - The query to build
+   */
   constructor(query: SupastashQuery & { isSingle: U; method: T }) {
     this.query = query;
   }

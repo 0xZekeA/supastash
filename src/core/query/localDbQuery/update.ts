@@ -11,6 +11,9 @@ import { assertTableExists } from "@/utils/tableValidator";
 /**
  * Updates data locally, sets synced_at to null pending update to remote server
  *
+ * @param table - The name of the table to update
+ * @param payload - The payload to update
+ * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
 export async function updateData(

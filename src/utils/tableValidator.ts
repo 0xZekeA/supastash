@@ -1,5 +1,10 @@
 import { getSupaStashDb } from "@/db/dbInitializer";
 
+/**
+ * Checks if the table exists in the local database
+ * @param tableName - The name of the table to check
+ * @returns true if the table exists, false otherwise
+ */
 async function checkIfTableExist(tableName: string): Promise<boolean> {
   if (!tableName || typeof tableName !== "string") return false;
 
@@ -12,6 +17,10 @@ async function checkIfTableExist(tableName: string): Promise<boolean> {
   return !!exist;
 }
 
+/**
+ * Throws an error if the table does not exist
+ * @param tableName - The name of the table to check
+ */
 export async function assertTableExists(tableName: string) {
   const exists = await checkIfTableExist(tableName);
   if (!exists) {

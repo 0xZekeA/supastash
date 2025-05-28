@@ -2,7 +2,8 @@ import { getSupaStashDb } from "@/db/dbInitializer";
 
 /**
  * Updates synced_at from null to a timeStamp
- * @param id
+ * @param tableName - The name of the table to update
+ * @param id - The id of the row to update
  */
 export async function updateLocalSyncedAt(tableName: string, id: string) {
   try {

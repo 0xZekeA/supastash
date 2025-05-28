@@ -8,10 +8,19 @@ import {
 import { querySupabase } from "../remoteQuery/supabaseQuery";
 import { queryDb } from "./mainQuery";
 
+/**
+ * Builder for the filter methods
+ * @param T - The method to call
+ * @param U - Whether to return a single row or multiple rows
+ */
 export default class SupaStashFilterBuilder<
   T extends CrudMethods,
   U extends boolean
 > {
+  /**
+   * Constructor for the filter builder
+   * @param query - The query to build
+   */
   constructor(
     private readonly query: SupastashQuery & { isSingle: U; method: T }
   ) {}

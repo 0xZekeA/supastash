@@ -8,6 +8,11 @@ import { FilterCalls, PayloadData } from "@/types/query.types";
 /**
  * Builds a select query
  *
+ * @param table - The name of the table to query
+ * @param select - The columns to select
+ * @param filters - The filters to apply
+ * @param limit - The limit to apply
+ * @param isSingle - Whether to return a single row or multiple rows
  * @returns query
  */
 export const buildSelect = <T extends boolean>(
@@ -24,6 +29,8 @@ export const buildSelect = <T extends boolean>(
 /**
  * Builds an insert query
  *
+ * @param table - The name of the table to insert into
+ * @param payload - The payload to insert
  * @returns query
  */
 export const buildInsert = (table: string, payload: PayloadData | null) => {

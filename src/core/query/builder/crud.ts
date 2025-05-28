@@ -1,10 +1,19 @@
 import { CrudMethods, PayloadData, SupastashQuery } from "@/types/query.types";
 import SupaStashFilterBuilder from "./filters";
 
+/**
+ * Builder for the CRUD methods
+ * @param T - The method to call
+ * @param U - Whether to return a single row or multiple rows
+ */
 export default class SupaStashCrudBuilder<
   T extends CrudMethods,
   U extends boolean
 > {
+  /**
+   * Constructor for the CRUD builder
+   * @param query - The query to build
+   */
   constructor(
     private readonly query: SupastashQuery & { isSingle: U; method: T }
   ) {}

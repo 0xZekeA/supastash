@@ -6,6 +6,8 @@ import { assertTableExists } from "../../../utils/tableValidator";
 /**
  * Inserts data locally, sets synced_at to null pending update to remote server
  *
+ * @param table - The name of the table to insert into
+ * @param payload - The payload to insert
  * @returns a data / error object
  */
 export async function insertData(

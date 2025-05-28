@@ -1,5 +1,8 @@
 /**
  * Converts a value into a stable JSON string representation.
+ *
+ * @param obj - The object to convert
+ * @returns A stable stringified version of the input
  */
 function stableStringify(obj: any): string {
   if (Array.isArray(obj)) return JSON.stringify(obj);
@@ -17,6 +20,9 @@ function stableStringify(obj: any): string {
 }
 
 /**
+ * Converts a value into a stable JSON string representation.
+ *
+ * @param value - The value to convert
  * @returns A stable stringified version of the input
  */
 export function getSafeValue(value: any): any {
