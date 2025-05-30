@@ -1,5 +1,12 @@
 import { getSupaStashDb } from "@/db/dbInitializer";
 
+/**
+ * Defines the schema for a local table manually
+ *
+ * @param tableName - The name of the table
+ * @param schema - The schema for the table
+ * @param deletePreviousSchema - Whether to delete the previous schema
+ */
 export async function defineLocalSchema(
   tableName: string,
   schema: Record<string, string>,
@@ -19,7 +26,7 @@ export async function defineLocalSchema(
       ...schema,
       created_at: "TEXT NOT NULL",
       updated_at: "TEXT NOT NULL",
-      sync_status: "TEXT DEFAULT NULL",
+      synced_at: "TEXT DEFAULT NULL",
       deleted_at: "TEXT DEFAULT NULL",
     };
 
@@ -31,7 +38,7 @@ export async function defineLocalSchema(
 
     if (deletePreviousSchema) {
       const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
-      const clearSyncStatusSql = `DELETE FROM sync_status WHERE table_name = '${tableName}'`;
+      const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
 
       await db.execAsync(dropSql);
       await db.execAsync(clearSyncStatusSql);

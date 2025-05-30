@@ -5,6 +5,7 @@ import {
   SupastashQueryResult,
   SyncMode,
 } from "@/types/query.types";
+import { eventBus } from "@/utils/events/eventBus";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
 import { queryDb } from "./mainQuery";
 
@@ -187,6 +188,9 @@ export default class SupaStashFilterBuilder<
       const result = await queryDb<T, U>(
         this.query as any as SupastashQuery & { isSingle: U; method: T }
       );
+      if (this.query.method !== "select" && this.query.method !== "none") {
+        eventBus.emit(`refresh:${this.query.table}`);
+      }
 
       if (!result.remote?.error || maxRetries === 0) {
         return result;

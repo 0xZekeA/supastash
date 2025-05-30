@@ -58,7 +58,7 @@ export async function queryDb<T extends CrudMethods, U extends boolean>(
         break;
 
       default:
-        throw new Error(`[Supastash] Unknown query type: ${type}`);
+        throw new Error(`Unknown query type: ${type}`);
     }
 
     return {

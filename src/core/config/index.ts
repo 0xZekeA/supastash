@@ -1,8 +1,13 @@
 let _config: SupastashConfig = {
   dbName: "supastash_db",
-  pollingInterval: 30000,
-  enableLogging: false,
   supabaseClient: null,
+  excludeTables: { pull: [], push: [] },
+  pollingInterval: {
+    pull: 30000,
+    push: 30000,
+  },
+  listeners: 250,
+  debugMode: false,
 };
 
 /**

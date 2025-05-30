@@ -39,8 +39,13 @@ export async function updateData(
   };
 
   const colArray = Object.keys(newPayload);
-  const cols = colArray.map((col) => `${col} = ?`).join(", ");
-  const values = colArray.map((c) => getSafeValue(newPayload[c]));
+  const cols = colArray
+    .filter((col) => col !== "id")
+    .map((col) => `${col} = ?`)
+    .join(", ");
+  const values = colArray
+    .filter((col) => col !== "id")
+    .map((c) => getSafeValue(newPayload[c]));
 
   const { clause, values: filterValues } = buildWhereClause(filters ?? []);
 
