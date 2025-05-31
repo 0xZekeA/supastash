@@ -40,6 +40,15 @@ export class SupaStashQueryBuilder<T extends CrudMethods, U extends boolean> {
  * Used to build queries for the supastash client.
  *
  * @returns the supastash query builder.
+ * @example
+ * const query = await supastash
+ *   .from("users")
+ *   .update({
+ *     name: "John Doe",
+ *   })
+ *   .eq("id", "1")
+ *   .run(); // (Compulsory to call run(): alias for execute())
+ *
  */
 const supastash = new SupaStashQueryBuilder<CrudMethods, boolean>({
   table: "" as string,
@@ -54,17 +63,3 @@ const supastash = new SupaStashQueryBuilder<CrudMethods, boolean>({
 } as SupastashQuery & { isSingle: boolean; method: CrudMethods });
 
 export default supastash;
-
-// (async () => {
-//   const query = await supastash
-//     .from("users")
-//     .select("name")
-//     .eq("name", "John Doe")
-//     .execute();
-
-//   const remoteResponse = query.remote?.data;
-//   const localResponse = query.local;
-//   const success = query.success;
-
-//   console.log(remoteResponse, localResponse, success);
-// })();

@@ -3,6 +3,13 @@ import { getSupaStashDb } from "@/db/dbInitializer";
 /**
  * Defines the schema for a local table manually
  *
+ * @example
+ * defineLocalSchema("users", {
+ *   id: "TEXT NOT NULL",
+ *   name: "TEXT NOT NULL",
+ *   email: "TEXT NOT NULL",
+ * });
+ *
  * @param tableName - The name of the table
  * @param schema - The schema for the table
  * @param deletePreviousSchema - Whether to delete the previous schema

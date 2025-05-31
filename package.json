@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "lodash": "^4.17.21",
-    "expo-sqlite": "^15.2.10",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -11,6 +10,10 @@
   "peerDependencies": {
     "@supabase/supabase-js": ">=2.0.0 <3.0.0",
     "react": ">=18.0.0 <20.0.0",
-    "react-native": ">=0.71.0 <0.80.0"
+    "react-native": ">=0.71.0 <0.80.0",
+    "@types/react-native-sqlite-storage": "^6.0.5",
+    "react-native-nitro-sqlite": "^9.1.9",
+    "react-native-sqlite-storage": "^6.0.1",
+    "expo-sqlite": "^15.2.10"
   }
 }

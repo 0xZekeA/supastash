@@ -71,4 +71,18 @@ export default class SupaStashCrudBuilder<
       this.query as SupastashQuery & { isSingle: false; method: "select" }
     );
   }
+
+  /**
+   * Sets the method to upsert.
+   *
+   * @param data - The data to upsert.
+   * @returns filter options.
+   */
+  upsert(data: PayloadData) {
+    this.query.method = "upsert" as T;
+    this.query.payload = data;
+    return new SupaStashFilterBuilder<"upsert", false>(
+      this.query as SupastashQuery & { isSingle: false; method: "upsert" }
+    );
+  }
 }

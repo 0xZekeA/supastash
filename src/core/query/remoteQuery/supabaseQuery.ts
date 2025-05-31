@@ -1,6 +1,6 @@
 import { getSupastashConfig } from "@/core/config";
 import { SupabaseQueryReturn, SupastashQuery } from "@/types/query.types";
-import { getMethod, operatorMap } from "@/utils/query/remoteDb/queryUtils";
+import { operatorMap } from "@/utils/query/remoteDb/queryUtils";
 import { permanentlyDeleteData } from "../localDbQuery/delete";
 import { updateData } from "../localDbQuery/update";
 
@@ -12,44 +12,73 @@ import { updateData } from "../localDbQuery/update";
 export async function querySupabase<T extends boolean>(
   state: SupastashQuery & { isSingle: T }
 ): Promise<SupabaseQueryReturn<T>> {
-  const { table, method, payload, filters, limit, select, isSingle } = state;
+  const { table, method, payload, filters, limit, select, isSingle, type } =
+    state;
 
-  if (!getSupastashConfig().supabaseClient) {
-    throw new Error(`
-        Supabase Client is required to perform this operation.
-        Please add Supabase Client to the config file
-    `);
+  const config = getSupastashConfig();
+
+  if (!config.supabaseClient) {
+    throw new Error(
+      "[Supastash] Supabase Client is required to perform this operation."
+    );
   }
 
-  const supabase = getSupastashConfig().supabaseClient;
-
+  const supabase = config.supabaseClient;
   let query = supabase.from(table);
+  let filterQuery: any;
 
-  // Get Method
-  getMethod(query, method, select, payload);
+  switch (method) {
+    case "select":
+      filterQuery = query.select(select || "*");
+      break;
+    case "insert":
+      if (!payload) throw new Error("[Supastash] Insert payload is missing.");
+      filterQuery = query.insert(payload);
+      break;
+    case "update":
+      if (!payload) throw new Error("[Supastash] Update payload is missing.");
+      filterQuery = query.update(payload);
+      break;
+    case "upsert":
+      if (!payload) throw new Error("[Supastash] Upsert payload is missing.");
+      filterQuery = query.upsert(payload);
+      break;
+    case "delete":
+      filterQuery = query.update({ deleted_at: new Date().toISOString() });
+      break;
+    default:
+      throw new Error(`[Supastash] Unsupported method "${method}"`);
+  }
 
   // Apply filters
-  if (filters) {
-    for (const filter of filters) {
-      const { column, operator, value } = filter;
-      query = query[operatorMap(operator)](column, value);
+  if (filters?.length) {
+    for (const { column, operator, value } of filters) {
+      const op = operatorMap(operator);
+      filterQuery = filterQuery[op](column, value);
     }
   }
 
-  if (limit !== null) {
-    query = query.limit(limit);
+  if (limit != null) {
+    filterQuery = filterQuery.limit(limit);
   }
 
   if (isSingle) {
-    query = query.single();
+    filterQuery = filterQuery.single();
   }
 
-  const result = await query;
+  const result = await filterQuery;
 
-  if (!result.error && method !== "select") {
-    await updateData(table, { synced_at: new Date().toISOString() }, filters); // Update the local database with the synced_at timestamp
-    if (method === "delete") {
-      await permanentlyDeleteData(table, filters); // Permanently delete the data from the local database
+  if (
+    !result.error &&
+    method !== "select" &&
+    type !== "remoteOnly" &&
+    type !== "remoteFirst"
+  ) {
+    if (filters?.length) {
+      await updateData(table, { synced_at: new Date().toISOString() }, filters);
+      if (method === "delete") {
+        await permanentlyDeleteData(table, filters);
+      }
     }
   }
 

@@ -1,10 +1,13 @@
-import { log } from "console";
+import log from "@/utils/logs";
+import { useEffect } from "react";
+import { AppState } from "react-native";
 import { getSupastashConfig } from "../config";
 import { pullFromRemote } from "./pullFromRemote";
 import { pushLocalData } from "./pushLocal";
 
 let isSyncing = false;
 let lastFullSync = 0;
+const syncPollingInterval = getSupastashConfig().pollingInterval.push;
 
 /**
  * Syncs the local data to the remote database
@@ -28,4 +31,24 @@ export async function syncEngine(force: boolean = false) {
   } finally {
     isSyncing = false;
   }
+}
+
+export default function useSyncEngine() {
+  useEffect(() => {
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        syncEngine(true);
+      }
+    });
+
+    // Sync
+    const interval = setInterval(() => {
+      syncEngine();
+    }, syncPollingInterval || 30000);
+
+    return () => {
+      appState.remove();
+      clearInterval(interval);
+    };
+  }, []);
 }

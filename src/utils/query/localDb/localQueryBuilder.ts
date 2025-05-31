@@ -2,8 +2,9 @@ import { deleteData } from "@/core/query/localDbQuery/delete";
 import { insertData } from "@/core/query/localDbQuery/insert";
 import { selectData } from "@/core/query/localDbQuery/select";
 import { updateData } from "@/core/query/localDbQuery/update";
+import { upsertData } from "@/core/query/localDbQuery/upsert";
 
-import { FilterCalls, PayloadData } from "@/types/query.types";
+import { FilterCalls, PayloadData, SyncMode } from "@/types/query.types";
 
 /**
  * Builds a select query
@@ -33,8 +34,12 @@ export const buildSelect = <T extends boolean>(
  * @param payload - The payload to insert
  * @returns query
  */
-export const buildInsert = (table: string, payload: PayloadData | null) => {
-  return async () => await insertData(table, payload);
+export const buildInsert = (
+  table: string,
+  payload: PayloadData | null,
+  syncMode?: SyncMode
+) => {
+  return async () => await insertData(table, payload, syncMode);
 };
 
 /**
@@ -45,9 +50,10 @@ export const buildInsert = (table: string, payload: PayloadData | null) => {
 export const buildUpdate = (
   table: string,
   payload: PayloadData | null,
-  filters: FilterCalls[] | null
+  filters: FilterCalls[] | null,
+  syncMode?: SyncMode
 ) => {
-  return async () => await updateData(table, payload, filters);
+  return async () => await updateData(table, payload, filters, syncMode);
 };
 
 /**
@@ -57,4 +63,13 @@ export const buildUpdate = (
  */
 export const buildDelete = (table: string, filters: FilterCalls[] | null) => {
   return async () => await deleteData(table, filters);
+};
+
+export const buildUpsert = (
+  table: string,
+  payload: PayloadData | null,
+  filters: FilterCalls[] | null,
+  syncMode?: SyncMode
+) => {
+  return async () => await upsertData(table, payload, filters, syncMode);
 };

@@ -17,7 +17,7 @@ import { assertTableExists } from "@/utils/tableValidator";
  * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
-export async function updateData(
+export async function upsertData(
   table: string,
   payload: PayloadData | null,
   filters: FilterCalls[] | null,
@@ -48,7 +48,11 @@ export async function updateData(
     .filter((col) => col !== "id")
     .map((col) => `${col} = ?`)
     .join(", ");
-  const values = colArray
+
+  const insertCols = colArray.join(", ");
+  const insertPlaceholders = colArray.map(() => "?").join(", ");
+  const insertValues = colArray.map((c) => getSafeValue(newPayload[c]));
+  const updateValues = colArray
     .filter((col) => col !== "id")
     .map((c) => getSafeValue(newPayload[c]));
 
@@ -57,10 +61,25 @@ export async function updateData(
   try {
     const db = await getSupaStashDb();
 
-    await db.runAsync(`UPDATE ${table} SET ${cols} ${clause}`, [
-      ...values,
-      ...filterValues,
-    ]);
+    const exist = await db.getFirstAsync(
+      `SELECT * FROM ${table} ${clause}`,
+      filterValues
+    );
+
+    if (exist) {
+      if (!clause) {
+        throw new Error("Update filters are required to avoid mass updates.");
+      }
+      await db.runAsync(`UPDATE ${table} SET ${cols} ${clause}`, [
+        ...updateValues,
+        ...filterValues,
+      ]);
+    } else {
+      await db.runAsync(
+        `INSERT INTO ${table} (${insertCols}) VALUES (${insertPlaceholders})`,
+        insertValues
+      );
+    }
 
     const updatedRow: PayloadData[] | null = await db.getAllAsync(
       `SELECT * FROM ${table} ${clause}`,

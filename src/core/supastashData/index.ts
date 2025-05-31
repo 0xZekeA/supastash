@@ -4,6 +4,7 @@ import { buildFilterString } from "@/utils/fetchData/buildFilter";
 import { fetchLocalData } from "@/utils/fetchData/fetchLocalData";
 import log from "@/utils/logs";
 import { useEffect, useMemo, useRef } from "react";
+import { AppState } from "react-native";
 import useDataState from "./dataState";
 import useEventQueues from "./eventQueues";
 import useRealtimeSubscription from "./realtimeSubscription";
@@ -95,18 +96,21 @@ export default function useSupatashData(
     options,
     flushIntervalMs
   );
+
   const filterString =
     buildFilterString(filter || []) || rawFilter || undefined;
-
   useEffect(() => {
     if (lazy && !initialized.current) return;
-    trigger();
+    const unsub = AppState.addEventListener("change", (state: string) => {
+      if (state === "active") triggerRefresh();
+    });
     eventBus.on(`refresh:${table}`, triggerRefresh);
     return () => {
       eventBus.off?.(`refresh:${table}`, triggerRefresh);
       if (typeof fetchLocalData.cancel === "function") fetchLocalData.cancel();
+      unsub.remove();
     };
-  }, [table, lazy, filterString]);
+  }, [lazy]);
 
   useRealtimeSubscription(
     table,

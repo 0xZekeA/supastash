@@ -21,7 +21,7 @@ export async function queryDb<T extends CrudMethods, U extends boolean>(
 ): SupastashQueryResult<T, U> {
   try {
     validateQuery(state);
-    const { type, method, filters, table } = state;
+    const { type } = state;
 
     let localResult: MethodReturnTypeMap<U>[T] | null = null;
     let remoteResult: SupabaseQueryReturn<U> | null = null;

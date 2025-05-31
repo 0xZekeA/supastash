@@ -1,5 +1,9 @@
 import { getSupaStashDb } from "../../../db/dbInitializer";
-import { PayloadData, PayloadResult } from "../../../types/query.types";
+import {
+  PayloadData,
+  PayloadResult,
+  SyncMode,
+} from "../../../types/query.types";
 import { getSafeValue } from "../../../utils/serializer";
 import { assertTableExists } from "../../../utils/tableValidator";
 
@@ -12,7 +16,8 @@ import { assertTableExists } from "../../../utils/tableValidator";
  */
 export async function insertData(
   table: string,
-  payload: PayloadData | null
+  payload: PayloadData | null,
+  syncMode?: SyncMode
 ): Promise<PayloadResult> {
   if (!table) throw new Error("Table name was not provided for an insert call");
 
@@ -34,6 +39,10 @@ export async function insertData(
   // Add timestamps
   newPayload.created_at ??= timeStamp;
   newPayload.updated_at ??= timeStamp;
+  newPayload.synced_at ??=
+    syncMode && (syncMode === "localOnly" || syncMode === "remoteFirst")
+      ? timeStamp
+      : null;
 
   const colArray = Object.keys(newPayload);
   const cols = colArray.join(", ");

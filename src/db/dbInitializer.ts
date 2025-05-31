@@ -1,16 +1,36 @@
 import { getSupastashConfig } from "@/core/config";
-import * as SQLite from "expo-sqlite";
+import { SupastashSQLiteDatabase } from "@/types/supastashConfig.types";
+import { SQLiteAdapterExpo } from "./adapters/expo_sqlite";
+import { SQLiteAdapterNitro } from "./adapters/rn_nitro";
+import { SQLiteAdapterStorage } from "./adapters/rn_sqlite_storage";
+import { supastashDbErrorMsg } from "./dbErrorMsg";
 
-let db: SQLite.SQLiteDatabase | null = null;
+let db: SupastashSQLiteDatabase | null = null;
 
 /**
  * Gets the supastash database
  * @returns The supastash database
  */
-export const getSupaStashDb = async () => {
+export async function getSupaStashDb(): Promise<SupastashSQLiteDatabase> {
   const config = getSupastashConfig();
+  if (!config.sqliteClient || !config.sqliteClientType) {
+    throw new Error(supastashDbErrorMsg);
+  }
+
+  const client = config.sqliteClient;
+  const clientType = config.sqliteClientType;
+
   if (!db) {
-    db = await SQLite.openDatabaseAsync(config.dbName);
+    if (clientType === "expo") {
+      db = await SQLiteAdapterExpo.openDatabaseAsync(config.dbName, client);
+    } else if (clientType === "rn-storage") {
+      db = await SQLiteAdapterStorage.openDatabaseAsync(config.dbName, client);
+    } else if (clientType === "rn-nitro") {
+      db = await SQLiteAdapterNitro.openDatabaseAsync(config.dbName, client);
+    }
+  }
+  if (!db) {
+    throw new Error(supastashDbErrorMsg);
   }
   return db;
-};
+}

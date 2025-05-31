@@ -18,7 +18,13 @@ type FilterOperations =
   | "IS"
   | "IN";
 
-export type CrudMethods = "select" | "insert" | "update" | "delete" | "none";
+export type CrudMethods =
+  | "select"
+  | "insert"
+  | "update"
+  | "delete"
+  | "upsert"
+  | "none";
 
 export type FilterCalls = {
   column: string;
@@ -34,7 +40,7 @@ export interface SupastashQuery {
   limit: number | null;
   select: string | null;
   isSingle: boolean;
-  type: QueryType;
+  type: SyncMode;
   runSelected: boolean;
 }
 
@@ -58,6 +64,7 @@ export type MethodReturnTypeMap<U extends boolean> = {
   insert: PayloadResult;
   update: PayloadListResult;
   delete: SupatashDeleteResult;
+  upsert: PayloadListResult;
   none: null; // if no method is selected
 };
 
@@ -79,14 +86,6 @@ export type SupastashQueryResult<
   local: MethodReturnTypeMap<U>[T] | null; // if isSingle is true → return a single row
   success: boolean;
 }>;
-
-import {
-  CrudMethods,
-  FilterCalls,
-  PayloadData,
-  SupastashQueryResult,
-  SyncMode,
-} from "@/types/query.types";
 
 export type QueryBuilder<T extends CrudMethods, U extends boolean> = {
   eq(column: string, value: any): QueryBuilder<T, U>;

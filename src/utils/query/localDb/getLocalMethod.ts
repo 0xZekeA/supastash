@@ -4,12 +4,14 @@ import {
   HandlerMap,
   MethodReturnTypeMap,
   PayloadData,
+  SyncMode,
 } from "@/types/query.types";
 import {
   buildDelete,
   buildInsert,
   buildSelect,
   buildUpdate,
+  buildUpsert,
 } from "./localQueryBuilder";
 
 /**
@@ -34,13 +36,15 @@ export default function getLocalMethod<
   payload: PayloadData | null,
   filters: FilterCalls[] | null,
   limit: number | null,
-  isSingle: U
+  isSingle: U,
+  syncMode?: SyncMode
 ): () => Promise<MethodReturnTypeMap<U>[T]> {
   const handlers: HandlerMap = {
     select: buildSelect<U>(table, select, filters, limit, isSingle),
-    insert: buildInsert(table, payload),
-    update: buildUpdate(table, payload, filters),
+    insert: buildInsert(table, payload, syncMode),
+    update: buildUpdate(table, payload, filters, syncMode),
     delete: buildDelete(table, filters),
+    upsert: buildUpsert(table, payload, filters, syncMode),
     none: async () => null,
   };
 

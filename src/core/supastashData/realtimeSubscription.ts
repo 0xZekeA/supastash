@@ -11,7 +11,6 @@ function useRealtimeSubscription(
   initialized: boolean
 ) {
   const supabase = getSupastashConfig().supabaseClient;
-
   useEffect(() => {
     if (!supabase) {
       console.error("No supabase client found");
@@ -37,8 +36,10 @@ function useRealtimeSubscription(
       )
       .subscribe();
 
-    return () => supabase.removeChannel(sub);
-  }, [table, filterString]);
+    return () => {
+      supabase.removeChannel(sub);
+    };
+  }, [options.lazy, initialized]);
 }
 
 export default useRealtimeSubscription;
