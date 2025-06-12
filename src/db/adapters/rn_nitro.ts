@@ -2,7 +2,7 @@ import {
   RNSqliteNitroClient,
   SupastashSQLiteAdapter,
   SupastashSQLiteDatabase,
-} from "@/types/supastashConfig.types";
+} from "../../types/supastashConfig.types";
 
 export const SQLiteAdapterNitro: SupastashSQLiteAdapter = {
   async openDatabaseAsync(

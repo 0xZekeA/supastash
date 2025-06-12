@@ -1,7 +1,7 @@
 import {
   SupastashConfig,
   SupastashSQLiteClientTypes,
-} from "@/types/supastashConfig.types";
+} from "../../types/supastashConfig.types";
 
 let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   dbName: "supastash_db",
@@ -13,6 +13,11 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
     pull: 30000,
     push: 30000,
   },
+  syncEngine: {
+    push: true,
+    pull: false,
+    useFiltersFromStore: true,
+  },
   listeners: 250,
   debugMode: false,
 };
@@ -20,20 +25,24 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
 let _configured = false;
 
 /**
- * Configures the Supastash client.
+ * Initializes the Supastash client.
  *
- * This function **must be called once** during app initialization (e.g., in `App.tsx` or `_layout.tsx`)
- * before using any Supastash hooks or accessing the Supastash client.
+ * This must be called **once** during app startup (e.g., in `_layout.tsx` or `App.tsx`)
+ * before using any Supastash hooks or features.
+ *
+ * ⚠️ Pull sync is **disabled by default** to avoid unfiltered data fetches.
+ * Enable it only if you've configured **Row Level Security (RLS)** on your Supabase tables.
+ * The `useSupatashData` hook always performs filtered pull queries when `filter` is provided in the `options`, making it safe to use even when pull is disabled globally.
  *
  * @example
- * ```ts
+ * import { supabase } from "./supabase";
  * import { openDatabaseAsync } from "expo-sqlite";
- * import { configureSupastash } from "@/lib/supastash/config";
+ * import { configureSupastash, defineLocalSchema } from "supastash";
  *
  * configureSupastash({
  *   dbName: "supastash_db",
  *   supabaseClient: supabase,
- *   sqliteClient: { openDatabaseAsync }, // Provide the correct SQLite client
+ *   sqliteClient: { openDatabaseAsync },
  *   sqliteClientType: "expo",
  *   onSchemaInit: () => {
  *     defineLocalSchema("users", {
@@ -45,25 +54,26 @@ let _configured = false;
  *     });
  *   },
  * });
- * ```
  *
- * @param config - Configuration options
+ * @param config - Configuration options for Supastash
  * @param config.dbName - SQLite database name (default: `"supastash_db"`)
  * @param config.supabaseClient - Supabase client instance (**required**)
- * @param config.sqliteClient - SQLite client instance (**required**)
- * @param config.sqliteClientType - SQLite engine type: `"expo" | "rn-storage" | "rn-nitro"` (**required**)
- * @param config.onSchemaInit - Optional callback to define your local SQLite schema
- * @param config.debugMode - Enable debug logs (default: `false`)
- * @param config.listeners - Max event listeners for subscriptions (default: `250`)
- * @param config.excludeTables - Tables to exclude from syncing (default: `{ pull: [], push: [] }`)
- * @param config.pollingInterval - Polling intervals for pull/push sync (default: `{ pull: 30000, push: 30000 }`)
+ * @param config.sqliteClient - SQLite client adapter (**required**)
+ * @param config.sqliteClientType - SQLite engine: `"expo" | "rn-storage" | "rn-nitro"` (**required**)
+ * @param config.onSchemaInit - Optional callback to define local table schemas
+ * @param config.debugMode - Enables debug logging (default: `false`)
+ * @param config.listeners - Max number of active Realtime subscriptions (default: `250`)
+ * @param config.excludeTables - Tables to exclude from sync (default: `{ pull: [], push: [] }`)
+ * @param config.pollingInterval - Polling interval for sync (default: `{ pull: 30000, push: 30000 }`)
+ * @param config.syncEngine - Control pull/push sync behavior (`push: true`, `pull: false` by default, `useFiltersFromStore: true` by default)
  */
-function configureSupastash<T extends SupastashSQLiteClientTypes>(
-  config: Partial<SupastashConfig<T>>
+
+export function configureSupastash<T extends SupastashSQLiteClientTypes>(
+  config: SupastashConfig<T> & { sqliteClientType: T }
 ) {
   _config = {
     ..._config,
-    ...(config as Partial<SupastashConfig<T> & { sqliteClientType: T }>),
+    ...config,
   };
   _configured = true;
 }
@@ -85,17 +95,6 @@ function configureSupastash<T extends SupastashSQLiteClientTypes>(
 export function getSupastashConfig<
   T extends SupastashSQLiteClientTypes
 >(): SupastashConfig<T> {
-  if (!_configured) {
-    throw new Error(
-      "[Supastash] Missing configuration. You must call `configureSupastash()` before using Supastash hooks.\n\nAdd an import to your setup file:\n\nimport '@/lib/supastash/supastashSetup';"
-    );
-  }
-
-  if (!_config.supabaseClient || !_config.sqliteClient) {
-    throw new Error(
-      "[Supastash] Configuration incomplete. `supabaseClient` and `sqliteClient` must be set."
-    );
-  }
   return _config as SupastashConfig<T>;
 }
 
@@ -124,7 +123,7 @@ export function getSupastashConfig<
 export function defineSupastashConfig<
   T extends SupastashSQLiteClientTypes
 >(config: {
-  dbOptions: Partial<SupastashConfig<T>> & {
+  dbOptions: SupastashConfig<T> & {
     onSchemaInit?: () => void;
   };
 }) {

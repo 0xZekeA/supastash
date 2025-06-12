@@ -1,29 +1,26 @@
-import { FilterOperator } from "@/types/realtimeData.types";
+import { FilterOperator } from "../../types/realtimeData.types";
 
 export function buildFilterString(
-  filters: {
-    column: string;
-    operator: FilterOperator;
-    value: string | number | null | (string | number)[];
-  }[]
+  filters:
+    | {
+        column: string;
+        operator: FilterOperator;
+        value: string | number | null | (string | number)[];
+      }
+    | undefined
 ): string | undefined {
-  if (!filters || filters.length === 0) {
+  if (!filters) {
     return undefined;
   }
+  const { column, operator, value } = filters;
 
-  const filterString = filters
-    .map(({ column, operator, value }) => {
-      if (value === null) {
-        return `${column}=${operator}.null`;
-      }
+  if (value === null) {
+    return `${column}=${operator}.null`;
+  }
 
-      if (operator === "in" && Array.isArray(value)) {
-        return `${column}=in.(${value.join(",")})`;
-      }
+  if (operator === "in" && Array.isArray(value)) {
+    return `${column}=in.(${value.join(",")})`;
+  }
 
-      return `${column}=${operator}.${value}`;
-    })
-    .join("&");
-
-  return filterString;
+  return `${column}=${operator}.${value}`;
 }

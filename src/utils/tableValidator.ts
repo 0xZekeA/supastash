@@ -1,4 +1,4 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
+import { getSupastashDb } from "../db/dbInitializer";
 
 /**
  * Checks if the table exists in the local database
@@ -8,7 +8,7 @@ import { getSupaStashDb } from "@/db/dbInitializer";
 export async function checkIfTableExist(tableName: string): Promise<boolean> {
   if (!tableName || typeof tableName !== "string") return false;
 
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
   const exist = await db.getFirstAsync(
     `SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1;`,
     [tableName]

@@ -2,7 +2,7 @@ import {
   ExpoSQLiteClient,
   SupastashSQLiteAdapter,
   SupastashSQLiteDatabase,
-} from "@/types/supastashConfig.types";
+} from "../../types/supastashConfig.types";
 
 export const SQLiteAdapterExpo: SupastashSQLiteAdapter = {
   async openDatabaseAsync(

@@ -2,7 +2,7 @@ import {
   RNStorageSQLiteClient,
   SupastashSQLiteAdapter,
   SupastashSQLiteDatabase,
-} from "@/types/supastashConfig.types";
+} from "../../types/supastashConfig.types";
 
 export const SQLiteAdapterStorage: SupastashSQLiteAdapter = {
   async openDatabaseAsync(

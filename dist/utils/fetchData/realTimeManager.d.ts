@@ -1,0 +1,40 @@
+import { EventHandler, HookId } from "../../types/realtimeData.types";
+declare class SupastashRealtimeManager {
+    private static instance;
+    private connection;
+    private subscriptions;
+    private isConnected;
+    private connectionStatus;
+    private reconnectAttempts;
+    private maxReconnectAttempts;
+    private reconnectDelay;
+    private subscribeDebounceTimer;
+    private disconnectDebounceTimer;
+    private statusListeners;
+    private constructor();
+    static getInstance(): SupastashRealtimeManager;
+    private getSubscriptionKey;
+    private createConnection;
+    private subscribeConnection;
+    private handleConnectionError;
+    private handleConnectionTimeout;
+    private scheduleReconnect;
+    private reconnect;
+    private resubscribeAll;
+    private bindTableListener;
+    private cleanup;
+    private notifyStatusListeners;
+    private debouncedSubscribe;
+    private debouncedDisconnect;
+    subscribe(table: string, hookId: HookId, handler: EventHandler, filterString?: string): void;
+    unsubscribe(table: string, hookId: HookId, filterString?: string): void;
+    getConnectionStatus(): string;
+    onStatusChange(listener: (status: string) => void): () => void;
+    getActiveSubscriptions(): number;
+    forceReconnect(): void;
+}
+export declare const RealtimeManager: SupastashRealtimeManager;
+export declare function subscribeToTable(table: string, filterString: string | undefined, queueHandler: (eventType: string, data: any) => void, hookId?: string): void;
+export declare function unsubscribeFromTable(table: string, filterString: string | undefined, queueHandler: (eventType: string, data: any) => void, hookId: string): void;
+export {};
+//# sourceMappingURL=realTimeManager.d.ts.map

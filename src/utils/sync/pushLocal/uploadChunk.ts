@@ -1,11 +1,14 @@
-import { getSupastashConfig } from "@/core/config";
-import { PayloadData } from "@/types/query.types";
+import { getSupastashConfig } from "../../../core/config";
+import { PayloadData } from "../../../types/query.types";
 import log from "../../logs";
+import { supastash } from "../../query/builder";
+import { supabaseClientErr } from "../../supabaseClientErr";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { parseStringifiedFields } from "./parseFields";
 
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
 const CHUNK_SIZE = 500;
+const DEFAULT_DATE = "1970-01-01T00:00:00Z";
 
 async function updateSyncStatus(table: string, ids: string[]) {
   for (const id of ids) {
@@ -23,12 +26,16 @@ async function updateSyncStatus(table: string, ids: string[]) {
  * @param table - The table to upload to
  * @param chunk - The chunk of data to upload
  */
-async function uploadChunk(table: string, chunk: PayloadData[]) {
+async function uploadChunk(
+  table: string,
+  chunk: PayloadData[],
+  onPushToRemote?: (payload: any) => Promise<boolean>
+) {
   const config = getSupastashConfig();
   const supabase = config.supabaseClient;
 
   if (!supabase) {
-    throw new Error("No supabase client found");
+    throw new Error(supabaseClientErr);
   }
 
   const ids = chunk.map((row) => row.id);
@@ -37,10 +44,10 @@ async function uploadChunk(table: string, chunk: PayloadData[]) {
   const {
     data: remoteData,
     error,
-  }: { data: { id: string; updated_at: string }[]; error: any } = await supabase
-    .from(table)
-    .select("id, updated_at")
-    .in("id", ids);
+  }: {
+    data: { id: string; updated_at: string }[] | null;
+    error: any;
+  } = await supabase.from(table).select("id, updated_at").in("id", ids);
 
   if (error) {
     log(`Error fetching data from table ${table}: ${error.message}`);
@@ -74,25 +81,56 @@ async function uploadChunk(table: string, chunk: PayloadData[]) {
 
     // Check if the remote updated_at is more recent than the local updated_at
     const remoteUpdatedAt = newRemoteIds.get(row.id);
-    const localUpdatedAt = new Date(row.updated_at);
-    if (remoteUpdatedAt && new Date(remoteUpdatedAt) > localUpdatedAt) {
+    const localUpdatedAt = new Date(row.updated_at || DEFAULT_DATE);
+    if (
+      remoteUpdatedAt &&
+      new Date(remoteUpdatedAt || DEFAULT_DATE) > localUpdatedAt
+    ) {
       log(
         `Skipping ${row.id} on table ${table} because remote updated_at is more recent`
       );
     } else {
-      toUpsert.push(row);
+      const { synced_at, ...rest } = row;
+      toUpsert.push(rest);
     }
   }
 
   if (toUpsert.length > 0) {
     let attempts = 0;
-    while (attempts < 3) {
-      const { error } = await supabase.from(table).upsert(toUpsert);
-      if (!error) {
-        await updateSyncStatus(table, ids);
-        break;
+    while (attempts < 5) {
+      if (onPushToRemote) {
+        const result = await onPushToRemote(toUpsert);
+        if (result) {
+          await updateSyncStatus(table, ids);
+          break;
+        }
+        log(
+          `Upsert attempt ${attempts + 1} failed for table ${table}`,
+          toUpsert?.map((row) => row.id)
+        );
+      } else {
+        const { error } = await supabase.from(table).upsert(toUpsert);
+        if (!error) {
+          await updateSyncStatus(table, ids);
+          break;
+        }
+        log(
+          `Upsert attempt ${attempts + 1} failed for table ${table}`,
+          toUpsert?.map((row) => row.id),
+          error
+        );
       }
-      log(`Upsert attempt ${attempts + 1} failed for`, toUpsert, error);
+
+      // Refresh screen
+      const refreshItems = toUpsert?.map((row) => ({
+        id: row.id,
+        synced_at: new Date().toISOString(),
+      }));
+      await supastash
+        .from(table)
+        .upsert(refreshItems)
+        .syncMode("localOnly")
+        .run();
       await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
       attempts++;
     }
@@ -106,7 +144,8 @@ async function uploadChunk(table: string, chunk: PayloadData[]) {
  */
 export async function uploadData(
   table: string,
-  unsyncedRecords: PayloadData[]
+  unsyncedRecords: PayloadData[],
+  onPushToRemote?: (payload: any[]) => Promise<boolean>
 ) {
   const cleanRecords = unsyncedRecords.map(
     ({ synced_at, deleted_at, ...rest }) => parseStringifiedFields(rest)
@@ -114,6 +153,6 @@ export async function uploadData(
 
   for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
     const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
-    await uploadChunk(table, chunk);
+    await uploadChunk(table, chunk, onPushToRemote);
   }
 }

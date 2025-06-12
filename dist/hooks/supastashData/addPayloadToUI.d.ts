@@ -1,0 +1,2 @@
+export declare function addPayloadToUI(table: string, payload: any | any[], setter: React.Dispatch<React.SetStateAction<Map<string, any>>>, setVersion: React.Dispatch<React.SetStateAction<string>>, operation: "insert" | "update" | "delete" | "upsert"): void;
+//# sourceMappingURL=addPayloadToUI.d.ts.map

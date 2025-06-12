@@ -1,4 +1,7 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
+import { getSupastashDb } from "../../db/dbInitializer";
+import { LocalSchemaDefinition } from "../../types/schemaManager.types";
+import { clearSchemaCache } from "../../utils/getTableSchema";
+import log from "../../utils/logs";
 
 /**
  * Defines the schema for a local table manually
@@ -8,25 +11,27 @@ import { getSupaStashDb } from "@/db/dbInitializer";
  *   id: "TEXT NOT NULL",
  *   name: "TEXT NOT NULL",
  *   email: "TEXT NOT NULL",
- * });
+ * }, true // deletes previous schema if true. Must be true if schema already exists
+ * // ⚠️ Living option as true will continually delete table on load.
+ * );
  *
  * @param tableName - The name of the table
  * @param schema - The schema for the table
- * @param deletePreviousSchema - Whether to delete the previous schema
+ * @param deletePreviousSchema - Whether to delete the previous schema. Default(false)
  */
 export async function defineLocalSchema(
   tableName: string,
-  schema: Record<string, string>,
+  schema: LocalSchemaDefinition,
   deletePreviousSchema = false
 ) {
   if (!schema.id) {
     throw new Error(
-      `[Supastash] 'id' of type UUID column is required for table ${tableName}`
+      `'id' of type UUID column is required for table ${tableName}`
     );
   }
 
   try {
-    const db = await getSupaStashDb();
+    const db = await getSupastashDb();
 
     // Include the columns that must be in the schema
     const safeSchema = {
@@ -46,14 +51,20 @@ export async function defineLocalSchema(
     if (deletePreviousSchema) {
       const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
       const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
+      const clearDeleteStatusSql = `DELETE FROM supastash_deleted_status WHERE table_name = '${tableName}'`;
 
       await db.execAsync(dropSql);
       await db.execAsync(clearSyncStatusSql);
-      console.log(`Dropped table ${tableName}`);
+      await db.execAsync(clearDeleteStatusSql);
+      await clearSchemaCache(tableName);
+      log(`[Supastash] Dropped table ${tableName}`);
     }
 
     await db.execAsync(sql);
   } catch (error) {
-    console.error(error);
+    console.error(
+      `[Supastash] Error defining schema for table ${tableName}`,
+      error
+    );
   }
 }

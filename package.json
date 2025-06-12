@@ -1,19 +1,60 @@
 {
-  "dependencies": {
-    "lodash": "^4.17.21",
-    "uuid": "^11.1.0"
+  "name": "supastash",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest --config vitest.config.ts",
+    "test:watch": "vitest --watch --config vitest.config.ts"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.17",
-    "@types/node": "^22.15.21"
+    "@testing-library/react-native": "^13.2.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.21",
+    "@types/react-native-sqlite-storage": ">=6.0.0 <7.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4"
   },
   "peerDependencies": {
+    "@react-native-community/netinfo": ">=9.0.0 <12.0.0",
     "@supabase/supabase-js": ">=2.0.0 <3.0.0",
+    "expo-sqlite": ">=15.0.0 <16.0.0",
     "react": ">=18.0.0 <20.0.0",
-    "react-native": ">=0.71.0 <0.80.0",
-    "@types/react-native-sqlite-storage": "^6.0.5",
-    "react-native-nitro-sqlite": "^9.1.9",
-    "react-native-sqlite-storage": "^6.0.1",
-    "expo-sqlite": "^15.2.10"
-  }
+    "react-native": ">=0.71.0 <0.82.0",
+    "react-native-nitro-sqlite": ">=9.0.0 <10.0.0",
+    "react-native-sqlite-storage": ">=6.0.0 <7.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xZekeA/supastash"
+  },
+  "author": "Ezekiel Akpan",
+  "license": "MIT",
+  "keywords": [
+    "supabase",
+    "supastash",
+    "local-first",
+    "local-storage",
+    "local-first-package",
+    "react-native",
+    "sqlite",
+    "offline-first",
+    "sync"
+  ],
+  "description": "Offline-first sync engine for Supabase in React Native using SQLite"
 }

@@ -1,7 +1,7 @@
-import { getSupastashConfig } from "@/core/config";
-import { getSupaStashDb } from "@/db/dbInitializer";
-import { PayloadData } from "@/types/query.types";
-import log from "@/utils/logs";
+import { getSupastashConfig } from "../../../core/config";
+import { getSupastashDb } from "../../../db/dbInitializer";
+import { PayloadData } from "../../../types/query.types";
+import log from "../../logs";
 import { parseStringifiedFields } from "./parseFields";
 
 const CHUNK_SIZE = 500;
@@ -15,7 +15,7 @@ async function permanentlyDeleteChunkLocally(
   table: string,
   chunk: PayloadData[]
 ) {
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
 
   for (const row of chunk) {
     await db.runAsync(`DELETE FROM ${table} WHERE id = ${row.id}`);

@@ -1,4 +1,4 @@
-import { PayloadData } from "@/types/query.types";
+import { PayloadData } from "../../types/query.types";
 
 /**
  * Validates the payload

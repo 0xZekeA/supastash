@@ -1,4 +1,4 @@
-import { getSupastashConfig } from "@/core/config";
+import { getSupastashConfig } from "../core/config";
 
 const DEBUG_MODE = __DEV__; // Log only in dev mode
 

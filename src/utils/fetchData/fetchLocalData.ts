@@ -1,7 +1,26 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
-import { PayloadData } from "@/types/query.types";
-import { debounce } from "lodash";
-import { setDataMapInBatches } from "./setDataInBatches";
+import { getSupastashDb } from "../../db/dbInitializer";
+import { PayloadData } from "../../types/query.types";
+
+let isFetching = new Map<string, boolean>();
+
+function parseJSONColumns<T extends Record<string, any>>(row: T): T {
+  const parsedRow: Record<string, any> = { ...row };
+
+  for (const key in parsedRow) {
+    const value = parsedRow[key];
+
+    if (
+      typeof value === "string" &&
+      (value.startsWith("{") || value.startsWith("["))
+    ) {
+      try {
+        parsedRow[key] = JSON.parse(value);
+      } catch {}
+    }
+  }
+
+  return parsedRow as T;
+}
 
 /**
  * Fetches the local data from the database
@@ -9,28 +28,43 @@ import { setDataMapInBatches } from "./setDataInBatches";
  * @param setData - The function to set the data
  * @param shouldFetch - Whether to fetch the data
  */
-let fetchToken = 0;
-const fetchLocalDataCore = async (
+export async function fetchLocalData(
   table: string,
   setDataMap: React.Dispatch<React.SetStateAction<Map<string, PayloadData>>>,
-  setVersion: React.Dispatch<React.SetStateAction<number>>,
-  shouldFetch: boolean = true
-) => {
-  if (!shouldFetch) return;
-  const currentToken = ++fetchToken;
+  setVersion: React.Dispatch<React.SetStateAction<string>>,
+  shouldFetch: boolean = true,
+  limit: number = 200
+) {
+  if (!shouldFetch || isFetching.get(table)) return;
+  isFetching.set(table, true);
+
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+    throw new Error(`Invalid table name: ${table}`);
+  }
+
+  const limitClause = `LIMIT ${limit ?? 200}`;
+
   try {
-    const db = await getSupaStashDb();
+    const db = await getSupastashDb();
     const localData: PayloadData[] = await db.getAllAsync(
-      `SELECT * FROM ${table} WHERE deleted_at IS NULL`
+      `SELECT * FROM ${table} WHERE deleted_at IS NULL ${limitClause}`
     );
 
-    const dataMap = new Map(localData?.map((item) => [item.id, item]) ?? {});
-    if (currentToken !== fetchToken) return;
-    setDataMapInBatches(dataMap, setDataMap);
-    setVersion((prev) => prev + 1);
+    const dataMap = new Map(
+      localData
+        ?.map((item) => {
+          if (!item.id) return undefined;
+          return [item.id, parseJSONColumns(item)] as [string, PayloadData];
+        })
+        .filter((item): item is [string, PayloadData] => item !== undefined) ??
+        []
+    );
+
+    setDataMap(dataMap);
+    setVersion(`${table}-${Date.now()}`);
   } catch (error) {
     console.error(`[Supastash] Error fetching local data for ${table}:`, error);
+  } finally {
+    isFetching.delete(table);
   }
-};
-
-export const fetchLocalData = debounce(fetchLocalDataCore, 300);
+}

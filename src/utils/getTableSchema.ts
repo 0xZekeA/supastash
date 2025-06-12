@@ -1,4 +1,7 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
+import { getSupastashDb } from "../db/dbInitializer";
+import { TableSchema } from "../types/syncEngine.types";
+
+const schemaCache: Record<string, string[]> = {};
 
 /**
  * Gets the schema for a table and returns an array of column names
@@ -6,7 +9,8 @@ import { getSupaStashDb } from "@/db/dbInitializer";
  * @returns an array of column names
  */
 export async function getTableSchema(table: string): Promise<string[]> {
-  const db = await getSupaStashDb();
+  if (schemaCache[table]) return schemaCache[table];
+  const db = await getSupastashDb();
 
   const schema: TableSchema[] | null = await db.getAllAsync(
     `PRAGMA table_info(${table})`
@@ -19,5 +23,15 @@ export async function getTableSchema(table: string): Promise<string[]> {
 
   const columns = schema.map((s) => s.name);
 
+  schemaCache[table] = columns;
+
   return columns;
+}
+
+export function clearSchemaCache(table?: string) {
+  if (table) {
+    delete schemaCache[table];
+  } else {
+    Object.keys(schemaCache).forEach((key) => delete schemaCache[key]);
+  }
 }

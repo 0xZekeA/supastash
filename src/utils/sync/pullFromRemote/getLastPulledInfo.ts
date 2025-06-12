@@ -1,4 +1,4 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
+import { getSupastashDb } from "../../../db/dbInitializer";
 
 const DEFAULT_LAST_PULLED_AT = "2024-01-01T00:00:00Z";
 const SYNC_STATUS_TABLE = "supastash_sync_status";
@@ -9,12 +9,12 @@ const SYNC_STATUS_TABLE = "supastash_sync_status";
  * @returns The last synced timestamp
  */
 export async function getLastPulledInfo(table: string): Promise<string> {
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
 
   // Add table name to supastash_sync_status if it doesn't exist
   await db.runAsync(
-    `INSERT OR IGNORE INTO ${SYNC_STATUS_TABLE} (table_name) VALUES (?)`,
-    [table]
+    `INSERT OR IGNORE INTO supastash_sync_status (table_name, last_synced_at) VALUES (?, ?)`,
+    [table, DEFAULT_LAST_PULLED_AT]
   );
 
   // Get the latest sync timestamp for this table
@@ -42,7 +42,7 @@ export async function updateLastPulledInfo(
   table: string,
   lastSyncedAt: string
 ) {
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
 
   await db.runAsync(
     `UPDATE ${SYNC_STATUS_TABLE} SET last_synced_at = ? WHERE table_name = ?`,

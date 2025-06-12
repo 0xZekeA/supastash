@@ -1,0 +1,1 @@
+{"version":3,"file":"setDataInBatches.d.ts","sourceRoot":"","sources":["../../../src/utils/fetchData/setDataInBatches.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,yBAAyB,CAAC;AAEtD,wBAAgB,mBAAmB,CACjC,GAAG,EAAE,GAAG,CAAC,MAAM,EAAE,WAAW,CAAC,EAC7B,MAAM,EAAE,KAAK,CAAC,QAAQ,CAAC,KAAK,CAAC,cAAc,CAAC,GAAG,CAAC,MAAM,EAAE,WAAW,CAAC,CAAC,CAAC,QAqBvE"}

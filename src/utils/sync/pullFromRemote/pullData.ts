@@ -1,23 +1,74 @@
-import { getSupastashConfig } from "@/core/config";
-import { PayloadData } from "@/types/query.types";
-import log from "@/utils/logs";
+import { getSupastashConfig } from "../../../core/config";
+import { PayloadData } from "../../../types/query.types";
+import { RealtimeFilter } from "../../../types/realtimeData.types";
+import log from "../../logs";
+import { supabaseClientErr } from "../../supabaseClientErr";
 import { getLastPulledInfo, updateLastPulledInfo } from "./getLastPulledInfo";
 
+const validOperators = new Set([
+  "eq",
+  "neq",
+  "gt",
+  "lt",
+  "gte",
+  "lte",
+  "like",
+  "ilike",
+  "is",
+  "in",
+]);
+
+let timesPushed = 0;
+let lastPushed = 0;
 /**
  * Pulls data from the remote database for a given table
  * @param table - The table to pull data from
  * @returns The data from the table
  */
-export async function pullData(table: string): Promise<PayloadData[] | null> {
+export async function pullData(
+  table: string,
+  filter?: RealtimeFilter
+): Promise<PayloadData[] | null> {
   const lastSyncedAt = await getLastPulledInfo(table);
   const supabase = getSupastashConfig().supabaseClient;
 
-  // Fetch records updated after the last sync
-  const { data, error }: { data: any[]; error: any } = await supabase
+  if (!supabase)
+    throw new Error(`No supabase client found: ${supabaseClientErr}`);
+
+  let filteredQuery = supabase
     .from(table)
     .select("*")
     .gt("updated_at", lastSyncedAt)
-    .order("updated_at", { ascending: false });
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false, nullsFirst: false });
+
+  if (
+    filter &&
+    (!filter.operator ||
+      !validOperators.has(filter.operator) ||
+      !filter.column ||
+      !filter.value)
+  ) {
+    throw new Error(
+      `Invalid filter: ${JSON.stringify(filter)} for table ${table}`
+    );
+  }
+
+  if (
+    filter?.operator &&
+    validOperators.has(filter.operator) &&
+    filter.column &&
+    filter.value
+  ) {
+    filteredQuery = (filteredQuery as any)[filter.operator](
+      filter.column,
+      filter.value
+    );
+  }
+
+  // Fetch records updated after the last sync
+  const { data, error }: { data: PayloadData[] | null; error: any } =
+    await filteredQuery;
 
   if (error) {
     log(`[Supastash] Error fetching from ${table}:`, error.message);
@@ -25,22 +76,26 @@ export async function pullData(table: string): Promise<PayloadData[] | null> {
   }
 
   if (!data || data.length === 0) {
-    log(`No updates for ${table} at ${lastSyncedAt}`);
+    timesPushed++;
+    if (timesPushed >= 30) {
+      const timeSinceLastPush = Date.now() - lastPushed;
+      lastPushed = Date.now();
+      log(
+        `[Supastash] No updates for ${table} at ${lastSyncedAt} (times pushed: ${timesPushed}) in the last ${timeSinceLastPush}ms`
+      );
+      timesPushed = 0;
+    }
     return null;
   }
 
   log(`Received ${data.length} updates for ${table}`);
 
-  // Reorder data from supabase to put latest update on top
-  const reorderedData = data.sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-
   // Update the supastash_sync_status table with the lastest timestamp
-  const lastest = reorderedData[0].updated_at;
+  const lastest = data.find((r) => r.updated_at)?.updated_at;
 
-  await updateLastPulledInfo(table, lastest);
+  if (lastest) {
+    await updateLastPulledInfo(table, lastest);
+  }
 
-  return reorderedData;
+  return data;
 }

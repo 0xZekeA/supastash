@@ -1,5 +1,5 @@
-import { getSupastashConfig } from "@/core/config";
-import { SupastashSQLiteDatabase } from "@/types/supastashConfig.types";
+import { getSupastashConfig } from "../core/config";
+import { SupastashSQLiteDatabase } from "../types/supastashConfig.types";
 import { SQLiteAdapterExpo } from "./adapters/expo_sqlite";
 import { SQLiteAdapterNitro } from "./adapters/rn_nitro";
 import { SQLiteAdapterStorage } from "./adapters/rn_sqlite_storage";
@@ -11,7 +11,7 @@ let db: SupastashSQLiteDatabase | null = null;
  * Gets the supastash database
  * @returns The supastash database
  */
-export async function getSupaStashDb(): Promise<SupastashSQLiteDatabase> {
+export async function getSupastashDb(): Promise<SupastashSQLiteDatabase> {
   const config = getSupastashConfig();
   if (!config.sqliteClient || !config.sqliteClientType) {
     throw new Error(supastashDbErrorMsg);

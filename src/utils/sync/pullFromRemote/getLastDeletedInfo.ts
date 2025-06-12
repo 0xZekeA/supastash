@@ -1,4 +1,4 @@
-import { getSupaStashDb } from "@/db/dbInitializer";
+import { getSupastashDb } from "../../../db/dbInitializer";
 
 const DEFAULT_LAST_DELETED_AT = "2024-01-01T00:00:00Z";
 const DELETED_STATUS_TABLE = "supastash_deleted_status";
@@ -9,12 +9,12 @@ const DELETED_STATUS_TABLE = "supastash_deleted_status";
  * @returns The last deleted timestamp
  */
 export async function getLastDeletedInfo(table: string): Promise<string> {
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
 
   // Add table name to supastash_deleted_status if it doesn't exist
   await db.runAsync(
-    `INSERT OR IGNORE INTO ${DELETED_STATUS_TABLE} (table_name) VALUES (?)`,
-    [table]
+    `INSERT OR IGNORE INTO ${DELETED_STATUS_TABLE} (table_name, last_deleted_at) VALUES (?, ?)`,
+    [table, DEFAULT_LAST_DELETED_AT]
   );
 
   // Get the latest deleted timestamp for this table
@@ -42,7 +42,7 @@ export async function updateLastDeletedInfo(
   table: string,
   lastDeletedAt: string
 ) {
-  const db = await getSupaStashDb();
+  const db = await getSupastashDb();
 
   await db.runAsync(
     `UPDATE ${DELETED_STATUS_TABLE} SET last_deleted_at = ? WHERE table_name = ?`,

@@ -10,21 +10,20 @@ export const supastashDbErrorMsg =
   "import { openDatabaseAsync } from 'expo-sqlite';\n" +
   "configureSupastash({ \n" +
   "  sqliteClient: { openDatabaseAsync }, \n" +
+  "  sqliteClientType: 'expo', \n" +
   "});" +
   "\n\n" +
   "or \n" +
   "import { open } from 'react-native-nitro-sqlite';\n" +
   "configureSupastash({ \n" +
   "  sqliteClient: { open }, \n" +
+  "  sqliteClientType: 'rn-nitro', \n" +
   "});" +
   "\n\n" +
   "or \n" +
   "import { openDatabaseAsync } from 'react-native-sqlite-storage';\n" +
   "configureSupastash({ \n" +
   "  sqliteClient: { openDatabaseAsync }, \n" +
+  "  sqliteClientType: 'rn-storage', \n" +
   "});" +
-  "\n\n" +
-  "and \n" +
-  "configureSupastash({ \n" +
-  "  sqliteClientType: 'expo' | 'rn-storage' | 'rn-nitro', \n" +
-  "});";
+  "\n\n";

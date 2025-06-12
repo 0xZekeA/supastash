@@ -20,15 +20,19 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
     ? RNSqliteNitroClient
     : null;
   sqliteClientType: T;
-  excludeTables: { pull: string[]; push: string[] };
-  pollingInterval: {
-    pull: number;
-    push: number;
+  excludeTables?: { pull?: string[]; push?: string[] };
+  pollingInterval?: {
+    pull?: number;
+    push?: number;
   };
-  listeners: number;
-  onSchemaInit?: () => void;
+  syncEngine?: {
+    push?: boolean;
+    pull?: boolean;
+    useFiltersFromStore?: boolean;
+  };
+  listeners?: number;
+  onSchemaInit?: () => Promise<void>;
   debugMode?: boolean;
-  [key: string]: any;
 };
 
 interface SupastashSQLiteDatabase {
@@ -63,4 +67,10 @@ export interface RNStorageSQLiteClient {
 
 export interface RNSqliteNitroClient {
   open: (options: { name: string; location?: string }) => RNNitroSQLiteDatabase;
+}
+
+export interface SupastashHookReturn {
+  dbReady: boolean;
+  startSync: () => void;
+  stopSync: () => void;
 }
