@@ -46,11 +46,11 @@ export function assignInsertIds<R>(
   } as R;
 }
 
-export function getCommonError<U extends boolean, T extends CrudMethods, R>(
+export function getCommonError<U extends boolean, T extends CrudMethods, R, Z>(
   table: string,
   method: CrudMethods,
-  localResult: MethodReturnTypeMap<U, R>[T] | null,
-  remoteResult: SupabaseQueryReturn<U, R> | null
+  localResult: MethodReturnTypeMap<U, Z>[T] | null,
+  remoteResult: SupabaseQueryReturn<U, Z> | null
 ): (Error & { supabaseError?: PostgrestError }) | null {
   if (localResult?.error && !remoteResult?.error) {
     return {
@@ -84,7 +84,7 @@ const MAX_OFFLINE_RETRIES = 10;
 const calledOfflineRetries = new Map<string, number>();
 const retryDelay = 1000 * 30;
 
-async function runBatchedRemoteQuery<U extends boolean, R>() {
+async function runBatchedRemoteQuery<U extends boolean, R, Z>() {
   if (isRunning) return;
   isRunning = true;
 
@@ -106,7 +106,7 @@ async function runBatchedRemoteQuery<U extends boolean, R>() {
 
       batchTimer = setTimeout(() => {
         isRunning = false;
-        if (!isRunning) runBatchedRemoteQuery<U, R>();
+        if (!isRunning) runBatchedRemoteQuery<U, R, Z>();
         batchTimer = null;
       }, retryDelay);
       return;
@@ -133,7 +133,7 @@ async function runBatchedRemoteQuery<U extends boolean, R>() {
 
     const retryCount = (state as any).retryCount || 0;
 
-    const { error } = await querySupabase<U, R>(
+    const { error } = await querySupabase<U, R, Z>(
       {
         ...(state as SupastashQuery<CrudMethods, U, any>),
         isSingle: state.isSingle as U,
@@ -166,62 +166,63 @@ function delay(ms: number): Promise<void> {
 
 let batchTimer: number | NodeJS.Timeout | null = null;
 
-function addToCache<U extends boolean, R>(
+function addToCache<U extends boolean, R, Z>(
   state: SupastashQuery<CrudMethods, U, R>
 ) {
   stateCache.push(state);
   if (batchTimer) clearTimeout(batchTimer);
   batchTimer = setTimeout(() => {
-    runBatchedRemoteQuery<U, R>();
+    runBatchedRemoteQuery<U, R, Z>();
   }, 1500);
 }
 
 export async function runSyncStrategy<
   T extends CrudMethods,
   U extends boolean,
-  R
+  R,
+  Z
 >(
   state: SupastashQuery<T, U, R>
 ): Promise<{
-  localResult: MethodReturnTypeMap<U, R>[T] | null;
-  remoteResult: SupabaseQueryReturn<U, R> | null;
+  localResult: MethodReturnTypeMap<U, Z>[T] | null;
+  remoteResult: SupabaseQueryReturn<U, Z> | null;
 }> {
   const { type } = state;
-  let localResult: MethodReturnTypeMap<U, R>[T] | null = null;
-  let remoteResult: SupabaseQueryReturn<U, R> | null = null;
+  let localResult: MethodReturnTypeMap<U, Z>[T] | null = null;
+  let remoteResult: SupabaseQueryReturn<U, Z> | null = null;
 
   if (state.method === "select") {
     if (state.type.includes("remote")) {
-      remoteResult = await querySupabase<U, R>(state);
-      localResult = await queryLocalDb<T, U, R>(state);
+      remoteResult = await querySupabase<U, R, Z>(state);
+      localResult = await queryLocalDb<T, U, R, Z>(state);
       return { localResult, remoteResult };
     } else {
-      localResult = await queryLocalDb<T, U, R>(state);
+      localResult = await queryLocalDb<T, U, R, Z>(state);
       return { localResult, remoteResult };
     }
   }
 
   switch (type) {
     case "localOnly":
-      localResult = await queryLocalDb<T, U, R>(state);
+      localResult = await queryLocalDb<T, U, R, Z>(state);
       break;
     case "remoteOnly":
-      remoteResult = await querySupabase<U, R>(state);
+      remoteResult = await querySupabase<U, R, Z>(state);
       break;
     case "localFirst":
-      localResult = await queryLocalDb<T, U, R>(state);
+      localResult = await queryLocalDb<T, U, R, Z>(state);
       if (state.viewRemoteResult) {
-        remoteResult = await querySupabase<U, R>(state);
+        remoteResult = await querySupabase<U, R, Z>(state);
       } else {
-        addToCache<U, R>(state);
+        addToCache<U, R, Z>(state);
       }
       break;
     case "remoteFirst":
-      remoteResult = await querySupabase<U, R>(state);
+      remoteResult = await querySupabase<U, R, Z>(state);
       if (remoteResult?.error) {
         return { localResult: null, remoteResult };
       }
-      localResult = await queryLocalDb<T, U, R>(state);
+      localResult = await queryLocalDb<T, U, R, Z>(state);
       break;
     default:
       throw new Error(`Unknown sync mode: ${type}`);

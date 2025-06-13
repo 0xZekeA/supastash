@@ -1,10 +1,42 @@
 import { getSupastashConfig } from "../../core/config";
 import { getSupastashDb } from "../../db/dbInitializer";
+import { tableSchemaData } from "../../store/tableSchemaData";
 import { PayloadData } from "../../types/query.types";
+import { TableSchema } from "../../types/realtimeData.types";
 import log from "../logs";
+import { supabaseClientErr } from "../supabaseClientErr";
 import { checkIfTableExist } from "../tableValidator";
-import { getKeyType } from "./getKeyType";
+import { mapPgTypeToSQLite } from "./getKeyType";
 import { validatePayload } from "./validatePayload";
+
+let errorCount = new Map<string, number>();
+
+async function getTableSchema(table: string): Promise<TableSchema[] | null> {
+  const config = getSupastashConfig();
+  const supabase = config?.supabaseClient;
+  if (!supabase) {
+    throw new Error(`Supabase client not found, ${supabaseClientErr}`);
+  }
+  if (tableSchemaData.has(table)) {
+    return tableSchemaData.get(table);
+  }
+  if (errorCount.get(table) && (errorCount.get(table) || 0) > 3) {
+    return null;
+  }
+  const { data, error } = await supabase.rpc("get_table_schema", {
+    table_name: table,
+  });
+
+  if (error) {
+    log(
+      `[Supastash] Error getting table schema for table ${table}: ${error.message}`
+    );
+    errorCount.set(table, (errorCount.get(table) || 0) + 1);
+    return null;
+  }
+  tableSchemaData.set(table, data);
+  return data;
+}
 
 /**
  * Creates a table in the database
@@ -13,38 +45,30 @@ import { validatePayload } from "./validatePayload";
  */
 export async function createTable(table: string, payload?: PayloadData) {
   const db = await getSupastashDb();
-  const config = getSupastashConfig();
   let newPayload = payload;
 
   const isTableExist = await checkIfTableExist(table);
 
   if (isTableExist) return;
-  if (!newPayload && config.supabaseClient) {
-    const { data, error } = await config.supabaseClient
-      .from(table)
-      .select("*")
-      .limit(1);
-    if (error) {
-      log("[Supastash] Error fetching data from supabase", error);
-      return;
-    }
-    newPayload = data?.[0];
-  }
 
-  if (!newPayload) {
-    log(
+  const tableSchema = await getTableSchema(table);
+
+  if (!tableSchema) {
+    throw new Error(
       `[Supastash] Can't create table ${table} because no data was found
         Try creating the table manually using the 'defineLocalSchema()' function.
       `
     );
-    return;
   }
 
+  const columns = tableSchema.map((col) => {
+    return `${col.column_name} ${mapPgTypeToSQLite(col.data_type)} ${
+      col.column_name === "id" ? "PRIMARY KEY" : ""
+    } ${col.is_nullable === "YES" ? "" : "NOT NULL"}`;
+  });
+
+  validatePayload(newPayload);
   try {
-    validatePayload(newPayload);
-    const columns = Object.keys({ ...newPayload, synced_at: null }).map(
-      (key) => `${key} ${getKeyType(newPayload[key])}`
-    );
     log("Table to be created", columns);
     // Create the table
     await db.runAsync(

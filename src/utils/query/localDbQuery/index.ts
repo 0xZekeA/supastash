@@ -10,16 +10,19 @@ import getLocalMethod from "../helpers/localDb/getLocalMethod";
  * @param state - The state of the query
  * @returns The result of the query
  */
-export async function queryLocalDb<T extends CrudMethods, U extends boolean, R>(
-  state: SupastashQuery<T, U, R>
-): Promise<MethodReturnTypeMap<U, R>[T]> {
+export async function queryLocalDb<
+  T extends CrudMethods,
+  U extends boolean,
+  R,
+  Z
+>(state: SupastashQuery<T, U, R>): Promise<MethodReturnTypeMap<U, Z>[T]> {
   const { table, method, payload, filters, limit, select, isSingle } = state;
 
   if (!method) {
     throw new Error("Method is required for local call");
   }
 
-  const query = getLocalMethod<T, U, R>(
+  const query = getLocalMethod<T, U, R, Z>(
     table,
     method,
     select,

@@ -1,5 +1,6 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { tableSchemaData } from "../../../store/tableSchemaData";
 import { PayloadData } from "../../../types/query.types";
 import { getTableSchema } from "../../../utils/getTableSchema";
 import log from "../../../utils/logs";
@@ -24,19 +25,25 @@ async function getRemoteKeys(table: string): Promise<string[] | null> {
     return null;
   }
 
-  const { data, error } = await supabase.rpc("get_column_names", {
-    table_name: table,
-  });
+  if (!tableSchemaData.has(table)) {
+    const { data, error } = await supabase.rpc("get_table_schema", {
+      table_name: table,
+    });
+    if (error) {
+      log(
+        `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}`
+      );
+      numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
+      return null;
+    }
+    tableSchemaData.set(table, data);
+  }
 
-  if (error) {
-    log(
-      `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}`
-    );
-    numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
+  if (!tableSchemaData.get(table)) {
     return null;
   }
 
-  const keys = (data as { column_name: string }[])?.map(
+  const keys = (tableSchemaData.get(table) as { column_name: string }[])?.map(
     (item) => item.column_name
   );
   const columns = await getTableSchema(table);

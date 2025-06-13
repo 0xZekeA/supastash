@@ -28,7 +28,8 @@ import {
 export default function getLocalMethod<
   T extends CrudMethods,
   U extends boolean,
-  R
+  R,
+  Z
 >(
   table: string,
   method: T,
@@ -38,20 +39,27 @@ export default function getLocalMethod<
   limit: number | null,
   isSingle: U,
   syncMode?: SyncMode
-): () => Promise<MethodReturnTypeMap<U, R>[T]> {
-  const handlers: HandlerMap<U, R> = {
-    select: buildSelect<U>(table, select, filters, limit, isSingle) as any,
-    insert: buildInsert<U, R>(table, payload, syncMode, isSingle),
-    update: buildUpdate<R>(
+): () => Promise<MethodReturnTypeMap<U, Z>[T]> {
+  const handlers: HandlerMap<U, Z> = {
+    select: buildSelect<U, R, Z>(
+      table,
+      select,
+      filters,
+      limit,
+      isSingle
+    ) as any,
+    insert: buildInsert<U, R, Z>(table, payload, syncMode, isSingle),
+    update: buildUpdate<U, R, Z>(
       table,
       payload as R | null,
       filters,
-      syncMode
+      syncMode,
+      isSingle
     ) as any,
-    delete: buildDelete(table, filters, syncMode),
-    upsert: buildUpsert<U, R>(table, payload, syncMode, isSingle),
+    delete: buildDelete<Z>(table, filters, syncMode),
+    upsert: buildUpsert<U, R, Z>(table, payload, syncMode, isSingle),
     none: async () => null,
   };
 
-  return handlers[method] as () => Promise<MethodReturnTypeMap<U, R>[T]>;
+  return handlers[method] as () => Promise<MethodReturnTypeMap<U, Z>[T]>;
 }

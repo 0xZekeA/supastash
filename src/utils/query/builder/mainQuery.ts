@@ -23,15 +23,16 @@ export async function queryDb<
   T extends CrudMethods,
   U extends boolean,
   V extends boolean,
-  R
+  R,
+  Z
 >(
   state: SupastashQuery<T, U, R> & { viewRemoteResult: V }
-): Promise<SupastashQueryResult<T, U, V, R>> {
-  let localData: R | R[] | null | undefined = null;
+): Promise<SupastashQueryResult<T, U, V, Z>> {
+  let localData: Z | Z[] | null | undefined = null;
   try {
     validateQuery(state);
 
-    const { method, isSingle, viewRemoteResult, table } = state;
+    const { method, isSingle, viewRemoteResult, table, type } = state;
 
     validatePayloadForSingleInsert(method, isSingle, state.payload, table);
     const updatedPayload: R | R[] | null | undefined =
@@ -45,13 +46,13 @@ export async function queryDb<
       localResult,
       remoteResult,
     }: {
-      localResult: MethodReturnTypeMap<U, R>[T] | null;
-      remoteResult: SupabaseQueryReturn<U, R> | null;
-    } = await runSyncStrategy<T, U, R>(updatedState);
+      localResult: MethodReturnTypeMap<U, Z>[T] | null;
+      remoteResult: SupabaseQueryReturn<U, Z> | null;
+    } = await runSyncStrategy<T, U, R, Z>(updatedState);
 
     localData = localResult?.data;
     const success = !localResult?.error && !remoteResult?.error;
-    const commonError = getCommonError<U, T, R>(
+    const commonError = getCommonError<U, T, R, Z>(
       table,
       method,
       localResult,
@@ -63,21 +64,21 @@ export async function queryDb<
         remote: remoteResult ?? null,
         local: localResult,
         success,
-      }) as SupastashQueryResult<T, U, V, R>;
+      }) as SupastashQueryResult<T, U, V, Z>;
     }
 
     if (method === "delete") {
       return Promise.resolve({
         error: commonError ?? null,
         success,
-      }) as SupastashQueryResult<T, U, V, R>;
+      }) as SupastashQueryResult<T, U, V, Z>;
     }
 
     return Promise.resolve({
-      data: localData ?? null,
+      data: type === "remoteOnly" ? remoteResult?.data : localData ?? null,
       error: commonError ?? null,
       success,
-    }) as SupastashQueryResult<T, U, V, R>;
+    }) as SupastashQueryResult<T, U, V, Z>;
   } catch (error) {
     console.error(
       `[Supastash] ${error instanceof Error ? error.message : String(error)}`
@@ -88,14 +89,14 @@ export async function queryDb<
         remote: null,
         local: null,
         success: false,
-      }) as SupastashQueryResult<T, U, V, R>;
+      }) as SupastashQueryResult<T, U, V, Z>;
     }
 
     return Promise.resolve({
       data: null,
       error: { message: "Unknown error" },
       success: false,
-    }) as SupastashQueryResult<T, U, V, R>;
+    }) as SupastashQueryResult<T, U, V, Z>;
   } finally {
     if (state.method !== "select" && localData) {
       supastashEventBus.emit(`push:${state.table}`, localData, state.method);

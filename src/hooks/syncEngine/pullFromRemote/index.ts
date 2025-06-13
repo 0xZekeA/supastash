@@ -1,3 +1,4 @@
+import { syncCalls } from "src/store/syncCalls";
 import { getSupastashConfig } from "../../../core/config";
 import { tableFilters } from "../../../store/tableFilters";
 import log from "../../../utils/logs";
@@ -27,7 +28,7 @@ export async function pullFromRemote() {
     );
 
     for (const table of tablesToPull) {
-      await updateLocalDb(table, filter(table));
+      await updateLocalDb(table, filter(table), syncCalls.get(table)?.pull);
     }
   } catch (error) {
     log(`[Supastash] Error pulling from remote: ${error}`);

@@ -17,7 +17,8 @@ import { queryDb } from "./mainQuery";
 export default class SupastashFilterBuilder<
   T extends CrudMethods,
   U extends boolean,
-  R
+  R,
+  Z
 > {
   /**
    * Builds a new query with the given filter.
@@ -26,8 +27,8 @@ export default class SupastashFilterBuilder<
    */
   private build<M extends T>(
     filter: FilterCalls
-  ): SupastashFilterBuilder<M, U, R> {
-    return new SupastashFilterBuilder<M, U, R>({
+  ): SupastashFilterBuilder<M, U, R, Z> {
+    return new SupastashFilterBuilder<M, U, R, Z>({
       ...(this.query as SupastashQuery<M, U, R>),
       filters: [
         ...((this.query as SupastashQuery<M, U, R>).filters || []),
@@ -43,8 +44,8 @@ export default class SupastashFilterBuilder<
    */
   private withQueryPatch<M extends T, NewU extends U = U>(
     patch: Partial<SupastashQuery<M, NewU, R>>
-  ): SupastashFilterBuilder<M, NewU, R> {
-    return new SupastashFilterBuilder<M, NewU, R>({
+  ): SupastashFilterBuilder<M, NewU, R, Z> {
+    return new SupastashFilterBuilder<M, NewU, R, Z>({
       ...(this.query as SupastashQuery<M, NewU, R>),
       ...patch,
     });
@@ -172,7 +173,7 @@ export default class SupastashFilterBuilder<
    * Similar to Supabase `.single()`.
    */
   single() {
-    return new SupastashFilterBuilder<T, true, R>({
+    return new SupastashFilterBuilder<T, true, R, Z>({
       ...this.query,
       isSingle: true,
       limit: 1,
@@ -197,7 +198,7 @@ export default class SupastashFilterBuilder<
    */
   execute<V extends boolean = false>(
     options?: ExecuteOptions & { viewRemoteResult?: V }
-  ): Promise<SupastashQueryResult<T, U, V, R>> {
+  ): Promise<SupastashQueryResult<T, U, V, Z>> {
     const newQuery = {
       ...this.query,
       viewRemoteResult: options?.viewRemoteResult ?? false,
@@ -211,9 +212,9 @@ export default class SupastashFilterBuilder<
     }
 
     const attemptQuery = async (): Promise<
-      SupastashQueryResult<T, U, V, R>
+      SupastashQueryResult<T, U, V, Z>
     > => {
-      const result = await queryDb<T, U, V, R>(
+      const result = await queryDb<T, U, V, R, Z>(
         newQuery as SupastashQuery<T, U, R> & { viewRemoteResult: V }
       );
 
@@ -237,7 +238,7 @@ export default class SupastashFilterBuilder<
           );
         }
 
-        const remoteResult = await querySupabase(
+        const remoteResult = await querySupabase<U, R, Z>(
           newQuery as SupastashQuery<T, U, R>
         );
         if (newQuery.viewRemoteResult && "remote" in result) {
@@ -255,7 +256,7 @@ export default class SupastashFilterBuilder<
     }
 
     return attemptQuery() as unknown as Promise<
-      SupastashQueryResult<T, U, V, R>
+      SupastashQueryResult<T, U, V, Z>
     >;
   }
 

@@ -11,7 +11,11 @@ export {
   wipeTable,
 } from "./utils/schema/wipeTables";
 export { getAllTables } from "./utils/sync/getAllTables";
-export { refreshAllTables, refreshTable } from "./utils/sync/refreshTables";
+export {
+  refreshAllTables,
+  refreshTable,
+  refreshTableWithPayload,
+} from "./utils/sync/refreshTables";
 export {
   clearAllLocalDeleteLog,
   clearAllLocalSyncLog,

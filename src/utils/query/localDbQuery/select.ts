@@ -1,9 +1,10 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
   FilterCalls,
-  PayloadData,
-  SupastashResult,
+  PayloadListResult,
+  PayloadResult,
 } from "../../../types/query.types";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 
@@ -17,15 +18,13 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns a data / error object
  */
-export async function selectData<T extends boolean>(
+export async function selectData<T extends boolean, R, Z>(
   table: string,
   select: string,
   filters: FilterCalls[] | null,
   limit: number | null,
   isSingle: T
-): Promise<
-  T extends true ? SupastashResult<PayloadData> : SupastashResult<PayloadData[]>
-> {
+): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!table) throw new Error("Table name was not provided for a select call");
 
   await assertTableExists(table);
@@ -42,14 +41,16 @@ export async function selectData<T extends boolean>(
     let data: any;
 
     if (isSingle) {
-      data = await db.getFirstAsync(query, filterValues);
+      const result = await db.getFirstAsync(query, filterValues);
+      data = result ? parseStringifiedFields(result) : null;
     } else {
-      data = await db.getAllAsync(query, filterValues);
+      const result = await db.getAllAsync(query, filterValues);
+      data = Array.isArray(result) ? result.map(parseStringifiedFields) : [];
     }
 
     return { data, error: null } as T extends true
-      ? SupastashResult<PayloadData>
-      : SupastashResult<PayloadData[]>;
+      ? PayloadResult<Z>
+      : PayloadListResult<Z>;
   } catch (error) {
     console.error(`[Supastash] ${error}`);
     return {
@@ -57,8 +58,6 @@ export async function selectData<T extends boolean>(
         message: error instanceof Error ? error.message : String(error),
       },
       data: null,
-    } as T extends true
-      ? SupastashResult<PayloadData>
-      : SupastashResult<PayloadData[]>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   }
 }

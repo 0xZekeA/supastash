@@ -3,9 +3,9 @@ import { PostgrestError, PostgrestSingleResponse } from "@supabase/supabase-js";
 type SupabaseResult<T> = PostgrestSingleResponse<T>;
 export type PayloadData = any;
 
-export type SupabaseQueryReturn<U extends boolean, R> = U extends true
-  ? PostgrestSingleResponse<R>
-  : PostgrestSingleResponse<R[]>;
+export type SupabaseQueryReturn<U extends boolean, Z> = U extends true
+  ? PostgrestSingleResponse<Z>
+  : PostgrestSingleResponse<Z[]>;
 
 type FilterOperations =
   | "="
@@ -108,26 +108,32 @@ export type SupastashQueryResult<
       success: boolean;
     }>;
 
-export type QueryBuilder<T extends CrudMethods, U extends boolean> = {
-  eq(column: string, value: any): QueryBuilder<T, U>;
-  neq(column: string, value: any): QueryBuilder<T, U>;
-  gt(column: string, value: any): QueryBuilder<T, U>;
-  lt(column: string, value: any): QueryBuilder<T, U>;
-  gte(column: string, value: any): QueryBuilder<T, U>;
-  lte(column: string, value: any): QueryBuilder<T, U>;
-  like(column: string, value: any): QueryBuilder<T, U>;
-  is(column: string, value: any): QueryBuilder<T, U>;
-  in(column: string, value: any[]): QueryBuilder<T, U>;
-  limit(n: number): QueryBuilder<T, U>;
-  syncMode(mode: SyncMode): QueryBuilder<T, U>;
+export type QueryBuilder<T extends CrudMethods, U extends boolean, R, Z> = {
+  eq(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  neq(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  gt(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  lt(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  gte(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  lte(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  like(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  is(column: string, value: any): QueryBuilder<T, U, R, Z>;
+  in(column: string, value: any[]): QueryBuilder<T, U, R, Z>;
+  limit(n: number): QueryBuilder<T, U, R, Z>;
+  syncMode(mode: SyncMode): QueryBuilder<T, U, R, Z>;
 
   // Transitions to U = true when called
-  single(): QueryBuilder<T, true>;
+  single(): QueryBuilder<T, true, R, Z>;
 
   // Executes the query
-  execute(): SupastashQueryResult<T, U>;
-  run(): SupastashQueryResult<T, U>;
-  go(): SupastashQueryResult<T, U>;
+  execute<V extends boolean = false>(
+    options?: ExecuteOptions & { viewRemoteResult?: V }
+  ): SupastashQueryResult<T, U, V, Z>;
+  run<V extends boolean = false>(
+    options?: ExecuteOptions & { viewRemoteResult?: V }
+  ): SupastashQueryResult<T, U, V, Z>;
+  go<V extends boolean = false>(
+    options?: ExecuteOptions & { viewRemoteResult?: V }
+  ): SupastashQueryResult<T, U, V, Z>;
 };
 
 export interface ExecuteOptions {

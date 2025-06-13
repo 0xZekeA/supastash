@@ -15,10 +15,10 @@ import { permanentlyDeleteData } from "../localDbQuery/delete";
  * @param state - The state of the query
  * @returns The result of the query
  */
-export async function querySupabase<T extends boolean, R>(
+export async function querySupabase<T extends boolean, R, Z>(
   state: SupastashQuery<CrudMethods, T, R>,
   isBatched = false
-): Promise<SupabaseQueryReturn<T, R>> {
+): Promise<SupabaseQueryReturn<T, Z>> {
   const { table, method, payload, filters, limit, select, isSingle, type } =
     state;
 

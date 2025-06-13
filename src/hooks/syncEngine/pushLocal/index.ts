@@ -1,3 +1,4 @@
+import { syncCalls } from "src/store/syncCalls";
 import { getSupastashConfig } from "../../../core/config";
 import log from "../../../utils/logs";
 import { getAllTables } from "../../../utils/sync/getAllTables";
@@ -26,7 +27,7 @@ export async function pushLocalData() {
     const noSync: string[] = [];
 
     for (const table of tablesToPush) {
-      await pushLocalDataToRemote(table, undefined, noSync);
+      await pushLocalDataToRemote(table, syncCalls.get(table)?.push, noSync);
     }
     if (noSync.length > 0) {
       timesPushed++;

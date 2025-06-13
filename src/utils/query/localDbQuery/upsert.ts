@@ -6,6 +6,7 @@ import {
   SyncMode,
 } from "../../../types/query.types";
 import { getSafeValue } from "../../serializer";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 
 /**
@@ -14,12 +15,12 @@ import { assertTableExists } from "../../tableValidator";
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export async function upsertData<T extends boolean, R>(
+export async function upsertData<T extends boolean, R, Z>(
   table: string,
   payload: R | R[] | null,
   syncMode?: SyncMode,
   isSingle?: T
-): Promise<T extends true ? PayloadResult<R> : PayloadListResult<R>> {
+): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!payload || !table)
     throw new Error("Table and payload are required for upsert.");
 
@@ -72,13 +73,13 @@ export async function upsertData<T extends boolean, R>(
         `SELECT * FROM ${table} WHERE id = ?`,
         [(item as any).id]
       );
-      if (updated) upserted.push(updated);
+      if (updated) upserted.push(parseStringifiedFields(updated));
     }
 
     return {
       error: null,
       data: isSingle ? upserted[0] : upserted,
-    } as T extends true ? PayloadResult<R> : PayloadListResult<R>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     console.error(`[Supastash] ${error}`);
     return {
@@ -86,6 +87,6 @@ export async function upsertData<T extends boolean, R>(
         message: error instanceof Error ? error.message : String(error),
       },
       data: null,
-    } as T extends true ? PayloadResult<R> : PayloadListResult<R>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   }
 }

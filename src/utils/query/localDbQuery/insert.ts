@@ -6,6 +6,7 @@ import {
   SyncMode,
 } from "../../../types/query.types";
 import { getSafeValue } from "../../serializer";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 
 /**
@@ -15,12 +16,12 @@ import { assertTableExists } from "../../tableValidator";
  * @param payload - The payload to insert
  * @returns a data / error object
  */
-export async function insertData<T extends boolean, R>(
+export async function insertData<T extends boolean, R, Z>(
   table: string,
   payload: R[] | null,
   syncMode?: SyncMode,
   isSingle?: T
-): Promise<T extends true ? PayloadResult<R> : PayloadListResult<R>> {
+): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!table) throw new Error("Table name was not provided for an insert call");
 
   if (!payload)
@@ -80,14 +81,14 @@ export async function insertData<T extends boolean, R>(
         [newPayload.id]
       );
       if (insertedRow) {
-        inserted.push(insertedRow);
+        inserted.push(parseStringifiedFields(insertedRow));
       }
     }
 
     return {
       error: null,
       data: isSingle ? inserted[0] : inserted,
-    } as T extends true ? PayloadResult<R> : PayloadListResult<R>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     console.error(`[Supastash] ${error}`);
     return {
@@ -95,6 +96,6 @@ export async function insertData<T extends boolean, R>(
         message: error instanceof Error ? error.message : String(error),
       },
       data: null,
-    } as T extends true ? PayloadResult<R> : PayloadListResult<R>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   }
 }

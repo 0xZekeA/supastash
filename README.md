@@ -110,17 +110,24 @@ export default function RootLayout() {
 - To enable schema reflection, create this Supabase RPC:
 
 ```sql
-create or replace function get_column_names(table_name text)
-returns table(column_name text)
+create or replace function get_table_schema(table_name text)
+returns table(
+  column_name text,
+  data_type text,
+  is_nullable text
+)
 security definer
 as $$
-  select column_name
+  select
+    column_name,
+    data_type,
+    is_nullable
   from information_schema.columns
   where table_schema = 'public'
-    and table_name = table_name;
+    and table_name = $1;
 $$ language sql;
 
-grant execute on function get_column_names(text) to anon, authenticated;
+grant execute on function get_table_schema(text) to anon, authenticated;
 ```
 
 ---
@@ -217,15 +224,6 @@ yarn test
 ```
 
 Uses `vitest` for unit testing.
-
----
-
-## 🧱 Roadmap
-
-- [ ] Per-table sync intervals
-- [ ] Smart job resumption
-- [ ] Sync versioning
-- [ ] Live change audit logs
 
 ---
 

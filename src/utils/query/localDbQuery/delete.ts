@@ -13,11 +13,11 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param filters - The filters to apply to the delete query
  * @returns The result of the delete query
  */
-export async function deleteData<R = any>(
+export async function deleteData<Z = any>(
   table: string,
   filters: FilterCalls[] | null,
   syncMode?: SyncMode
-): Promise<SupatashDeleteResult<R>> {
+): Promise<SupatashDeleteResult<Z>> {
   await assertTableExists(table);
 
   const { clause, values: filterValues } = buildWhereClause(filters ?? []);
@@ -39,14 +39,14 @@ export async function deleteData<R = any>(
     if (syncMode === "localOnly" || syncMode === "remoteFirst") {
       permanentlyDeleteData(table, filters);
     }
-    return { error: null, data: itemsToBeDeleted } as SupatashDeleteResult<R>;
+    return { error: null, data: itemsToBeDeleted } as SupatashDeleteResult<Z>;
   } catch (error) {
     console.error(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),
       },
-    } as SupatashDeleteResult<R>;
+    } as SupatashDeleteResult<Z>;
   }
 }
 

@@ -184,3 +184,9 @@ export interface RealtimeStatus {
   error?: string;
   isNetworkConnected: boolean;
 }
+
+export type TableSchema = {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+};

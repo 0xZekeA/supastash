@@ -31,6 +31,22 @@ export function refreshAllTables() {
 }
 
 /**
+ * Refreshes a single table with a payload
+ * Use this when you want to update data to UI
+ * Must be the whole payload, not just the changes
+ * @param table - The name of the table to refresh
+ * @param payload - The payload to refresh the table with
+ * @param operation - The operation to perform on the table
+ */
+export function refreshTableWithPayload(
+  table: string,
+  payload: any,
+  operation: "insert" | "update" | "delete" | "upsert"
+) {
+  supastashEventBus.emit(`push:${table}`, payload, operation);
+}
+
+/**
  * Debounces a function
  * @param func - The function to debounce
  * @param wait - The time to wait before calling the function

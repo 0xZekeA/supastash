@@ -1,0 +1,83 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.heroModern {
+  background: var(--feature-bg, #18181b);
+  color: var(--feature-title, #fff);
+  border-radius: 16px;
+  margin: 32px auto 0 auto;
+  max-width: 1000px;
+  padding: 48px 140px 40px 140px;
+  box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .heroModern {
+    max-width: 90%;
+    padding: 32px 36px 28px 36px;
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.heroContent {
+  width: 100%;
+  text-align: center;
+}
+
+.heroTitle {
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.heroSubtitle {
+  font-size: 1.25rem;
+  color: var(--feature-desc, #d4d4d8);
+  margin-bottom: 32px;
+  font-weight: 400;
+}
+
+.heroButton {
+  display: inline-block;
+  background: #00a8e8;
+  color: #18181b;
+  font-weight: 600;
+  padding: 0.85em 2.2em;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  border: none;
+}
+
+.heroButton:hover {
+  background: #0ea5e9;
+  color: #fff;
+}

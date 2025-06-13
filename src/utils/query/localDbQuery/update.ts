@@ -3,8 +3,10 @@ import {
   FilterCalls,
   PayloadData,
   PayloadListResult,
+  PayloadResult,
   SyncMode,
 } from "../../../types/query.types";
+import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseFields";
 import { getSafeValue } from "../../serializer";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
@@ -17,12 +19,13 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
-export async function updateData<R>(
+export async function updateData<T extends boolean, R, Z>(
   table: string,
   payload: R | null,
   filters: FilterCalls[] | null,
-  syncMode?: SyncMode
-): Promise<PayloadListResult<R>> {
+  syncMode?: SyncMode,
+  isSingle?: T
+): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!payload)
     throw new Error(
       `Payload data was not provided for an update call on ${table}`
@@ -68,7 +71,19 @@ export async function updateData<R>(
       filterValues
     );
 
-    return { error: null, data: updatedRow } as PayloadListResult<R>;
+    const result =
+      isSingle && updatedRow
+        ? parseStringifiedFields(updatedRow?.[0])
+        : !updatedRow
+        ? isSingle
+          ? null
+          : []
+        : updatedRow?.map(parseStringifiedFields);
+
+    return {
+      error: null,
+      data: result,
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     console.error(`[Supastash] ${error}`);
     return {
@@ -76,6 +91,6 @@ export async function updateData<R>(
         message: error instanceof Error ? error.message : String(error),
       },
       data: null,
-    } as PayloadListResult<R>;
+    } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   }
 }

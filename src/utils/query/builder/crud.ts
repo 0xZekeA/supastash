@@ -24,13 +24,13 @@ export default class SupastashCrudBuilder<
    * @param data - The data to insert.
    * @returns filter options.
    */
-  insert(data: R) {
+  insert<Z>(data: R) {
     const newQuery = {
       ...this.query,
       method: "insert" as T,
       payload: data,
     };
-    return new SupastashFilterBuilder<"insert", false, R>(
+    return new SupastashFilterBuilder<"insert", false, R, Z>(
       newQuery as SupastashQuery<"insert", false, R>
     );
   }
@@ -41,13 +41,13 @@ export default class SupastashCrudBuilder<
    * @param data - The data to update.
    * @returns filter options.
    */
-  update(data: R) {
+  update<Z>(data: R) {
     const newQuery = {
       ...this.query,
       method: "update" as T,
       payload: data,
     };
-    return new SupastashFilterBuilder<"update", false, R>(
+    return new SupastashFilterBuilder<"update", false, R, Z>(
       newQuery as SupastashQuery<"update", false, R>
     );
   }
@@ -57,12 +57,12 @@ export default class SupastashCrudBuilder<
    *
    * @returns filter options.
    */
-  delete() {
+  delete<Z>() {
     const newQuery = {
       ...this.query,
       method: "delete" as T,
     };
-    return new SupastashFilterBuilder<"delete", false, R>(
+    return new SupastashFilterBuilder<"delete", false, R, Z>(
       newQuery as SupastashQuery<"delete", false, R>
     );
   }
@@ -73,13 +73,13 @@ export default class SupastashCrudBuilder<
    * @param column - The column to select.
    * @returns filter options.
    */
-  select(column?: string) {
+  select<Z>(column?: string) {
     const newQuery = {
       ...this.query,
       method: "select" as T,
       select: column ?? "*",
     };
-    return new SupastashFilterBuilder<"select", false, R>(
+    return new SupastashFilterBuilder<"select", false, R, Z>(
       newQuery as SupastashQuery<"select", false, R>
     );
   }
@@ -90,13 +90,13 @@ export default class SupastashCrudBuilder<
    * @param data - The data to upsert.
    * @returns filter options.
    */
-  upsert(data: R | R[]) {
+  upsert<Z>(data: R | R[]) {
     const newQuery = {
       ...this.query,
       method: "upsert" as T,
       payload: data,
     };
-    return new SupastashFilterBuilder<"upsert", false, R>(
+    return new SupastashFilterBuilder<"upsert", false, R, Z>(
       newQuery as SupastashQuery<"upsert", false, R>
     );
   }

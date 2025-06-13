@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { syncCalls } from "src/store/syncCalls";
 import { tableFilters } from "../../store/tableFilters";
 import { RealtimeOptions } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
@@ -30,7 +31,19 @@ export function fetchCalls(
     if (filter && useFilterWhileSyncing && !tableFilters.get(table)) {
       tableFilters.set(table, filter);
     }
-  }, [filter]);
+    if (onPushToRemote) {
+      syncCalls.set(table, {
+        ...(syncCalls.get(table) || {}),
+        push: onPushToRemote,
+      });
+    }
+    if (onInsertAndUpdate) {
+      syncCalls.set(table, {
+        ...(syncCalls.get(table) || {}),
+        pull: onInsertAndUpdate,
+      });
+    }
+  }, []);
 
   const fetch = async () => {
     if (!cancelled.current) {
