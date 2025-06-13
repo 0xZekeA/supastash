@@ -23,3 +23,50 @@ export function getKeyType(value) {
         return "TEXT";
     return "TEXT";
 }
+/**
+ * Maps the PostgreSQL type to the SQLite type
+ * @param data_type - The PostgreSQL type
+ * @returns The SQLite type
+ */
+export function mapPgTypeToSQLite(data_type) {
+    switch (data_type) {
+        case "character varying":
+        case "character":
+        case "text":
+        case "uuid":
+        case "json":
+        case "jsonb":
+        case "ARRAY":
+        case "timestamp without time zone":
+        case "timestamp with time zone":
+        case "date":
+        case "time without time zone":
+        case "time with time zone":
+        case "inet":
+        case "cidr":
+        case "macaddr":
+        case "tsvector":
+        case "tsquery":
+        case "interval":
+        case "USER-DEFINED":
+            return "TEXT";
+        case "integer":
+        case "bigint":
+        case "smallint":
+        case "serial":
+        case "bigserial":
+            return "INTEGER";
+        case "boolean":
+            return "INTEGER";
+        case "numeric":
+        case "decimal":
+        case "real":
+        case "double precision":
+        case "money":
+            return "REAL";
+        case "bytea":
+            return "BLOB";
+        default:
+            return "TEXT";
+    }
+}

@@ -5,7 +5,7 @@ import { FilterCalls, SupatashDeleteResult, SyncMode } from "../../../types/quer
  * @param filters - The filters to apply to the delete query
  * @returns The result of the delete query
  */
-export declare function deleteData<R = any>(table: string, filters: FilterCalls[] | null, syncMode?: SyncMode): Promise<SupatashDeleteResult<R>>;
+export declare function deleteData<Z = any>(table: string, filters: FilterCalls[] | null, syncMode?: SyncMode): Promise<SupatashDeleteResult<Z>>;
 /**
  * Hard delete: Permanently removes a row by its `id`.
  * @param table - The name of the table to delete from

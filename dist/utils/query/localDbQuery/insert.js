@@ -1,5 +1,6 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { getSafeValue } from "../../serializer";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 /**
  * Inserts data locally, sets synced_at to null pending update to remote server
@@ -44,7 +45,7 @@ export async function insertData(table, payload, syncMode, isSingle) {
             await db.runAsync(`INSERT INTO ${table} (${cols}) VALUES (${placeholders})`, values);
             const insertedRow = await db.getFirstAsync(`SELECT * FROM ${table} WHERE id = ?`, [newPayload.id]);
             if (insertedRow) {
-                inserted.push(insertedRow);
+                inserted.push(parseStringifiedFields(insertedRow));
             }
         }
         return {

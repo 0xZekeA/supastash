@@ -18,33 +18,33 @@ export default class SupastashCrudBuilder<T extends CrudMethods, U extends boole
      * @param data - The data to insert.
      * @returns filter options.
      */
-    insert(data: R): SupastashFilterBuilder<"insert", false, R>;
+    insert<Z>(data: R): SupastashFilterBuilder<"insert", false, R, Z>;
     /**
      * Sets the method to update.
      *
      * @param data - The data to update.
      * @returns filter options.
      */
-    update(data: R): SupastashFilterBuilder<"update", false, R>;
+    update<Z>(data: R): SupastashFilterBuilder<"update", false, R, Z>;
     /**
      * Sets the method to delete.
      *
      * @returns filter options.
      */
-    delete(): SupastashFilterBuilder<"delete", false, R>;
+    delete<Z>(): SupastashFilterBuilder<"delete", false, R, Z>;
     /**
      * Sets the method to select.
      *
      * @param column - The column to select.
      * @returns filter options.
      */
-    select(column?: string): SupastashFilterBuilder<"select", false, R>;
+    select<Z>(column?: string): SupastashFilterBuilder<"select", false, R, Z>;
     /**
      * Sets the method to upsert.
      *
      * @param data - The data to upsert.
      * @returns filter options.
      */
-    upsert(data: R | R[]): SupastashFilterBuilder<"upsert", false, R>;
+    upsert<Z>(data: R | R[]): SupastashFilterBuilder<"upsert", false, R, Z>;
 }
 //# sourceMappingURL=crud.d.ts.map

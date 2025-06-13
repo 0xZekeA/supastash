@@ -15,7 +15,7 @@ export default function getLocalMethod(table, method, select, payload, filters, 
     const handlers = {
         select: buildSelect(table, select, filters, limit, isSingle),
         insert: buildInsert(table, payload, syncMode, isSingle),
-        update: buildUpdate(table, payload, filters, syncMode),
+        update: buildUpdate(table, payload, filters, syncMode, isSingle),
         delete: buildDelete(table, filters, syncMode),
         upsert: buildUpsert(table, payload, syncMode, isSingle),
         none: async () => null,

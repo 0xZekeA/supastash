@@ -1,5 +1,5 @@
-import { syncCalls } from "src/store/syncCalls";
 import { getSupastashConfig } from "../../../core/config";
+import { syncCalls } from "../../../store/syncCalls";
 import { tableFilters } from "../../../store/tableFilters";
 import log from "../../../utils/logs";
 import { getAllTables } from "../../../utils/sync/getAllTables";

@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 /**
@@ -22,10 +23,12 @@ export async function selectData(table, select, filters, limit, isSingle) {
         const db = await getSupastashDb();
         let data;
         if (isSingle) {
-            data = await db.getFirstAsync(query, filterValues);
+            const result = await db.getFirstAsync(query, filterValues);
+            data = result ? parseStringifiedFields(result) : null;
         }
         else {
-            data = await db.getAllAsync(query, filterValues);
+            const result = await db.getAllAsync(query, filterValues);
+            data = Array.isArray(result) ? result.map(parseStringifiedFields) : [];
         }
         return { data, error: null };
     }

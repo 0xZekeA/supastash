@@ -1,5 +1,6 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { tableSchemaData } from "../../../store/tableSchemaData";
 import { getTableSchema } from "../../../utils/getTableSchema";
 import log from "../../../utils/logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
@@ -17,15 +18,21 @@ async function getRemoteKeys(table) {
     if (numberOfErrors.get(table) && (numberOfErrors.get(table) || 0) > 3) {
         return null;
     }
-    const { data, error } = await supabase.rpc("get_column_names", {
-        table_name: table,
-    });
-    if (error) {
-        log(`[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}`);
-        numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
+    if (!tableSchemaData.has(table)) {
+        const { data, error } = await supabase.rpc("get_table_schema", {
+            table_name: table,
+        });
+        if (error) {
+            log(`[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}`);
+            numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
+            return null;
+        }
+        tableSchemaData.set(table, data);
+    }
+    if (!tableSchemaData.get(table)) {
         return null;
     }
-    const keys = data?.map((item) => item.column_name);
+    const keys = tableSchemaData.get(table)?.map((item) => item.column_name);
     const columns = await getTableSchema(table);
     const sharedKeys = keys?.filter((key) => columns.includes(key));
     const missingKeys = columns.filter((column) => !keys?.includes(column) && column !== "synced_at");

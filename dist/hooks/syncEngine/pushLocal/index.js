@@ -1,4 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
+import { syncCalls } from "../../../store/syncCalls";
 import log from "../../../utils/logs";
 import { getAllTables } from "../../../utils/sync/getAllTables";
 import { pushLocalDataToRemote } from "../../../utils/sync/pushLocal/sendUnsyncedToSupabase";
@@ -18,7 +19,7 @@ export async function pushLocalData() {
         const tablesToPush = tables.filter((table) => !excludeTables?.includes(table));
         const noSync = [];
         for (const table of tablesToPush) {
-            await pushLocalDataToRemote(table, undefined, noSync);
+            await pushLocalDataToRemote(table, syncCalls.get(table)?.push, noSync);
         }
         if (noSync.length > 0) {
             timesPushed++;

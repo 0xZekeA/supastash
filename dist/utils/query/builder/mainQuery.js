@@ -10,7 +10,7 @@ export async function queryDb(state) {
     let localData = null;
     try {
         validateQuery(state);
-        const { method, isSingle, viewRemoteResult, table } = state;
+        const { method, isSingle, viewRemoteResult, table, type } = state;
         validatePayloadForSingleInsert(method, isSingle, state.payload, table);
         const updatedPayload = method === "insert" ? assignInsertIds(state.payload) : state.payload;
         const updatedState = {
@@ -35,7 +35,7 @@ export async function queryDb(state) {
             });
         }
         return Promise.resolve({
-            data: localData ?? null,
+            data: type === "remoteOnly" ? remoteResult?.data : localData ?? null,
             error: commonError ?? null,
             success,
         });

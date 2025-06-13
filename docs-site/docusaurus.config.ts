@@ -24,7 +24,6 @@ const config: Config = {
     defaultLocale: "en",
     locales: ["en"],
   },
-  trailingSlash: false,
 
   presets: [
     [
@@ -109,6 +108,11 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+    },
+    colorMode: {
+      defaultMode: "dark",
+      disableSwitch: false,
+      respectPrefersColorScheme: false,
     },
   } satisfies Preset.ThemeConfig,
 };

@@ -1,0 +1,1 @@
+{"version":3,"file":"syncCalls.d.ts","sourceRoot":"","sources":["../../src/store/syncCalls.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,SAAS;WAGX,CAAC,OAAO,EAAE,GAAG,KAAK,OAAO,CAAC,OAAO,CAAC;WAClC,CAAC,OAAO,EAAE,GAAG,KAAK,OAAO,CAAC,IAAI,CAAC;EAEvC,CAAC"}

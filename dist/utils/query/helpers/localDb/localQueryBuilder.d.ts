@@ -9,7 +9,7 @@ import { FilterCalls, SyncMode } from "../../../../types/query.types";
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns query
  */
-export declare function buildSelect<T extends boolean>(table: string, select: string | null, filters: FilterCalls[] | null, limit: number | null, isSingle: T): () => Promise<T extends true ? import("../../../../types/query.types").SupastashResult<any> : import("../../../../types/query.types").SupastashResult<any[]>>;
+export declare function buildSelect<T extends boolean, R, Z>(table: string, select: string | null, filters: FilterCalls[] | null, limit: number | null, isSingle: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
 /**
  * Builds an insert query
  *
@@ -17,18 +17,18 @@ export declare function buildSelect<T extends boolean>(table: string, select: st
  * @param payload - The payload to insert
  * @returns query
  */
-export declare function buildInsert<T extends boolean, R>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<R> : import("../../../../types/query.types").PayloadListResult<R>>;
+export declare function buildInsert<T extends boolean, R, Z>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
 /**
  * Builds an update query
  *
  * @returns query
  */
-export declare function buildUpdate<R>(table: string, payload: R | null, filters: FilterCalls[] | null, syncMode?: SyncMode): () => Promise<import("../../../../types/query.types").PayloadListResult<R>>;
+export declare function buildUpdate<T extends boolean, R, Z>(table: string, payload: R | null, filters: FilterCalls[] | null, syncMode?: SyncMode, isSingle?: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
 /**
  * Builds a delete query
  *
  * @returns query
  */
-export declare function buildDelete(table: string, filters: FilterCalls[] | null, syncMode?: SyncMode): () => Promise<import("../../../../types/query.types").SupatashDeleteResult<any>>;
-export declare function buildUpsert<T extends boolean, R>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<R> : import("../../../../types/query.types").PayloadListResult<R>>;
+export declare function buildDelete<Z = any>(table: string, filters: FilterCalls[] | null, syncMode?: SyncMode): () => Promise<import("../../../../types/query.types").SupatashDeleteResult<Z>>;
+export declare function buildUpsert<T extends boolean, R, Z>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
 //# sourceMappingURL=localQueryBuilder.d.ts.map

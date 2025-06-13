@@ -4,5 +4,5 @@ import { CrudMethods, SupabaseQueryReturn, SupastashQuery } from "../../../types
  * @param state - The state of the query
  * @returns The result of the query
  */
-export declare function querySupabase<T extends boolean, R>(state: SupastashQuery<CrudMethods, T, R>, isBatched?: boolean): Promise<SupabaseQueryReturn<T, R>>;
+export declare function querySupabase<T extends boolean, R, Z>(state: SupastashQuery<CrudMethods, T, R>, isBatched?: boolean): Promise<SupabaseQueryReturn<T, Z>>;
 //# sourceMappingURL=supabaseQuery.d.ts.map

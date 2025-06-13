@@ -6,5 +6,5 @@ import { PayloadListResult, PayloadResult, SyncMode } from "../../../types/query
  * @param payload - The payload to insert
  * @returns a data / error object
  */
-export declare function insertData<T extends boolean, R>(table: string, payload: R[] | null, syncMode?: SyncMode, isSingle?: T): Promise<T extends true ? PayloadResult<R> : PayloadListResult<R>>;
+export declare function insertData<T extends boolean, R, Z>(table: string, payload: R[] | null, syncMode?: SyncMode, isSingle?: T): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>>;
 //# sourceMappingURL=insert.d.ts.map

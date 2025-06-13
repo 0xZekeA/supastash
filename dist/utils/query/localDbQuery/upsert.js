@@ -1,5 +1,6 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { getSafeValue } from "../../serializer";
+import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 /**
  * Performs upsert-like logic on local DB:
@@ -48,7 +49,7 @@ export async function upsertData(table, payload, syncMode, isSingle) {
             }
             const updated = await db.getFirstAsync(`SELECT * FROM ${table} WHERE id = ?`, [item.id]);
             if (updated)
-                upserted.push(updated);
+                upserted.push(parseStringifiedFields(updated));
         }
         return {
             error: null,

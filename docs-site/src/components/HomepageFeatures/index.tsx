@@ -1,3 +1,4 @@
+import useBaseUrl from "@docusaurus/useBaseUrl";
 import type { ReactNode } from "react";
 import styles from "./styles.module.css";
 
@@ -10,7 +11,7 @@ type FeatureItem = {
 const FeatureList: FeatureItem[] = [
   {
     title: "Local-First Sync Engine",
-    img: "img/sync-sm.png",
+    img: "/img/sync-sm.png",
     description: (
       <>
         Supastash adds seamless offline-first support to your app, with smart,
@@ -21,7 +22,7 @@ const FeatureList: FeatureItem[] = [
   },
   {
     title: "Pluggable & Lightweight",
-    img: "img/compatible-sm.png",
+    img: "/img/compatible-sm.png",
     description: (
       <>
         Use any SQLite engine — Expo,RN Nitro, or RN Storage — without changing
@@ -32,7 +33,7 @@ const FeatureList: FeatureItem[] = [
   },
   {
     title: "Instant Supabase Integration",
-    img: "img/fast-sm.png",
+    img: "/img/fast-sm.png",
     description: (
       <>
         Just point to your Supabase tables, set your filters, and go. Supastash
@@ -47,7 +48,7 @@ function Feature({ title, img, description }: FeatureItem) {
   return (
     <div className={styles.featureCard}>
       <div className={styles.iconWrapper}>
-        <img src={img} alt={title} className={styles.featureIcon} />
+        <img src={useBaseUrl(img)} alt={title} className={styles.featureIcon} />
       </div>
       <div className={styles.textWrapper}>
         <h3 className={styles.featureTitle}>{title}</h3>

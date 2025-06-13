@@ -1,4 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
+import { syncCalls } from "../../../store/syncCalls";
 import { tableFilters } from "../../../store/tableFilters";
 import log from "../../../utils/logs";
 import { getAllTables } from "../../../utils/sync/getAllTables";
@@ -19,7 +20,7 @@ export async function pullFromRemote() {
         const excludeTables = getSupastashConfig()?.excludeTables?.pull || [];
         const tablesToPull = tables.filter((table) => !excludeTables?.includes(table));
         for (const table of tablesToPull) {
-            await updateLocalDb(table, filter(table));
+            await updateLocalDb(table, filter(table), syncCalls.get(table)?.pull);
         }
     }
     catch (error) {

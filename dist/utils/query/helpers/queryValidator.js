@@ -15,6 +15,12 @@ export function validateQuery(state) {
     if (state.method === "update" && !state.payload) {
         throw new Error("No data was added to update query");
     }
+    if (state.method === "update" &&
+        state.payload &&
+        Array.isArray(state.payload) &&
+        state.payload.length > 1) {
+        throw new Error("Payload must be a single object for update query. Use upsert for multiple rows.");
+    }
     if ((state.method === "delete" || state.method === "update") &&
         (!state.filters || state.filters.length === 0)) {
         throw new Error(`

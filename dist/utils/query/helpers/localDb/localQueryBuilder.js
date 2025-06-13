@@ -36,8 +36,8 @@ export function buildInsert(table, payload, syncMode, isSingle) {
  *
  * @returns query
  */
-export function buildUpdate(table, payload, filters, syncMode) {
-    return async () => await updateData(table, payload, filters, syncMode);
+export function buildUpdate(table, payload, filters, syncMode, isSingle) {
+    return async () => await updateData(table, payload, filters, syncMode, isSingle);
 }
 /**
  * Builds a delete query

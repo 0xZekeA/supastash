@@ -2,13 +2,15 @@
 
 **Offline-First Sync Engine for Supabase + React Native.**
 
+> Reliable offline-first syncing for Supabase + React Native using local SQLite. Plug in your adapter and get syncing — no boilerplate.
+
 Supastash makes it effortless to build offline-capable mobile apps using **SQLite for local-first storage** and **Supabase for cloud sync**. Designed for React Native, Supastash handles syncing, conflict resolution, realtime updates, and local querying so you can focus on features, not infrastructure.
 
 ---
 
 ### 📚 Documentation
 
-[Documentation (Coming Soon)](https://...)
+Read the [Docs](https://0xzekea.github.io/supastash/)
 
 ---
 
@@ -41,9 +43,9 @@ npm install @supabase/supabase-js
 
 # Choose one SQLite adapter:
 npm install expo-sqlite
-# or
+# OR React Native Nitro
 npm install react-native-nitro-sqlite
-# or
+# OR React Native SQLite Storage
 npm install react-native-sqlite-storage
 ```
 
@@ -99,6 +101,8 @@ export default function RootLayout() {
 ---
 
 ## 🚨 Key Notes
+
+> ⚠️ **Important:** All timestamp fields (`created_at`, `updated_at`) used for syncing **must be `timestamptz`** in Supabase. This avoids timezone mismatch issues and ensures reliable sync.
 
 - Supabase tables **must** include:
 
@@ -202,6 +206,19 @@ Force-refresh any or all table data.
 - Retries with **exponential backoff**
 - Batched inserts, updates, deletes
 - Real-time changes are applied directly to local cache
+
+---
+
+### Sync Modes (per-query control)
+
+You can control how each query syncs:
+
+- `localOnly`: Use only local data
+- `remoteOnly`: Fetch directly from Supabase
+- `localFirst` _(default)_: Read/write locally, then sync to Supabase
+- `remoteFirst`: Write to Supabase first, then update local
+
+Use `.syncMode("...")` or `{ viewRemoteResult: true }` in `.run()` to control behavior.
 
 ---
 

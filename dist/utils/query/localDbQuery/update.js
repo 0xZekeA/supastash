@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseFields";
 import { getSafeValue } from "../../serializer";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
@@ -10,7 +11,7 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
-export async function updateData(table, payload, filters, syncMode) {
+export async function updateData(table, payload, filters, syncMode, isSingle) {
     if (!payload)
         throw new Error(`Payload data was not provided for an update call on ${table}`);
     if (!table)
@@ -42,7 +43,17 @@ export async function updateData(table, payload, filters, syncMode) {
             ...filterValues,
         ]);
         const updatedRow = await db.getAllAsync(`SELECT * FROM ${table} ${clause}`, filterValues);
-        return { error: null, data: updatedRow };
+        const result = isSingle && updatedRow
+            ? parseStringifiedFields(updatedRow?.[0])
+            : !updatedRow
+                ? isSingle
+                    ? null
+                    : []
+                : updatedRow?.map(parseStringifiedFields);
+        return {
+            error: null,
+            data: result,
+        };
     }
     catch (error) {
         console.error(`[Supastash] ${error}`);

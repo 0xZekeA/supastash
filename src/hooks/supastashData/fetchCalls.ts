@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { syncCalls } from "src/store/syncCalls";
+import { syncCalls } from "../../store/syncCalls";
 import { tableFilters } from "../../store/tableFilters";
 import { RealtimeOptions } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
