@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksupastash_docs=self.webpackChunksupastash_docs||[]).push([[1586],{2420:s=>{s.exports=JSON.parse('{"metadata":{"permalink":"/supastash/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":4,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);
