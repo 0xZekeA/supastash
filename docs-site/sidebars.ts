@@ -74,6 +74,11 @@ const sidebars: SidebarsConfig = {
       id: "configuration",
       label: "Configuration",
     },
+    {
+      type: "doc",
+      id: "sync-flows",
+      label: "Sync Flows",
+    },
   ],
 };
 export default sidebars;

@@ -107,9 +107,7 @@ export default function RootLayout() {
 - Supabase tables **must** include:
 
   - `id`, `created_at`, `updated_at`, `deleted_at`
-  - Use `updated_at` for conflict resolution
   - Avoid null primary keys
-  - Apply `deleted_at IS NULL` filter in queries
 
 - To enable schema reflection, create this Supabase RPC:
 

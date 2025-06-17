@@ -27,7 +27,7 @@ When you call `.update()`, Supastash:
 ```ts
 await supastash
   .from("users")
-  .update({ is_active: false })
+  .update<T>({ is_active: false })
   .eq("role", "admin")
   .run();
 ```

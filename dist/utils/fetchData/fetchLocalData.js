@@ -30,7 +30,7 @@ export async function fetchLocalData(table, setDataMap, setVersion, shouldFetch 
     const limitClause = `LIMIT ${limit ?? 200}`;
     try {
         const db = await getSupastashDb();
-        const localData = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ${limitClause}`);
+        const localData = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ORDER BY created_at DESC ${limitClause}`);
         const dataMap = new Map(localData
             ?.map((item) => {
             if (!item.id)

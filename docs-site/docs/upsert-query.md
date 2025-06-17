@@ -27,12 +27,12 @@ You can pass a single object or an array of objects:
 
 ```ts
 // Single row
-await supastash.from("users").upsert({ id: "u1", name: "John" }).run();
+await supastash.from("users").upsert<T>({ id: "u1", name: "John" }).run();
 
 // Multiple rows
 await supastash
   .from("users")
-  .upsert([
+  .upsert<T>([
     { id: "u1", name: "John" },
     { id: "u2", name: "Doe" },
   ])

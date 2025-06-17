@@ -37,7 +37,7 @@ export declare class SupastashQueryBuilder<T extends CrudMethods, U extends bool
  * @example
  * const result = await supastash
  *   .from("users")
- *   .update({ name: "John Doe" })
+ *   .update<T>({ name: "John Doe" })
  *   .eq("id", "1")
  *   .run(); // Required to execute the query
  */

@@ -46,14 +46,19 @@ export function useSupastash() {
             return;
         initialized.current = true;
         async function init() {
-            // Create tables
-            await createSyncStatusTable();
-            await createDeletedStatusTable();
-            // On schema init
-            if (config.onSchemaInit) {
-                await config.onSchemaInit();
+            try {
+                // Create tables
+                await createSyncStatusTable();
+                await createDeletedStatusTable();
+                // On schema init
+                if (config.onSchemaInit) {
+                    await config.onSchemaInit();
+                }
+                setDbReady(true);
             }
-            setDbReady(true);
+            catch (error) {
+                console.error(`[Supastash] Error initializing: ${error}`);
+            }
         }
         init();
     }, []);

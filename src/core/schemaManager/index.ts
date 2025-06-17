@@ -24,13 +24,12 @@ export async function defineLocalSchema(
   schema: LocalSchemaDefinition,
   deletePreviousSchema = false
 ) {
-  if (!schema.id) {
-    throw new Error(
-      `'id' of type UUID column is required for table ${tableName}`
-    );
-  }
-
   try {
+    if (!schema.id) {
+      throw new Error(
+        `'id' of type UUID column is required for table ${tableName}`
+      );
+    }
     const db = await getSupastashDb();
 
     // Include the columns that must be in the schema

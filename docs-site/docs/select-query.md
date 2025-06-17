@@ -39,7 +39,7 @@ const result = await supastash
 ```ts
 const result = await supastash
   .from("users")
-  .select("id, email")
+  .select<T>("id, email")
   .eq("id", "user_123")
   .single()
   .run();
@@ -81,7 +81,7 @@ Example:
 ```ts
 await supastash
   .from("tasks")
-  .select("id, title")
+  .select<T>("id, title")
   .eq("assigned_to", "user_1")
   .limit(10)
   .run();

@@ -41,7 +41,7 @@ export class SupastashQueryBuilder {
  * @example
  * const result = await supastash
  *   .from("users")
- *   .update({ name: "John Doe" })
+ *   .update<T>({ name: "John Doe" })
  *   .eq("id", "1")
  *   .run(); // Required to execute the query
  */

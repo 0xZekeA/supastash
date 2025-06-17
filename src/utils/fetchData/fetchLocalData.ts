@@ -47,7 +47,7 @@ export async function fetchLocalData(
   try {
     const db = await getSupastashDb();
     const localData: PayloadData[] = await db.getAllAsync(
-      `SELECT * FROM ${table} WHERE deleted_at IS NULL ${limitClause}`
+      `SELECT * FROM ${table} WHERE deleted_at IS NULL ORDER BY created_at DESC ${limitClause}`
     );
 
     const dataMap = new Map(

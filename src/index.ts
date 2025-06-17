@@ -3,6 +3,7 @@ export { defineLocalSchema } from "./core/schemaManager";
 export { getSupastashDb } from "./db/dbInitializer";
 export { useSupastashData } from "./hooks/supastashData";
 export { useSupastash } from "./hooks/supastashLogic";
+export { syncAllTables, syncTable } from "./hooks/syncEngine";
 export { supastash } from "./utils/query/builder";
 export {
   wipeAllTables,

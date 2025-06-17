@@ -56,14 +56,18 @@ export function useSupastash(): SupastashHookReturn {
     initialized.current = true;
 
     async function init() {
-      // Create tables
-      await createSyncStatusTable();
-      await createDeletedStatusTable();
-      // On schema init
-      if (config.onSchemaInit) {
-        await config.onSchemaInit();
+      try {
+        // Create tables
+        await createSyncStatusTable();
+        await createDeletedStatusTable();
+        // On schema init
+        if (config.onSchemaInit) {
+          await config.onSchemaInit();
+        }
+        setDbReady(true);
+      } catch (error) {
+        console.error(`[Supastash] Error initializing: ${error}`);
       }
-      setDbReady(true);
     }
 
     init();

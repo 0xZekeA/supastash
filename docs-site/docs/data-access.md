@@ -167,6 +167,16 @@ These callbacks give you fine-grained control over sync behavior — perfect for
 
 ---
 
+## Table List
+
+## 📋 `getAllTables(): Promise<string[] | null>`
+
+Returns a list of all user-defined table names in the local SQLite database, excluding internal SQLite tables and Supastash system tables.
+
+Useful for introspection, dynamic sync logic, or admin tooling.
+
+---
+
 ## 🔄 Table Refresh Utilities
 
 These utilities allow you to programmatically refresh data for specific tables (or all tables) in your Supastash-powered app. Useful when you want to trigger UI reactivity after a local or remote change.

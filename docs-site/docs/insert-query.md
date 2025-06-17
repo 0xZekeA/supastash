@@ -31,7 +31,7 @@ Used when you want to insert a single row:
 ```ts
 await supastash
   .from("orders")
-  .insert({ id: "abc", amount: 500 })
+  .insert<T>({ id: "abc", amount: 500 })
   .single() // Optional: to enforce one-row expectation
   .run();
 ```
@@ -50,7 +50,7 @@ Used for batch inserts:
 ```ts
 await supastash
   .from("orders")
-  .insert([
+  .insert<T>([
     { id: "o1", amount: 100 },
     { id: "o2", amount: 200 },
   ])
