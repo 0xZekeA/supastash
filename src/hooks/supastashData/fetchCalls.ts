@@ -5,16 +5,13 @@ import { RealtimeOptions } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
 import log from "../../utils/logs";
-import { addPayloadToUI } from "./addPayloadToUI";
 
 const timesFetched = new Map<string, number>();
 let lastFetched = new Map<string, number>();
 
-export function fetchCalls(
+export function fetchCalls<R>(
   table: string,
-  setDataMap: React.Dispatch<React.SetStateAction<Map<string, any>>>,
-  setVersion: React.Dispatch<React.SetStateAction<string>>,
-  options: RealtimeOptions,
+  options: RealtimeOptions<R>,
   initialized: React.RefObject<boolean>
 ) {
   const {
@@ -24,6 +21,8 @@ export function fetchCalls(
     onPushToRemote,
     onInsertAndUpdate,
     useFilterWhileSyncing = true,
+    extraMapKeys,
+    daylength,
   } = options;
   const cancelled = useRef(false);
 
@@ -47,7 +46,7 @@ export function fetchCalls(
 
   const fetch = async () => {
     if (!cancelled.current) {
-      await fetchLocalData(table, setDataMap, setVersion, shouldFetch, limit);
+      await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength);
     }
   };
 
@@ -89,18 +88,10 @@ export function fetchCalls(
     }
   };
 
-  const pushToUI = async (
-    payload: any | any[],
-    operation: "insert" | "update" | "delete" | "upsert"
-  ) => {
-    addPayloadToUI(table, payload, setDataMap, setVersion, operation);
-  };
-
   return {
     triggerRefresh,
     trigger,
     cancel,
     initialFetchAndSync,
-    pushToUI,
   };
 }

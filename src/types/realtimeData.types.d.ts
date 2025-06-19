@@ -14,7 +14,7 @@ export type RealtimeFilter = {
   value: string | number | null | (string | number)[];
 };
 
-export interface RealtimeOptions {
+export interface RealtimeOptions<R = any> {
   /**
    * Whether to fetch local data automatically when the hook mounts.
    * @default true
@@ -26,6 +26,31 @@ export interface RealtimeOptions {
    * });
    */
   shouldFetch?: boolean;
+
+  /**
+   * Optional list of keys used to store data in **alternate maps** instead of the default one.
+   * Useful for indexing or grouping data under multiple identifiers (e.g., `["chat_id", "user_id"]`).
+   *
+   * When provided, each key will correspond to a separate map entry, allowing for multi-key access patterns.
+   *
+   * @default undefined
+   *
+   * @example
+   * // Store messages in maps grouped by both chat ID and user ID
+   * extraMapKeys: ["chat_id", "user_id"]
+   */
+  extraMapKeys?: (keyof R)[];
+
+  /**
+   * Fetches only records created within the last specified number of days.
+   * Useful for limiting results to recent activity.
+   *
+   * @default undefined — fetches all records regardless of date
+   *
+   * @example
+   * daylength: 7 // fetch records from the last 7 days
+   */
+  daylength?: number;
 
   /**
    * Whether to use the filter while syncing.
@@ -155,17 +180,19 @@ export interface RealtimeOptions {
 }
 
 export type SupastashDataResult<R = any> = {
-  data: R[];
+  data: Array<R>;
   dataMap: Map<string, R>;
   trigger: () => void;
   cancel: () => void;
-  // realtimeStatus: RealtimeStatus;
+  groupedBy?: {
+    [K in keyof R]: Map<R[K], Array<R>>;
+  };
 };
 
-export type SupastashDataHook = (
+export type SupastashDataHook<R = any> = (
   table: string,
   options: RealtimeOptions
-) => SupastashDataResult;
+) => SupastashDataResult<R>;
 
 // Realtime manager types
 export type EventHandler = (eventType: string, data: any) => void;

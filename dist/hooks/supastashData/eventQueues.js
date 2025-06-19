@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { deleteData } from "../../utils/fetchData/deleteData";
 import { receiveData } from "../../utils/fetchData/receiveData";
 import useDataState from "./dataState";
-function useEventQueues(table, setDataMap, setVersion, options, flushIntervalMs) {
+function useEventQueues(table, options, flushIntervalMs) {
     const { dataMap } = useDataState(table);
     const insertQueue = useRef([]);
     const updateQueue = useRef([]);
@@ -11,15 +11,13 @@ function useEventQueues(table, setDataMap, setVersion, options, flushIntervalMs)
     const flush = () => {
         if (options.shouldFetch) {
             insertQueue.current.forEach((item) => {
-                receiveData(item, table, setDataMap, setVersion, options.shouldFetch);
-                options.onInsertAndUpdate?.(item) || options.onInsert?.(item);
+                receiveData(item, table, options.shouldFetch, options.onInsertAndUpdate || options.onInsert);
             });
             updateQueue.current.forEach((item) => {
-                receiveData(item, table, setDataMap, setVersion, options.shouldFetch);
-                options.onInsertAndUpdate?.(item) || options.onUpdate?.(item);
+                receiveData(item, table, options.shouldFetch, options.onInsertAndUpdate || options.onInsert);
             });
             deleteQueue.current.forEach((item) => {
-                deleteData(item, table, setDataMap, setVersion, dataMap, options.shouldFetch);
+                deleteData(item, table, options.shouldFetch);
                 options.onDelete?.(item);
             });
             insertQueue.current = [];

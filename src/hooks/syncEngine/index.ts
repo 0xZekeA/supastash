@@ -24,7 +24,7 @@ export async function syncAll(force: boolean = false) {
 
   try {
     isSyncing = true;
-    if (!getSupastashConfig().syncEngine?.pull) {
+    if (getSupastashConfig().syncEngine?.pull) {
       const now = Date.now();
 
       const shouldPull =
@@ -91,7 +91,7 @@ export function useSyncEngine() {
  * @param {string} table - The name of the table to sync.
  * @returns {Promise<void>}
  */
-export async function syncTable(table: string) {
+export async function syncTable(table: string): Promise<void> {
   const config = getSupastashConfig();
   const { useFiltersFromStore = true } = config?.syncEngine || {};
   const filter = useFiltersFromStore ? tableFilters.get(table) : undefined;
@@ -113,6 +113,6 @@ export async function syncTable(table: string) {
  *
  * @returns {Promise<void>}
  */
-export async function syncAllTables() {
+export async function syncAllTables(): Promise<void> {
   await syncAll(true);
 }

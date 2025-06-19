@@ -18,8 +18,8 @@ const validOperators = new Set([
   "in",
 ]);
 
-let timesPushed = 0;
-let lastPushed = 0;
+let timesPulled = 0;
+let lastPulled = 0;
 /**
  * Pulls data from the remote database for a given table
  * @param table - The table to pull data from
@@ -76,14 +76,14 @@ export async function pullData(
   }
 
   if (!data || data.length === 0) {
-    timesPushed++;
-    if (timesPushed >= 30) {
-      const timeSinceLastPush = Date.now() - lastPushed;
-      lastPushed = Date.now();
+    timesPulled++;
+    if (timesPulled >= 150) {
+      const timeSinceLastPull = Date.now() - lastPulled;
+      lastPulled = Date.now();
       log(
-        `[Supastash] No updates for ${table} at ${lastSyncedAt} (times pushed: ${timesPushed}) in the last ${timeSinceLastPush}ms`
+        `[Supastash] No updates for ${table} at ${lastSyncedAt} (times pulled: ${timesPulled}) in the last ${timeSinceLastPull}ms`
       );
-      timesPushed = 0;
+      timesPulled = 0;
     }
     return null;
   }

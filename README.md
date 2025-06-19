@@ -1,27 +1,25 @@
 # Supastash
 
-**Offline-First Sync Engine for Supabase + React Native.**
+**Offline-First Sync Engine for Supabase + React Native**
 
-> Reliable offline-first syncing for Supabase + React Native using local SQLite. Plug in your adapter and get syncing — no boilerplate.
+> Sync local SQLite data with Supabase in real-time — even when your app is offline. Built for React Native, no boilerplate required.
 
-Supastash makes it effortless to build offline-capable mobile apps using **SQLite for local-first storage** and **Supabase for cloud sync**. Designed for React Native, Supastash handles syncing, conflict resolution, realtime updates, and local querying so you can focus on features, not infrastructure.
-
----
-
-### 📚 Documentation
-
-Read the [Docs](https://0xzekea.github.io/supastash/)
+Supastash gives your app **instant offline access**, **two-way syncing**, and **real-time updates** — all while letting you work with local data as the source of truth.
 
 ---
 
-## 🚀 Features
+## 📚 **[Read the Full Docs »](https://0xzekea.github.io/supastash/)**
 
-- 🔁 **Two-way sync** with Supabase
-- 💾 **Local-first querying** with React Native SQLite
-- ⚡ **Realtime updates** using Supabase channels
-- 🔌 **Pluggable SQLite adapters** (`expo-sqlite`, `react-native-nitro-sqlite`, `react-native-sqlite-storage`)
-- ✅ **Built-in deduplication**, conflict resolution, and background retries
-- 🧠 Designed to support **event batching**, **job staging**, and fine-grained sync control
+---
+
+## ✨ Features
+
+- 🔁 Two-way sync with Supabase
+- 💾 Local-first querying via SQLite
+- ⚡ Realtime updates (INSERT, UPDATE, DELETE)
+- 🔌 Works with any SQLite adapter (`expo-sqlite`, `rn-nitro`, `sqlite-storage`)
+- 🧠 Handles conflict resolution, batching, retries
+- 🧩 Supports filtering, job staging, and advanced sync control
 
 ---
 
@@ -29,31 +27,34 @@ Read the [Docs](https://0xzekea.github.io/supastash/)
 
 ```bash
 npm install supastash
-# or
-yarn add supastash
 ```
 
-### 📎 Peer Dependencies (You MUST install these)
+### Required Peer Dependencies
 
 ```bash
-npm install @supabase/supabase-js
-             @react-native-community/netinfo
-             react
-             react-native
+npm install @supabase/supabase-js \
+             @react-native-community/netinfo \
+             react react-native
+```
 
-# Choose one SQLite adapter:
+### Choose one SQLite adapter:
+
+```bash
+# Expo
 npm install expo-sqlite
-# OR React Native Nitro
+
+# React Native Nitro (faster)
 npm install react-native-nitro-sqlite
-# OR React Native SQLite Storage
+
+# Or classic storage
 npm install react-native-sqlite-storage
 ```
 
-> `sqliteClientType` must match your adapter: "expo", "rn-nitro", or "rn-storage"
+> Match with: `"sqliteClientType": "expo"`, `"rn-nitro"`, or `"rn-storage"`
 
 ---
 
-## ⚙️ Setup
+## ⚙️ Quick Setup
 
 ```ts
 // lib/supastash.ts
@@ -66,6 +67,7 @@ configureSupastash({
   dbName: "supastash_db",
   sqliteClient: { openDatabaseAsync },
   sqliteClientType: "expo",
+
   onSchemaInit: () => {
     defineLocalSchema(
       "users",
@@ -73,60 +75,48 @@ configureSupastash({
         id: "TEXT PRIMARY KEY",
         name: "TEXT",
         email: "TEXT",
-        created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        updated_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        created_at: "TIMESTAMP",
+        updated_at: "TIMESTAMP",
       },
       true
     );
   },
+
   debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // ⚠️ Pull sync is disabled by default.
+    pull: false, // enable if using RLS
   },
 });
 ```
 
-Then initialize early:
+Then in your root layout:
 
 ```ts
-// _layout.tsx or App.tsx
+// App.tsx or _layout.tsx
 import "@/lib/supastash";
 
-export default function RootLayout() {
+export default function App() {
   return <Stack />;
 }
 ```
 
 ---
 
-## 🚨 Key Notes
+## 🚨 Important Notes
 
-> ⚠️ **Important:** All timestamp fields (`created_at`, `updated_at`) used for syncing **must be `timestamptz`** in Supabase. This avoids timezone mismatch issues and ensures reliable sync.
-
-- Supabase tables **must** include:
-
-  - `id`, `created_at`, `updated_at`, `deleted_at`
-  - Avoid null primary keys
-
-- To enable schema reflection, create this Supabase RPC:
+- Timestamp fields (`created_at`, `updated_at`, `deleted_at`) **must be `timestamptz`** in Supabase
+- Every synced table must have a valid `id`
+- Create this SQL function in Supabase to allow schema reflection:
 
 ```sql
 create or replace function get_table_schema(table_name text)
-returns table(
-  column_name text,
-  data_type text,
-  is_nullable text
-)
+returns table(column_name text, data_type text, is_nullable text)
 security definer
 as $$
-  select
-    column_name,
-    data_type,
-    is_nullable
+  select column_name, data_type, is_nullable
   from information_schema.columns
-  where table_schema = 'public'
-    and table_name = $1;
+  where table_schema = 'public' and table_name = $1;
 $$ language sql;
 
 grant execute on function get_table_schema(text) to anon, authenticated;
@@ -134,130 +124,99 @@ grant execute on function get_table_schema(text) to anon, authenticated;
 
 ---
 
-## 🧪 Basic Usage
+## 🧪 Example: `useSupatashData`
 
-### `useSupatashData` hook
-
-```ts
+```tsx
 import { useSupatashData } from "supastash";
 
-type Order = {
-  id: string;
-  user_id: string;
-  deleted_at: string | null;
-  updated_at: string;
-  created_at: string;
-};
+const { data, dataMap } = useSupatashData("orders");
+```
 
-const { data: orders, dataMap: ordersMap } = useSupatashData<Order>("orders");
+Filtered by user:
 
-// Filtered
+```tsx
 const { userId } = useAuth();
-const { data: userOrders } = useSupatashData<Order>("orders", {
+const { data: userOrders } = useSupatashData("orders", {
   filter: { column: "user_id", operator: "eq", value: userId },
   shouldFetch: !!userId,
 });
 ```
 
-### `useSupatash`
+Ensure sync engine is ready:
 
-```ts
+```tsx
 import { useSupatash } from "supastash";
 
 const { dbReady } = useSupatash();
 if (!dbReady) return null;
-return <Stack />;
 ```
 
 ---
 
-## 📘 API Overview
+## 🔧 API Overview
 
-### `configureSupastash(config)`
+- [`configureSupastash()`](https://0xzekea.github.io/supastash/docs/configuration)) – setup + schema
+- [`useSupatashData()`](https://0xzekea.github.io/supastash/docs/data-access)) – read/write synced local data
 
-Initialize sync system.
+---
 
-### `useSupatashData(table, options)`
+## 🔄 How Sync Works
 
-Access data with local cache, syncing, filtering, etc.
+- Tracks changes with `created_at`, `updated_at`, `deleted_at`
+- Retries failed syncs with exponential backoff
+- Batches realtime + manual changes efficiently
+- Keeps local cache as the main source of truth
 
-Returns:
+---
+
+## 🧩 Sync Modes (via query builder)
 
 ```ts
-{
-  data: R[];
-  dataMap: Map<string, R>;
-  trigger: () => void;
-  cancel: () => void;
-}
+supastash
+  .from("orders")
+  .select("*")
+  .syncMode("remoteOnly") // or localOnly, localFirst, remoteFirst
+  .run();
 ```
 
-### `refreshTable(table: string)` / `refreshAllTables()`
-
-Force-refresh any or all table data.
-
 ---
 
-## 🔄 Sync Internals
-
-- Safe writes with `created_at`, `updated_at`, `deleted_at`
-- Retries with **exponential backoff**
-- Batched inserts, updates, deletes
-- Real-time changes are applied directly to local cache
-
----
-
-### Sync Modes (per-query control)
-
-You can control how each query syncs:
-
-- `localOnly`: Use only local data
-- `remoteOnly`: Fetch directly from Supabase
-- `localFirst` _(default)_: Read/write locally, then sync to Supabase
-- `remoteFirst`: Write to Supabase first, then update local
-
-Use `.syncMode("...")` or `{ viewRemoteResult: true }` in `.run()` to control behavior.
-
----
-
-## 📁 Project Structure
+## 🗂 Example Project Structure
 
 ```
 src/
-  ├─ core/         # Supabase + sync logic
-  ├─ hooks/        # Main React hooks
+  ├─ core/         # Config
+  ├─ hooks/        # Custom hooks
   ├─ types/        # Type definitions
-  ├─ utils/        # Helper utilities
+  ├─ utils/        # Helpers
 ```
 
 ---
 
-## 🔧 Testing
+## 🧪 Testing & Dev
 
 ```bash
+# Run tests
 yarn test
-```
 
-Uses `vitest` for unit testing.
+# Start local dev build
+yarn dev
+```
 
 ---
 
 ## 🤝 Contributing
 
-```bash
-yarn dev
-```
-
-Open a PR with tests and typed signatures. PRs welcome.
+PRs welcome! Please include tests and type signatures.
 
 ---
 
 ## 📜 License
 
-MIT License © Ezekiel Akpan
+MIT © Ezekiel Akpan
 
 ---
 
 ## 💬 Questions?
 
-Open an issue or reach out on [X @0xZekeA](https://x.com/0xZekeA)
+Open an issue or reach out on [X (Twitter) @0xZekeA](https://x.com/0xZekeA)

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { getSupastashConfig } from "../../core/config";
 import { PayloadData } from "../../types/query.types";
 import { RealtimeOptions } from "../../types/realtimeData.types";
@@ -15,22 +15,27 @@ const useRealtimeData = (
   realtime: boolean
 ) => {
   const { lazy, shouldFetch } = options;
+  const filterString = useMemo(
+    () => buildFilterString(options.filter),
+    [options.filter]
+  );
+  const subKey = useMemo(
+    () => `${table}:${filterString ?? ""}`,
+    [table, filterString]
+  );
   useEffect(() => {
     if (!realtime || (options.lazy && !initialized) || !shouldFetch) {
       return;
     }
-    const filterString = options.filter
-      ? buildFilterString(options.filter)
-      : undefined;
-
-    if (hasRegistered.get(`${table}:${filterString ?? ""}`)) return;
-    hasRegistered.set(`${table}:${filterString ?? ""}`, true);
+    if (hasRegistered.get(subKey)) return;
 
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase) {
       console.error("[Supastash] No supabase client found", supabaseClientErr);
       return;
     }
+
+    hasRegistered.set(subKey, true);
 
     const subDetails = filterString
       ? { event: "*", schema: "public", table, filter: filterString }
@@ -51,13 +56,7 @@ const useRealtimeData = (
         );
         queueHandler(payload.eventType, payload.new);
       })
-      .subscribe((status, err) => {
-        if (err)
-          console.error(
-            `[Supastash] 📡 STATUS: ${status} on table ${table}`,
-            err
-          );
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(subscription);

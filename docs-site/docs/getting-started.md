@@ -1,60 +1,63 @@
 # 🚀 Getting Started with Supastash
 
-## Installation
+Supastash helps you build **offline-first apps** by syncing local SQLite data with Supabase in the background. This guide walks you through setting it up from scratch.
+
+---
+
+## 📦 Installation
+
+### 1. Install Supastash
 
 ```bash
 npm install supastash
 ```
 
-### 📎 Required Peer Dependencies
+### 2. Install Required Peer Dependencies
 
-You MUST install the following manually.
+These are required and **must be installed manually**:
 
 ```bash
-npm install @supabase/supabase-js
-             @react-native-community/netinfo
-             react
+npm install @supabase/supabase-js \
+             @react-native-community/netinfo \
+             react \
              react-native
-
 ```
 
-### 🗃️ Choose one SQLite adapter.
+### 3. Choose a SQLite Adapter (Only ONE)
 
-Depending on your setup, install only one.
+Choose based on your project type:
 
 ```bash
-# For Expo
+# For Expo projects
 npm install expo-sqlite
 
-# For bare React Native with better performance
+# For better performance in bare React Native
 npm install react-native-nitro-sqlite
 
-# Or classic SQLite option
+# Or use the classic SQLite option
 npm install react-native-sqlite-storage
 ```
 
 ---
 
-## ⚙️ Setup
+## ⚙️ Project Setup
 
-### 1. Configure Supastash
+### 1. Create the Supastash Config
 
-This should be done early (e.g., in lib/supastash.ts). [Supastash configuration docs](./configuration.md)
+Setup early in your app — e.g., `lib/supastash.ts`
 
 ```ts
-// lib/supastash.ts
 import { configureSupastash, defineLocalSchema } from "supastash";
 import { supabase } from "./supabase";
-import { openDatabaseAsync } from "expo-sqlite";
+import { openDatabaseAsync } from "expo-sqlite"; // or nitro/sqlite-storage client
 
 configureSupastash({
   supabaseClient: supabase,
   dbName: "supastash_db",
   sqliteClient: { openDatabaseAsync },
-  sqliteClientType: "expo", // or "rn-nitro" or "rn-storage"
+  sqliteClientType: "expo", // or "rn-nitro" / "rn-storage"
 
   onSchemaInit: () => {
-    // Define your local schema here. You can include this is a separate file, then call it here.
     defineLocalSchema(
       "users",
       {
@@ -68,30 +71,30 @@ configureSupastash({
     );
   },
 
-  debugMode: true, // useful for logging
+  debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // ⚠️ Pull sync is disabled by default. It will pull unfiltered data from the server. Enable RLS if you want to pull filtered data.
+    pull: false, // Enable if using RLS and want to pull filtered data
   },
 });
 ```
 
-### 2. Initialize Supastash(in your entry layout)
+### 2. Initialize It Once (in your main layout)
 
 ```ts
-// _layout.tsx or App.tsx (entry layout)
-import "@/lib/supastash";
+// App.tsx or _layout.tsx
+import "@/lib/supastash"; // Just import to initialize
 
-export default function RootLayout() {
-  return <Stack />;
+export default function App() {
+  return <Stack />; // or your main app entry
 }
 ```
 
-### 3. Enable RLS Support (Server-Side Setup)
+---
 
-Supastash uses a helper RPC function to fetch column metadata, which is essential for syncing.
+## 🛡️ Server-Side Setup for RLS
 
-To set it up, run the SQL function below in the **Supabase SQL Editor (Server-side)**.
+Supastash needs access to your table schema. Run this **SQL function** in the Supabase SQL Editor:
 
 ```sql
 create or replace function get_table_schema(table_name text)
@@ -102,27 +105,27 @@ returns table(
 )
 security definer
 as $$
-  select
-    column_name,
-    data_type,
-    is_nullable
+  select column_name, data_type, is_nullable
   from information_schema.columns
-  where table_schema = 'public'
-    and table_name = $1;
+  where table_schema = 'public' and table_name = $1;
 $$ language sql;
 
 grant execute on function get_table_schema(text) to anon, authenticated;
 ```
 
-This allows Supastash to access column details for public tables — even when **Row-Level Security (RLS)** is enabled.
+> ✅ This works with **Row-Level Security (RLS)**. Without this, Supastash can't sync filtered data.
 
-> ⚠️ **Important:**  
-> All Supabase timestamp columns used for syncing — such as `created_at`, `updated_at` and `deleted_at` — **must be of type `timestamptz`** (timestamp with time zone).  
-> This ensures consistent comparisons across devices and avoids missing records due to timezone mismatches.
+### Important Timestamp Rule
 
-### 4. Enable [Sync Engine(Client-Side Setup)](useSupastash-hook.md)
+All timestamp columns used for syncing — like `created_at`, `updated_at`, `deleted_at` — **must be `timestamptz`** (timestamp with time zone).
 
-This hook prepares the sync engine. Place this before rendering the rest of your app.
+This prevents timezone issues and ensures reliable sync.
+
+---
+
+## ⚙️ Bootstrapping the Sync Engine
+
+Before rendering your app, make sure the Supastash engine is ready:
 
 ```ts
 import { useSupatash } from "supastash";
@@ -132,11 +135,11 @@ if (!dbReady) return null;
 return <Stack />;
 ```
 
-## 🧪 Basic Usage
+---
 
-### [`useSupatashData`](./data-access.md) Local-First React Hook
+## 🧪 Basic Hook Usage: [`useSupatashData`](data-access.md)
 
-This hook fetches and subscribes to local SQLite data, keeping it synced in the background.
+This hook gives you live local-first data access.
 
 ```ts
 import { useSupatashData } from "supastash";
@@ -152,64 +155,64 @@ type Order = {
 const { data: orders, dataMap: ordersMap } = useSupatashData<Order>("orders");
 ```
 
-### `useSupatashData` with 🔍 Filtering
+You get:
+
+- `data` – An array of rows
+- `dataMap` – A map keyed by ID for fast lookup
+
+Supastash keeps this in sync with SQLite and Supabase.
+
+---
+
+## 🔍 With Filtering
+
+Only fetch rows for a specific user:
 
 ```ts
 import { useSupatashData } from "supastash";
 
-type Order = {
-  id: string;
-  user_id: string;
-  deleted_at: string | null;
-  updated_at: string;
-  created_at: string;
-};
-
-// Filtered
-const { userId } = useAuth(); // assume you're managing auth
-const { data: userOrders } = useSupatashData<Order>("orders", {
-  filter: { column: "user_id", operator: "eq", value: userId },
-  shouldFetch: !!userId, // prevents query if no userId yet
+const { userId } = useAuth();
+const { data: userOrders } = useSupatashData("orders", {
+  filter: {
+    column: "user_id",
+    operator: "eq",
+    value: userId,
+  },
+  shouldFetch: !!userId,
 });
 ```
 
-- data – Array of rows
-- dataMap – Keyed by id, useful for constant-time lookups
-- Automatically stays in sync with local writes
-- Pushes changes to Supabase
+This ensures you don’t load data until the `userId` is available.
 
 ---
 
-### [`supastash`](./supastash-query-builder.md) – Supabase Query Builder
+## 🔧 Querying Supabase Directly
 
-A thin wrapper around `supabase.from(...)` that fits seamlessly with Supastash’s local-first approach. Best used for direct, one-off queries to the server.
+Use `supastash.from()` for one-off server queries (like `supabase.from(...)` but integrated with Supastash):
 
 ```ts
 import { supastash } from "supastash";
 
-const [orders, setOrders] = useState([]);
-
 useEffect(() => {
   const fetchOrders = async () => {
     const { data, error } = await supastash.from("orders").select("*").run();
-    if (error) {
-      console.error(error);
-      return;
-    }
-    setOrders(data);
+    if (error) console.error(error);
+    else setOrders(data);
   };
 
   fetchOrders();
 }, []);
-
-return <Text>{JSON.stringify(orders)}</Text>;
 ```
 
 ---
 
-### 🔗 What’s Next?
+## 🧠 Next Steps
 
-- [Configuration docs](./configuration.md)
-- [Data Access docs](./data-access.md)
-- [useSupastash docs](useSupastash-hook.md)
-- [Query Builder docs](./supastash-query-builder.md)
+- [Configuration Guide](./configuration.md)
+- [Data Access Hook (`useSupatashData`)](./data-access.md)
+- [Sync Engine Setup (`useSupatash`)](./useSupastash-hook.md)
+- [Supastash Query Builder](./supastash-query-builder.md)
+
+---
+
+That’s it! You’re now set up to build offline-first, realtime-ready apps with Supastash.

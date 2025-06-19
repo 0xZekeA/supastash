@@ -1,8 +1,7 @@
-declare function useDataState<R = any>(table: string): {
+declare function useDataState<R, T>(table: string): {
     dataMap: Map<string, R>;
-    setDataMap: import("react").Dispatch<import("react").SetStateAction<Map<string, R>>>;
-    version: string;
-    setVersion: import("react").Dispatch<import("react").SetStateAction<string>>;
+    data: Array<R>;
+    groupedBy?: { [K in keyof T]: Map<T[K], Array<R>>; };
 };
 export default useDataState;
 //# sourceMappingURL=dataState.d.ts.map

@@ -32,7 +32,7 @@ export async function pushLocalDataToRemote(
 
     if (data && data.length > 0) {
       await uploadData(table, data, onPushToRemote);
-      supastashEventBus.emit(`push:${table}`, data, "insert");
+      supastashEventBus.emit(`refresh:${table}`);
     }
 
     const payloadForDeletedData = deletedData?.map((item) => ({

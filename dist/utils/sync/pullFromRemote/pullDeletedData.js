@@ -14,8 +14,8 @@ const validOperators = new Set([
     "is",
     "in",
 ]);
-let timesPushed = 0;
-let lastPushed = 0;
+let timesPulled = 0;
+let lastPulled = 0;
 /**
  * Pulls deleted data from the remote database for a given table
  * @param table - The table to pull deleted data from
@@ -51,12 +51,12 @@ export async function pullDeletedData(table, filter) {
         return null;
     }
     if (!data || data.length === 0) {
-        timesPushed++;
-        if (timesPushed >= 30) {
-            const timeSinceLastPush = Date.now() - lastPushed;
-            lastPushed = Date.now();
-            log(`[Supastash] No deleted records for ${table} from ${lastDeletedAt} (times pushed: ${timesPushed}) in the last ${timeSinceLastPush}ms`);
-            timesPushed = 0;
+        timesPulled++;
+        if (timesPulled >= 150) {
+            const timeSinceLastPull = Date.now() - lastPulled;
+            lastPulled = Date.now();
+            log(`[Supastash] No deleted records for ${table} from ${lastDeletedAt} (times pulled: ${timesPulled}) in the last ${timeSinceLastPull}ms`);
+            timesPulled = 0;
         }
         return null;
     }

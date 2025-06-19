@@ -1,6 +1,6 @@
 {
   "name": "supastash",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -56,5 +56,8 @@
     "offline-first",
     "sync"
   ],
-  "description": "Offline-first sync engine for Supabase in React Native using SQLite"
+  "description": "Offline-first sync engine for Supabase in React Native using SQLite",
+  "dependencies": {
+    "fast-deep-equal": "^3.1.3"
+  }
 }

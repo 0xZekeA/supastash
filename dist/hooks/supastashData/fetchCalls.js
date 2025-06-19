@@ -4,11 +4,10 @@ import { tableFilters } from "../../store/tableFilters";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
 import log from "../../utils/logs";
-import { addPayloadToUI } from "./addPayloadToUI";
 const timesFetched = new Map();
 let lastFetched = new Map();
-export function fetchCalls(table, setDataMap, setVersion, options, initialized) {
-    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, } = options;
+export function fetchCalls(table, options, initialized) {
+    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, } = options;
     const cancelled = useRef(false);
     useEffect(() => {
         if (filter && useFilterWhileSyncing && !tableFilters.get(table)) {
@@ -29,7 +28,7 @@ export function fetchCalls(table, setDataMap, setVersion, options, initialized) 
     }, []);
     const fetch = async () => {
         if (!cancelled.current) {
-            await fetchLocalData(table, setDataMap, setVersion, shouldFetch, limit);
+            await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength);
         }
     };
     const trigger = () => {
@@ -63,14 +62,10 @@ export function fetchCalls(table, setDataMap, setVersion, options, initialized) 
             console.error(`[Supastash] Error on initial fetch for ${table}`, error);
         }
     };
-    const pushToUI = async (payload, operation) => {
-        addPayloadToUI(table, payload, setDataMap, setVersion, operation);
-    };
     return {
         triggerRefresh,
         trigger,
         cancel,
         initialFetchAndSync,
-        pushToUI,
     };
 }

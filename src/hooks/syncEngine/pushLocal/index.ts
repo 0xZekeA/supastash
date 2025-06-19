@@ -31,7 +31,7 @@ export async function pushLocalData() {
     }
     if (noSync.length > 0) {
       timesPushed++;
-      if (timesPushed >= 30) {
+      if (timesPushed >= 150) {
         const timeSinceLastPush = Date.now() - lastPushed;
         lastPushed = Date.now();
         log(

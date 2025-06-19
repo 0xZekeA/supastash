@@ -16,52 +16,57 @@ const syncPollingInterval = getSupastashConfig().pollingInterval?.push || 30000;
  * Syncs the local data to the remote database
  */
 export async function syncAll(force = false) {
-  if (isSyncing) return;
-  if (!(await isOnline())) return;
-  try {
-    isSyncing = true;
-    if (!getSupastashConfig().syncEngine?.pull) {
-      const now = Date.now();
-      const shouldPull =
-        force ||
-        now - lastFullSync >
-          (getSupastashConfig().pollingInterval?.pull || 30000);
-      if (shouldPull) {
-        await pullFromRemote();
-        lastFullSync = now;
-      }
+    if (isSyncing)
+        return;
+    if (!(await isOnline()))
+        return;
+    try {
+        isSyncing = true;
+        if (getSupastashConfig().syncEngine?.pull) {
+            const now = Date.now();
+            const shouldPull = force ||
+                now - lastFullSync >
+                    (getSupastashConfig().pollingInterval?.pull || 30000);
+            if (shouldPull) {
+                await pullFromRemote();
+                lastFullSync = now;
+            }
+        }
+        await pushLocalData();
     }
-    await pushLocalData();
-  } catch (error) {
-    log(`[Supastash] Error syncing: ${error}`);
-  } finally {
-    isSyncing = false;
-  }
+    catch (error) {
+        log(`[Supastash] Error syncing: ${error}`);
+    }
+    finally {
+        isSyncing = false;
+    }
 }
 export function useSyncEngine() {
-  const isSyncingRef = useRef(false);
-  const intervalRef = useRef(null);
-  const appStateRef = useRef(null);
-  function startSync() {
-    if (isSyncingRef.current) return;
-    isSyncingRef.current = true;
-    const config = getSupastashConfig();
-    const syncPollingInterval = config.pollingInterval?.push ?? 30000;
-    intervalRef.current = setInterval(() => {
-      syncAll();
-    }, syncPollingInterval);
-    appStateRef.current = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        syncAll(true);
-      }
-    });
-  }
-  function stopSync() {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    appStateRef.current?.remove?.();
-    isSyncingRef.current = false;
-  }
-  return { startSync, stopSync };
+    const isSyncingRef = useRef(false);
+    const intervalRef = useRef(null);
+    const appStateRef = useRef(null);
+    function startSync() {
+        if (isSyncingRef.current)
+            return;
+        isSyncingRef.current = true;
+        const config = getSupastashConfig();
+        const syncPollingInterval = config.pollingInterval?.push ?? 30000;
+        intervalRef.current = setInterval(() => {
+            syncAll();
+        }, syncPollingInterval);
+        appStateRef.current = AppState.addEventListener("change", (state) => {
+            if (state === "active") {
+                syncAll(true);
+            }
+        });
+    }
+    function stopSync() {
+        if (intervalRef.current)
+            clearInterval(intervalRef.current);
+        appStateRef.current?.remove?.();
+        isSyncingRef.current = false;
+    }
+    return { startSync, stopSync };
 }
 /**
  * Manually syncs a **single** table with Supabase.
@@ -78,13 +83,13 @@ export function useSyncEngine() {
  * @returns {Promise<void>}
  */
 export async function syncTable(table) {
-  const config = getSupastashConfig();
-  const { useFiltersFromStore = true } = config?.syncEngine || {};
-  const filter = useFiltersFromStore ? tableFilters.get(table) : undefined;
-  if (!getSupastashConfig().syncEngine?.pull) {
-    await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
-  }
-  await pushLocalDataToRemote(table, syncCalls.get(table)?.push);
+    const config = getSupastashConfig();
+    const { useFiltersFromStore = true } = config?.syncEngine || {};
+    const filter = useFiltersFromStore ? tableFilters.get(table) : undefined;
+    if (!getSupastashConfig().syncEngine?.pull) {
+        await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+    }
+    await pushLocalDataToRemote(table, syncCalls.get(table)?.push);
 }
 /**
  * Manually syncs **all registered tables** with Supabase.
@@ -99,5 +104,5 @@ export async function syncTable(table) {
  * @returns {Promise<void>}
  */
 export async function syncAllTables() {
-  await syncAll(true);
+    await syncAll(true);
 }

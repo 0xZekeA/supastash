@@ -31,9 +31,10 @@ export function refreshAllTables() {
  * @param table - The name of the table to refresh
  * @param payload - The payload to refresh the table with
  * @param operation - The operation to perform on the table
+ * @deprecated Use refreshTable instead
  */
 export function refreshTableWithPayload(table, payload, operation) {
-    supastashEventBus.emit(`push:${table}`, payload, operation);
+    supastashEventBus.emit(`refresh:${table}`);
 }
 /**
  * Debounces a function

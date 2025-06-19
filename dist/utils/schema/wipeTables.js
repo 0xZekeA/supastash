@@ -21,7 +21,7 @@ import { getAllTables } from "../sync/getAllTables";
 export async function wipeTable(tableName) {
     try {
         const db = await getSupastashDb();
-        await db.runAsync(`DROP TABLE IF EXISTS ${tableName}`);
+        await db.runAsync(`DELETE FROM ${tableName}`);
         await db.runAsync(`DELETE FROM supastash_sync_status WHERE table_name = ?`, [tableName]);
         await db.runAsync(`DELETE FROM supastash_deleted_status WHERE table_name = ?`, [tableName]);
         clearSchemaCache(tableName);

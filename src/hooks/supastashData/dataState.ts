@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+import { getSnapshot, subscribe } from "../../utils/fetchData/snapShot";
 
-function useDataState<R = any>(table: string) {
-  const [version, setVersion] = useState(`${table}-${Date.now()}`);
-  const [dataMap, setDataMap] = useState<Map<string, R>>(new Map());
-  return { dataMap, setDataMap, version, setVersion };
+function useDataState<R, T>(table: string) {
+  const stableSubscribe = useCallback(
+    (cb: () => void) => subscribe(table, cb),
+    [table]
+  );
+
+  const getStableSnapshot = useCallback(() => getSnapshot(table), [table]);
+
+  return useSyncExternalStore(stableSubscribe, getStableSnapshot) as {
+    dataMap: Map<string, R>;
+    data: Array<R>;
+    groupedBy?: {
+      [K in keyof T]: Map<T[K], Array<R>>;
+    };
+  };
 }
 
 export default useDataState;

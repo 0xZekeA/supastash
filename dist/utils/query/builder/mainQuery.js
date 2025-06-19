@@ -57,7 +57,7 @@ export async function queryDb(state) {
     }
     finally {
         if (state.method !== "select" && localData) {
-            supastashEventBus.emit(`push:${state.table}`, localData, state.method);
+            supastashEventBus.emit(`refresh:${state.table}`);
         }
     }
 }

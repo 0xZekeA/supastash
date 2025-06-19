@@ -99,7 +99,7 @@ export async function queryDb<
     }) as SupastashQueryResult<T, U, V, Z>;
   } finally {
     if (state.method !== "select" && localData) {
-      supastashEventBus.emit(`push:${state.table}`, localData, state.method);
+      supastashEventBus.emit(`refresh:${state.table}`);
     }
   }
 }

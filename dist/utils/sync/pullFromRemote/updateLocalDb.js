@@ -31,7 +31,7 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             for (const record of deletedData.records) {
                 await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [record.id]);
             }
-            supastashEventBus.emit(`push:${table}`, deletedData.records, "delete");
+            supastashEventBus.emit(`refresh:${table}`);
         }
         // Update local database with remote changes
         if (dataToUpdate) {
@@ -48,7 +48,7 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             }
         }
         if (changes)
-            supastashEventBus.emit(`push:${table}`, dataToUpdate, "update");
+            supastashEventBus.emit(`refresh:${table}`);
     }
     catch (error) {
         console.error(`[Supastash] Error updating local db for ${table}`, error);
@@ -106,6 +106,9 @@ export async function upsertData(table, record, doesExist) {
             await db.runAsync(`INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`, values);
         }
         await updateLocalSyncedAt(table, record.id);
+        if (doesExist === undefined) {
+            supastashEventBus.emit(`refresh:${table}`);
+        }
     }
     catch (error) {
         console.error(`[Supastash] Error upserting data for ${table}`, error);

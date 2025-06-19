@@ -1,3 +1,4 @@
+// Deprecated
 const versionMap = new Map();
 function getNewVersion(table, setter) {
     if (versionMap.get(table)) {

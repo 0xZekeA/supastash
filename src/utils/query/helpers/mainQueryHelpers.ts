@@ -78,11 +78,18 @@ export function getCommonError<U extends boolean, T extends CrudMethods, R, Z>(
 }
 
 let stateCache: SupastashQuery<CrudMethods, boolean, any>[] = [];
+const pendingIds = new Set<string>();
 let isRunning = false;
 const MAX_RETRIES = 2;
 const MAX_OFFLINE_RETRIES = 10;
 const calledOfflineRetries = new Map<string, number>();
 const retryDelay = 1000 * 30;
+
+function enqueueState(query: SupastashQuery<CrudMethods, boolean, any>) {
+  if (pendingIds.has(query.id)) return;
+  stateCache.push(query);
+  pendingIds.add(query.id);
+}
 
 async function runBatchedRemoteQuery<U extends boolean, R, Z>() {
   if (isRunning) return;
@@ -169,7 +176,7 @@ let batchTimer: number | NodeJS.Timeout | null = null;
 function addToCache<U extends boolean, R, Z>(
   state: SupastashQuery<CrudMethods, U, R>
 ) {
-  stateCache.push(state);
+  enqueueState(state);
   if (batchTimer) clearTimeout(batchTimer);
   batchTimer = setTimeout(() => {
     runBatchedRemoteQuery<U, R, Z>();

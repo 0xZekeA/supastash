@@ -108,7 +108,12 @@ export type SupastashQueryResult<
       success: boolean;
     }>;
 
-export type QueryBuilder<T extends CrudMethods, U extends boolean, R, Z> = {
+export type QueryBuilder<
+  T extends CrudMethods,
+  U extends boolean,
+  R,
+  Z = any
+> = {
   eq(column: string, value: any): QueryBuilder<T, U, R, Z>;
   neq(column: string, value: any): QueryBuilder<T, U, R, Z>;
   gt(column: string, value: any): QueryBuilder<T, U, R, Z>;

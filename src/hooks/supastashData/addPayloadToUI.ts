@@ -1,3 +1,5 @@
+// Deprecated
+
 const versionMap = new Map<string, number[]>();
 
 function getNewVersion(

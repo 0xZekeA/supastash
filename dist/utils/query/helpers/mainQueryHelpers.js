@@ -47,11 +47,18 @@ export function getCommonError(table, method, localResult, remoteResult) {
     return null;
 }
 let stateCache = [];
+const pendingIds = new Set();
 let isRunning = false;
 const MAX_RETRIES = 2;
 const MAX_OFFLINE_RETRIES = 10;
 const calledOfflineRetries = new Map();
 const retryDelay = 1000 * 30;
+function enqueueState(query) {
+    if (pendingIds.has(query.id))
+        return;
+    stateCache.push(query);
+    pendingIds.add(query.id);
+}
 async function runBatchedRemoteQuery() {
     if (isRunning)
         return;
@@ -112,7 +119,7 @@ function delay(ms) {
 }
 let batchTimer = null;
 function addToCache(state) {
-    stateCache.push(state);
+    enqueueState(state);
     if (batchTimer)
         clearTimeout(batchTimer);
     batchTimer = setTimeout(() => {

@@ -16,6 +16,7 @@ export declare function refreshAllTables(): void;
  * @param table - The name of the table to refresh
  * @param payload - The payload to refresh the table with
  * @param operation - The operation to perform on the table
+ * @deprecated Use refreshTable instead
  */
 export declare function refreshTableWithPayload(table: string, payload: any, operation: "insert" | "update" | "delete" | "upsert"): void;
 //# sourceMappingURL=refreshTables.d.ts.map
