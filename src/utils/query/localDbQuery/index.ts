@@ -16,7 +16,16 @@ export async function queryLocalDb<
   R,
   Z
 >(state: SupastashQuery<T, U, R>): Promise<MethodReturnTypeMap<U, Z>[T]> {
-  const { table, method, payload, filters, limit, select, isSingle } = state;
+  const {
+    table,
+    method,
+    payload,
+    filters,
+    limit,
+    select,
+    isSingle,
+    onConflictKeys,
+  } = state;
 
   if (!method) {
     throw new Error("Method is required for local call");
@@ -29,7 +38,8 @@ export async function queryLocalDb<
     payload,
     filters,
     limit,
-    isSingle
+    isSingle,
+    onConflictKeys
   );
 
   const result = await query();

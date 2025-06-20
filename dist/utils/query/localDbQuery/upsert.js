@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { generateUUIDv4 } from "../../../utils/genUUID";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
@@ -8,7 +9,7 @@ import { assertTableExists } from "../../tableValidator";
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export async function upsertData(table, payload, syncMode, isSingle) {
+export async function upsertData(table, payload, syncMode, isSingle, onConflictKeys = ["id"]) {
     if (!payload || !table)
         throw new Error("Table and payload are required for upsert.");
     await assertTableExists(table);
@@ -28,28 +29,46 @@ export async function upsertData(table, payload, syncMode, isSingle) {
                         : null,
             };
             const colArray = Object.keys(newPayload);
-            const cols = colArray
-                .filter((col) => col !== "id")
-                .map((col) => `${col} = ?`)
-                .join(", ");
-            const insertCols = colArray.join(", ");
-            const insertPlaceholders = colArray.map(() => "?").join(", ");
-            const insertValues = colArray.map((c) => getSafeValue(newPayload[c]));
-            const updateValues = colArray
-                .filter((col) => col !== "id")
-                .map((c) => getSafeValue(newPayload[c]));
-            const existing = await db.getFirstAsync(`SELECT id FROM ${table} WHERE id = ? LIMIT 1`, [item.id]);
-            if (existing) {
-                const updateSql = `UPDATE ${table} SET ${cols} WHERE id = ?`;
-                await db.runAsync(updateSql, [...updateValues, item.id]);
+            const includesConflictKeys = onConflictKeys.some((key) => colArray.includes(key));
+            if (!includesConflictKeys) {
+                throw new Error(`onConflictKeys must include at least one key from the payload. Payload: ${JSON.stringify(newPayload)}`);
+            }
+            const whereClause = onConflictKeys
+                .map((key) => `${key} = ?`)
+                .join(" AND ");
+            const conflictValues = onConflictKeys.map((key) => getSafeValue(newPayload[key]));
+            const existingData = await db.getAllAsync(`SELECT * FROM ${table} WHERE ${whereClause}`, [...conflictValues]);
+            if (existingData.length > 0) {
+                if (existingData.length > 1) {
+                    throw new Error(`Multiple rows matched onConflictKeys in '${table}' — expected unique constraint. Payload: ${JSON.stringify(newPayload)}`);
+                }
+                const updateColsArray = Object.keys(newPayload);
+                const updateCols = updateColsArray
+                    .filter((col) => !onConflictKeys.includes(col))
+                    .map((col) => `${col} = ?`)
+                    .join(", ");
+                const updateValues = updateColsArray
+                    .filter((col) => !onConflictKeys.includes(col))
+                    .map((c) => getSafeValue(newPayload[c]));
+                const updateSql = `UPDATE ${table} SET ${updateCols} WHERE ${whereClause}`;
+                await db.runAsync(updateSql, [...updateValues, ...conflictValues]);
+                upserted.push(parseStringifiedFields(newPayload));
             }
             else {
+                const insertPayload = {
+                    ...newPayload,
+                    id: newPayload.id ?? generateUUIDv4(),
+                };
+                const newColsArray = Object.keys(insertPayload);
+                const insertCols = newColsArray.join(", ");
+                const insertPlaceholders = newColsArray.map(() => "?").join(", ");
+                const insertValues = newColsArray.map((c) => getSafeValue(insertPayload[c]));
                 const insertSql = `INSERT INTO ${table} (${insertCols}) VALUES (${insertPlaceholders})`;
                 await db.runAsync(insertSql, insertValues);
+                const inserted = await db.getFirstAsync(`SELECT * FROM ${table} WHERE ${whereClause} LIMIT 1`, [...conflictValues]);
+                if (inserted)
+                    upserted.push(parseStringifiedFields(inserted));
             }
-            const updated = await db.getFirstAsync(`SELECT * FROM ${table} WHERE id = ?`, [item.id]);
-            if (updated)
-                upserted.push(parseStringifiedFields(updated));
         }
         return {
             error: null,

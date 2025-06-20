@@ -44,6 +44,7 @@ export interface SupastashQuery<T extends CrudMethods, U extends boolean, R> {
   type: SyncMode;
   runSelected: boolean;
   viewRemoteResult: boolean;
+  onConflictKeys?: string[];
 }
 
 export interface CrudReturnValue {

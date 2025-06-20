@@ -8,6 +8,8 @@ This operation is ideal when you want to ensure data exists without checking bef
 
 ## 🧠 How It Works
 
+> Each row is checked for existence using the provided `onConflictKeys` (defaults to `["id"]`). If a match is found, the row is updated. Otherwise, it is inserted.
+
 When `.upsert()` is called:
 
 1. The table and payload are validated.
@@ -40,6 +42,19 @@ await supastash
 ```
 
 If `.single()` is chained, the payload **must not** be an array.
+
+```ts
+// With custom conflict keys
+await supastash
+  .from("chats")
+  .upsert<T>(
+    { chat_id: "abc", user_id: "u1", status: "open" },
+    {
+      onConflictKeys: ["chat_id", "user_id"],
+    }
+  )
+  .run();
+```
 
 ---
 

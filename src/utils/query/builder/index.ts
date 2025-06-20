@@ -77,4 +77,5 @@ export const supastash = new SupastashQueryBuilder<
   type: "localFirst" as SyncMode,
   runSelected: false,
   viewRemoteResult: false,
+  onConflictKeys: ["id"] as string[],
 } as SupastashQuery<CrudMethods, boolean, PayloadData>);

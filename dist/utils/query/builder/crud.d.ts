@@ -15,7 +15,7 @@ export default class SupastashCrudBuilder<T extends CrudMethods, U extends boole
     /**
      * Sets the method to insert.
      *
-     * @param data - The data to insert.
+     * @param data - The data to insert. Could be a single object or an array of objects.
      * @returns filter options.
      */
     insert<Z>(data: R): SupastashFilterBuilder<"insert", false, R, Z>;
@@ -42,9 +42,23 @@ export default class SupastashCrudBuilder<T extends CrudMethods, U extends boole
     /**
      * Sets the method to upsert.
      *
-     * @param data - The data to upsert.
+     * @example
+     * ```ts
+     * await supastash
+     *   .from("chats")
+     *   .upsert<T>({ chat_id: "abc", user_id: "u1", status: "open" }, {
+     *     onConflictKeys: ["chat_id", "user_id"]
+     *   })
+     *   .run();
+     * ```
+     * @param data - The data to upsert. Could be a single object or an array of objects.
+     * @param options - The options for the upsert.
+     * @param options.onConflictKeys - The keys to use for the on conflict.
+     *
      * @returns filter options.
      */
-    upsert<Z>(data: R | R[]): SupastashFilterBuilder<"upsert", false, R, Z>;
+    upsert<Z>(data: R | R[], options?: {
+        onConflictKeys?: string[];
+    }): SupastashFilterBuilder<"upsert", false, R, Z>;
 }
 //# sourceMappingURL=crud.d.ts.map

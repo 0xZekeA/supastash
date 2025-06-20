@@ -57,4 +57,5 @@ export const supastash = new SupastashQueryBuilder({
     type: "localFirst",
     runSelected: false,
     viewRemoteResult: false,
+    onConflictKeys: ["id"],
 });

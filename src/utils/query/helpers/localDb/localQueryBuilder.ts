@@ -81,8 +81,15 @@ export function buildUpsert<T extends boolean, R, Z>(
   table: string,
   payload: R | R[] | null,
   syncMode?: SyncMode,
-  isSingle?: T
+  isSingle?: T,
+  onConflictKeys?: string[]
 ) {
   return async () =>
-    await upsertData<T, R, Z>(table, payload, syncMode, isSingle);
+    await upsertData<T, R, Z>(
+      table,
+      payload,
+      syncMode,
+      isSingle,
+      onConflictKeys
+    );
 }

@@ -7,10 +7,11 @@ import { permanentlyDeleteData } from "../localDbQuery/delete";
 /**
  * Queries the supabase database
  * @param state - The state of the query
+ * @param isBatched - Whether the query is batched
  * @returns The result of the query
  */
 export async function querySupabase(state, isBatched = false) {
-    const { table, method, payload, filters, limit, select, isSingle, type } = state;
+    const { table, method, payload, filters, limit, select, isSingle, type, onConflictKeys, viewRemoteResult, } = state;
     const config = getSupastashConfig();
     const now = new Date().toISOString();
     let newPayload;
@@ -35,6 +36,21 @@ export async function querySupabase(state, isBatched = false) {
     if (!config.supabaseClient) {
         throw new Error("[Supastash] Supabase Client is required to perform this operation.");
     }
+    const upsertOrInsertPayload = Array.isArray(newPayload)
+        ? newPayload
+        : [newPayload];
+    if (method === "upsert" &&
+        newPayload &&
+        onConflictKeys &&
+        onConflictKeys.length > 0) {
+        for (const item of upsertOrInsertPayload) {
+            const colArray = Object.keys(item);
+            const includesConflictKeys = onConflictKeys.some((key) => colArray.includes(key));
+            if (!includesConflictKeys) {
+                throw new Error(`onConflictKeys must include at least one key from the payload. Payload: ${JSON.stringify(newPayload)}`);
+            }
+        }
+    }
     const supabase = config.supabaseClient;
     let query = supabase.from(table);
     let filterQuery;
@@ -54,9 +70,14 @@ export async function querySupabase(state, isBatched = false) {
             filterQuery = query.update(newPayload);
             break;
         case "upsert":
+            const conflictKey = Array.isArray(onConflictKeys) && onConflictKeys.length > 0
+                ? onConflictKeys.join(",")
+                : "id";
             if (!newPayload)
                 throw new Error("[Supastash] Upsert payload is missing.");
-            filterQuery = query.upsert(newPayload);
+            filterQuery = query.upsert(newPayload, {
+                onConflict: conflictKey,
+            });
             break;
         case "delete":
             filterQuery = query.update({
@@ -82,7 +103,10 @@ export async function querySupabase(state, isBatched = false) {
             filterQuery = filterQuery.single();
         }
     }
-    else if (!isBatched) {
+    if (!isBatched &&
+        newPayload &&
+        (Array.isArray(newPayload) ? newPayload.length > 0 : true) &&
+        (viewRemoteResult || type === "remoteOnly")) {
         filterQuery = filterQuery.select();
     }
     const result = await filterQuery;
@@ -90,15 +114,37 @@ export async function querySupabase(state, isBatched = false) {
         method !== "select" &&
         type !== "remoteOnly" &&
         type !== "remoteFirst") {
-        if (method === "upsert" || method === "insert") {
-            const newPayload = Array.isArray(payload) ? payload : [payload];
-            const refreshItems = newPayload.map((item) => ({
+        if (method === "insert" && newPayload) {
+            const refreshItems = upsertOrInsertPayload.map((item) => ({
                 id: item.id,
                 synced_at: new Date().toISOString(),
             }));
             await supastash
                 .from(table)
                 .upsert(refreshItems)
+                .syncMode("localOnly")
+                .run();
+        }
+        if (method === "upsert" && newPayload) {
+            const onConflictKeysArray = onConflictKeys && onConflictKeys.length > 0 ? onConflictKeys : ["id"];
+            for (const item of upsertOrInsertPayload) {
+                const colArray = Object.keys(item);
+                const includesConflictKeys = onConflictKeysArray.some((key) => colArray.includes(key));
+                if (!includesConflictKeys) {
+                    throw new Error(`Upsert failed: Conflict keys [${onConflictKeysArray.join(", ")}] must exist in payload. Received: ${JSON.stringify(item)}`);
+                }
+            }
+            const refreshItems = upsertOrInsertPayload.map((item) => {
+                return {
+                    ...item,
+                    synced_at: new Date().toISOString(),
+                };
+            });
+            await supastash
+                .from(table)
+                .upsert(refreshItems, {
+                onConflictKeys: onConflictKeysArray,
+            })
                 .syncMode("localOnly")
                 .run();
         }
