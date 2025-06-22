@@ -58,6 +58,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
                 const insertPayload = {
                     ...newPayload,
                     id: newPayload.id ?? generateUUIDv4(),
+                    created_at: newPayload.created_at ?? timeStamp,
                 };
                 const newColsArray = Object.keys(insertPayload);
                 const insertCols = newColsArray.join(", ");

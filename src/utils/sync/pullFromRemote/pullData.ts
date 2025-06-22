@@ -92,6 +92,7 @@ export async function pullData(
 
   // Update the supastash_sync_status table with the lastest timestamp
   const lastest = data.find((r) => r.updated_at)?.updated_at;
+  console.log("lastest", lastest);
 
   if (lastest) {
     await updateLastPulledInfo(table, lastest);

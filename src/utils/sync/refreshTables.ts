@@ -1,4 +1,5 @@
 import { supastashEventBus } from "../events/eventBus";
+import { refreshScreen } from "../refreshScreenCalls";
 
 const debouncedTableEmitters = new Map<string, () => void>();
 
@@ -10,7 +11,7 @@ const debouncedTableEmitters = new Map<string, () => void>();
 export function refreshTable(table: string) {
   if (!debouncedTableEmitters.has(table)) {
     const fn = debounce(() => {
-      supastashEventBus.emit(`refresh:${table}`);
+      refreshScreen(table);
     }, 100);
     debouncedTableEmitters.set(table, fn);
   }
@@ -44,7 +45,7 @@ export function refreshTableWithPayload(
   payload: any,
   operation: "insert" | "update" | "delete" | "upsert"
 ) {
-  supastashEventBus.emit(`refresh:${table}`);
+  refreshScreen(table);
 }
 
 /**

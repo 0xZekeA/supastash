@@ -1,6 +1,7 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
 import { PayloadData } from "../../types/query.types";
+import log from "../logs";
 import { notifySubscribers } from "./snapShot";
 
 const fetchingPromises = new Map<
@@ -54,6 +55,9 @@ function getNewVersion(table: string): void {
   debounceMap.set(table, timeout);
 }
 
+const timesFetched = new Map<string, number>();
+let lastFetched = new Map<string, number>();
+
 /**
  * Fetches the local data from the database
  * @param table - The table name to fetch from
@@ -75,6 +79,15 @@ export async function fetchLocalData<R>(
   };
 } | null> {
   if (!shouldFetch || fetchingPromises.has(table)) return null;
+  timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
+  if ((timesFetched.get(table) || 0) > 50) {
+    log(
+      `[Supastash] Fetching data for ${table} (times fetched: ${timesFetched.get(
+        table
+      )})`
+    );
+    timesFetched.delete(table);
+  }
   const fetchPromise = (async () => {
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
       throw new Error(`Invalid table name: ${table}`);

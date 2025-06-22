@@ -78,6 +78,10 @@ export function useSupastash(): SupastashHookReturn {
     if (dbReady) {
       startSync();
     }
+
+    return () => {
+      stopSync();
+    };
   }, [dbReady]);
 
   return { dbReady, stopSync, startSync };

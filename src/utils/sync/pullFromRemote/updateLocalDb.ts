@@ -2,9 +2,9 @@ import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
 import { isOnline } from "../../connection";
-import { supastashEventBus } from "../../events/eventBus";
 import { getTableSchema } from "../../getTableSchema";
 import log from "../../logs";
+import { refreshScreen } from "../../refreshScreenCalls";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { pullData } from "./pullData";
 import { pullDeletedData } from "./pullDeletedData";
@@ -42,7 +42,7 @@ export async function updateLocalDb(
       for (const record of deletedData.records) {
         await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [record.id]);
       }
-      supastashEventBus.emit(`refresh:${table}`);
+      refreshScreen(table);
     }
 
     // Update local database with remote changes
@@ -62,7 +62,7 @@ export async function updateLocalDb(
       }
     }
 
-    if (changes) supastashEventBus.emit(`refresh:${table}`);
+    if (changes) refreshScreen(table);
   } catch (error) {
     console.error(`[Supastash] Error updating local db for ${table}`, error);
   } finally {
@@ -145,7 +145,7 @@ export async function upsertData(
     }
     await updateLocalSyncedAt(table, record.id);
     if (doesExist === undefined) {
-      supastashEventBus.emit(`refresh:${table}`);
+      refreshScreen(table);
     }
   } catch (error) {
     console.error(`[Supastash] Error upserting data for ${table}`, error);

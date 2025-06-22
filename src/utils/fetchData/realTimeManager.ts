@@ -174,7 +174,6 @@ class SupastashRealtimeManager {
       { event: "*", schema: "public", table, filter: filterString },
       (payload) => {
         try {
-          console.log("payload", payload, table);
           const subscription = this.subscriptions.get(key);
           if (!subscription) return;
 

@@ -67,6 +67,9 @@ export function useSupastash() {
         if (dbReady) {
             startSync();
         }
+        return () => {
+            stopSync();
+        };
     }, [dbReady]);
     return { dbReady, stopSync, startSync };
 }

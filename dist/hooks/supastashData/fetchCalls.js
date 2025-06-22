@@ -3,9 +3,6 @@ import { syncCalls } from "../../store/syncCalls";
 import { tableFilters } from "../../store/tableFilters";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
-import log from "../../utils/logs";
-const timesFetched = new Map();
-let lastFetched = new Map();
 export function fetchCalls(table, options, initialized) {
     const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, } = options;
     const cancelled = useRef(false);
@@ -42,13 +39,6 @@ export function fetchCalls(table, options, initialized) {
         cancelled.current = true;
     };
     const triggerRefresh = async () => {
-        timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
-        if ((timesFetched.get(table) || 0) >= 5) {
-            const timeSinceLastFetch = Date.now() - (lastFetched.get(table) || 0);
-            lastFetched.set(table, Date.now());
-            log(`🔁 Refreshing data for ${table} (times fetched: ${timesFetched.get(table)} in the last ${timeSinceLastFetch}ms`);
-            timesFetched.set(table, 0);
-        }
         await fetch();
     };
     const initialFetchAndSync = async () => {

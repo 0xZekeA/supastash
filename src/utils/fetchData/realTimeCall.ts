@@ -46,14 +46,6 @@ const useRealtimeData = (
         `supastash:realtime:${table}:${filterString ? filterString : ""}`
       )
       .on("postgres_changes", subDetails as any, (payload) => {
-        console.log(
-          "[Supastash] 🔥 GOT PAYLOAD:",
-          (payload?.new as any)?.id
-            ? (payload?.new as any)?.id
-            : "No id found for this item",
-          `on table ${table}`,
-          `with event type ${payload.eventType}`
-        );
         queueHandler(payload.eventType, payload.new);
       })
       .subscribe();

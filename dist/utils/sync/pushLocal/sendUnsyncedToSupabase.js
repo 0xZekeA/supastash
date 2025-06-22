@@ -1,5 +1,5 @@
 import { isOnline } from "../../connection";
-import { supastashEventBus } from "../../events/eventBus";
+import { refreshScreen } from "../../refreshScreenCalls";
 import { deleteData } from "./deleteChunks";
 import { getAllDeletedData, getAllUnsyncedData } from "./getAllUnsyncedData";
 import { uploadData } from "./uploadChunk";
@@ -24,7 +24,7 @@ export async function pushLocalDataToRemote(table, onPushToRemote, noSync) {
         }
         if (data && data.length > 0) {
             await uploadData(table, data, onPushToRemote);
-            supastashEventBus.emit(`refresh:${table}`);
+            refreshScreen(table);
         }
         const payloadForDeletedData = deletedData?.map((item) => ({
             id: item.id,

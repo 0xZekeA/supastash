@@ -25,9 +25,6 @@ const useRealtimeData = (table, queueHandler, options, initialized, realtime) =>
         const subscription = supabase
             .channel(`supastash:realtime:${table}:${filterString ? filterString : ""}`)
             .on("postgres_changes", subDetails, (payload) => {
-            console.log("[Supastash] 🔥 GOT PAYLOAD:", payload?.new?.id
-                ? payload?.new?.id
-                : "No id found for this item", `on table ${table}`, `with event type ${payload.eventType}`);
             queueHandler(payload.eventType, payload.new);
         })
             .subscribe();

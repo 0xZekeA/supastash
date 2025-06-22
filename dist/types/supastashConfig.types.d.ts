@@ -26,9 +26,15 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
     pull?: number;
     push?: number;
   };
+  syncEngine?: {
+    push?: boolean;
+    pull?: boolean;
+    useFiltersFromStore?: boolean;
+  };
   listeners?: number;
-  onSchemaInit?: () => void;
+  onSchemaInit?: () => Promise<void>;
   debugMode?: boolean;
+  useCustomRPCForUpserts?: boolean;
 };
 
 interface SupastashSQLiteDatabase {

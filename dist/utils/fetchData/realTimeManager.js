@@ -127,7 +127,6 @@ class SupastashRealtimeManager {
         this.subscriptions.set(key, subscription);
         this.connection?.on("postgres_changes", { event: "*", schema: "public", table, filter: filterString }, (payload) => {
             try {
-                console.log("payload", payload, table);
                 const subscription = this.subscriptions.get(key);
                 if (!subscription)
                     return;

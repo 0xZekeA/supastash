@@ -4,10 +4,6 @@ import { tableFilters } from "../../store/tableFilters";
 import { RealtimeOptions } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
-import log from "../../utils/logs";
-
-const timesFetched = new Map<string, number>();
-let lastFetched = new Map<string, number>();
 
 export function fetchCalls<R>(
   table: string,
@@ -63,18 +59,6 @@ export function fetchCalls<R>(
   };
 
   const triggerRefresh = async () => {
-    timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
-
-    if ((timesFetched.get(table) || 0) >= 5) {
-      const timeSinceLastFetch = Date.now() - (lastFetched.get(table) || 0);
-      lastFetched.set(table, Date.now());
-      log(
-        `🔁 Refreshing data for ${table} (times fetched: ${timesFetched.get(
-          table
-        )} in the last ${timeSinceLastFetch}ms`
-      );
-      timesFetched.set(table, 0);
-    }
     await fetch();
   };
 

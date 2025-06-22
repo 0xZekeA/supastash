@@ -2,15 +2,19 @@ import { getSupastashConfig } from "../../../core/config";
 import log from "../../logs";
 import { supastash } from "../../query/builder";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import { updateLocalSyncedAt } from "../../syncUpdate";
 import { parseStringifiedFields } from "./parseFields";
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
 const CHUNK_SIZE = 500;
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
-async function updateSyncStatus(table, ids) {
-    for (const id of ids) {
-        await updateLocalSyncedAt(table, id);
-    }
+async function updateSyncStatus(table, rows) {
+    const refreshItems = rows?.map((row) => ({
+        id: row.id,
+        synced_at: new Date().toISOString(),
+    }));
+    await supastash.from(table).upsert(refreshItems).syncMode("localOnly").run();
+}
+function errorHandler(error, table, toUpsert, attempts) {
+    log(`[Supastash] Upsert attempt ${attempts} failed for table ${table}`, toUpsert.map((row) => row.id), error);
 }
 /**
  * Uploads a chunk of data to the remote database
@@ -38,16 +42,8 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     // Map of remote ids and their updated_at timestamps
     const remoteIds = new Map(remoteData?.map((row) => [row.id, row.updated_at]));
     // Loop through the initial chunk and check if the id is in the remote data
-    const newRemoteIds = new Map();
-    ids?.forEach((id) => {
-        if (remoteIds.has(id)) {
-            newRemoteIds.set(id, remoteIds.get(id));
-        }
-        else {
-            newRemoteIds.set(id, RANDOM_OLD_DATE);
-        }
-    });
-    const toUpsert = [];
+    const newRemoteIds = new Map(ids.map((id) => [id, remoteIds.get(id) || RANDOM_OLD_DATE]));
+    let toUpsert = [];
     for (const row of chunk) {
         if (!row.id) {
             log(`Skipping ${row.id} on table ${table} because no id found`);
@@ -60,8 +56,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
         // Check if the remote updated_at is more recent than the local updated_at
         const remoteUpdatedAt = newRemoteIds.get(row.id);
         const localUpdatedAt = new Date(row.updated_at || DEFAULT_DATE);
-        if (remoteUpdatedAt &&
-            new Date(remoteUpdatedAt || DEFAULT_DATE) > localUpdatedAt) {
+        if (remoteUpdatedAt && new Date(remoteUpdatedAt) > localUpdatedAt) {
             log(`Skipping ${row.id} on table ${table} because remote updated_at is more recent`);
         }
         else {
@@ -71,35 +66,66 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     }
     if (toUpsert.length > 0) {
         let attempts = 0;
-        while (attempts < 5) {
+        while (attempts < 5 && toUpsert.length > 0) {
+            let success = false;
             if (onPushToRemote) {
                 const result = await onPushToRemote(toUpsert);
-                if (result) {
-                    await updateSyncStatus(table, ids);
+                if (typeof result !== "boolean") {
+                    console.error(`[Supastash] Invalid return type from "onPushToRemote" callback on table ${table}.\n
+             Expected boolean but received ${typeof result}.\n
+             Skipping this chunk.
+             Check the "onPushToRemote" callback in the "useSupastashData" hook for table ${table}.
+             `);
                     break;
                 }
-                log(`Upsert attempt ${attempts + 1} failed for table ${table}`, toUpsert?.map((row) => row.id));
+                if (result) {
+                    success = true;
+                }
+                else {
+                    attempts++;
+                    errorHandler(error, table, toUpsert, attempts);
+                }
             }
             else {
-                const { error } = await supabase.from(table).upsert(toUpsert);
-                if (!error) {
-                    await updateSyncStatus(table, ids);
-                    break;
+                if (config.useCustomRPCForUpserts) {
+                    const { error, data, } = await supabase.rpc("supastash_bulk_upsert", {
+                        p_table_name: table,
+                        rows: toUpsert,
+                    });
+                    const { success_ids, failed } = data || {};
+                    if (!error && success_ids?.length === toUpsert.length) {
+                        success = true;
+                    }
+                    else {
+                        if (failed?.length && success_ids?.length) {
+                            toUpsert = toUpsert.filter((row) => !success_ids.includes(row.id));
+                        }
+                        attempts++;
+                        errorHandler({ ...error, failed }, table, toUpsert, attempts);
+                    }
                 }
-                log(`Upsert attempt ${attempts + 1} failed for table ${table}`, toUpsert?.map((row) => row.id), error);
+                else {
+                    const { error } = await supabase.from(table).upsert(toUpsert);
+                    if (!error) {
+                        success = true;
+                    }
+                    else {
+                        attempts++;
+                        errorHandler(error, table, toUpsert, attempts);
+                    }
+                }
             }
-            // Refresh screen
-            const refreshItems = toUpsert?.map((row) => ({
-                id: row.id,
-                synced_at: new Date().toISOString(),
-            }));
-            await supastash
-                .from(table)
-                .upsert(refreshItems)
-                .syncMode("localOnly")
-                .run();
-            await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
+            if (success) {
+                // Refresh screen
+                await updateSyncStatus(table, toUpsert);
+                break;
+            }
             attempts++;
+            if (attempts === 5) {
+                log(`[Supastash] Final failure after ${attempts} attempts for table ${table}`, toUpsert.map((row) => row.id));
+                break;
+            }
+            await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
         }
     }
 }

@@ -1,4 +1,4 @@
-import { supastashEventBus } from "../../events/eventBus";
+import { refreshScreen } from "../../refreshScreenCalls";
 import { assignInsertIds, getCommonError, runSyncStrategy, validatePayloadForSingleInsert, } from "../helpers/mainQueryHelpers";
 import { validateQuery } from "../helpers/queryValidator";
 /**
@@ -57,7 +57,7 @@ export async function queryDb(state) {
     }
     finally {
         if (state.method !== "select" && localData) {
-            supastashEventBus.emit(`refresh:${state.table}`);
+            refreshScreen(state.table);
         }
     }
 }

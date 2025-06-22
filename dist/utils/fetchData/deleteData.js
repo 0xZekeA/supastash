@@ -1,6 +1,6 @@
 import { permanentlyDeleteData } from "../../utils/query/localDbQuery/delete";
 import { checkIfTableExist } from "../../utils/tableValidator";
-import { supastashEventBus } from "../events/eventBus";
+import { refreshScreen } from "../refreshScreenCalls";
 import { createTable } from "./createTable";
 export async function deleteData(payload, table, shouldFetch = true) {
     if (!shouldFetch)
@@ -16,7 +16,7 @@ export async function deleteData(payload, table, shouldFetch = true) {
         await permanentlyDeleteData(table, [
             { column: "id", operator: "=", value: payload.id },
         ]);
-        supastashEventBus.emit(`refresh:${table}`);
+        refreshScreen(table);
     }
     catch (error) {
         console.error("[Supastash] Error receiving data:", error);

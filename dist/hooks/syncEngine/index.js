@@ -49,6 +49,7 @@ export function useSyncEngine() {
         if (isSyncingRef.current)
             return;
         isSyncingRef.current = true;
+        syncAll(true);
         const config = getSupastashConfig();
         const syncPollingInterval = config.pollingInterval?.push ?? 30000;
         intervalRef.current = setInterval(() => {

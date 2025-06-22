@@ -5,7 +5,7 @@ import {
   SupastashQuery,
   SupastashQueryResult,
 } from "../../../types/query.types";
-import { supastashEventBus } from "../../events/eventBus";
+import { refreshScreen } from "../../refreshScreenCalls";
 import {
   assignInsertIds,
   getCommonError,
@@ -99,7 +99,7 @@ export async function queryDb<
     }) as SupastashQueryResult<T, U, V, Z>;
   } finally {
     if (state.method !== "select" && localData) {
-      supastashEventBus.emit(`refresh:${state.table}`);
+      refreshScreen(state.table);
     }
   }
 }
