@@ -151,6 +151,15 @@ export default class SupastashFilterBuilder {
         });
     }
     /**
+     * Sets the preserve timestamp of the query.
+     *
+     * @param preserve - Whether to preserve the timestamp.
+     * @returns more filter options.
+     */
+    preserveTimestamp(preserve) {
+        return this.withQueryPatch({ preserveTimestamp: preserve });
+    }
+    /**
      * Sets the sync mode of the query.
      *
      * @param mode - The sync mode to use.

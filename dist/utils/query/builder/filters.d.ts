@@ -110,6 +110,13 @@ export default class SupastashFilterBuilder<T extends CrudMethods, U extends boo
      */
     single(): SupastashFilterBuilder<T, true, R, Z>;
     /**
+     * Sets the preserve timestamp of the query.
+     *
+     * @param preserve - Whether to preserve the timestamp.
+     * @returns more filter options.
+     */
+    preserveTimestamp(preserve: boolean): SupastashFilterBuilder<T, U, R, Z>;
+    /**
      * Sets the sync mode of the query.
      *
      * @param mode - The sync mode to use.

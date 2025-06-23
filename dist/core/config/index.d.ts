@@ -41,7 +41,6 @@ import { SupastashConfig, SupastashSQLiteClientTypes } from "../../types/supasta
  * @param config.excludeTables - Tables to exclude from sync (default: `{ pull: [], push: [] }`)
  * @param config.pollingInterval - Polling interval for sync (default: `{ pull: 30000, push: 30000 }`)
  * @param config.syncEngine - Control pull/push sync behavior (`push: true`, `pull: false` by default, `useFiltersFromStore: true` by default)
- * @param config.useCustomRPCForUpserts - Use a custom RPC for upserts (default: `false`). Add this to your Supabase project settings first. Docs: https://0xzekea.github.io/supastash/docs/rls-upsert-resolution
  */
 export declare function configureSupastash<T extends SupastashSQLiteClientTypes>(config: SupastashConfig<T> & {
     sqliteClientType: T;

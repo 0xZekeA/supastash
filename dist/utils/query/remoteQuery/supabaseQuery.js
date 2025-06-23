@@ -1,6 +1,8 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
-import { supastash } from "../builder";
+import { refreshScreen } from "../../refreshScreenCalls";
+import { getSafeValue } from "../../serializer";
+import { updateLocalSyncedAt } from "../../syncUpdate";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 import { operatorMap } from "../helpers/remoteDb/queryUtils";
 import { permanentlyDeleteData } from "../localDbQuery/delete";
@@ -11,27 +13,30 @@ import { permanentlyDeleteData } from "../localDbQuery/delete";
  * @returns The result of the query
  */
 export async function querySupabase(state, isBatched = false) {
-    const { table, method, payload, filters, limit, select, isSingle, type, onConflictKeys, viewRemoteResult, } = state;
+    const { table, method, payload, filters, limit, select, isSingle, type, onConflictKeys, viewRemoteResult, preserveTimestamp, } = state;
     const config = getSupastashConfig();
-    const now = new Date().toISOString();
     let newPayload;
+    const timeStamp = new Date().toISOString();
     if (Array.isArray(payload) && payload.length > 0) {
         newPayload = payload.map((item) => {
             const { synced_at, ...rest } = item;
-            return {
-                ...rest,
-                created_at: item.created_at ?? now,
-                updated_at: item.updated_at ?? now,
-            };
+            const newItem = { ...rest };
+            if (!preserveTimestamp) {
+                const userUpdatedAt = item.updated_at;
+                newItem.updated_at =
+                    userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+            }
+            return newItem;
         });
     }
     else if (payload) {
         const { synced_at, ...rest } = payload;
-        newPayload = {
-            ...rest,
-            created_at: rest.created_at ?? now,
-            updated_at: rest.updated_at ?? now,
-        };
+        newPayload = { ...rest };
+        if (!preserveTimestamp) {
+            const userUpdatedAt = payload.updated_at;
+            newPayload.updated_at =
+                userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+        }
     }
     if (!config.supabaseClient) {
         throw new Error("[Supastash] Supabase Client is required to perform this operation.");
@@ -54,7 +59,6 @@ export async function querySupabase(state, isBatched = false) {
     const supabase = config.supabaseClient;
     let query = supabase.from(table);
     let filterQuery;
-    const timeStamp = new Date().toISOString();
     switch (method) {
         case "select":
             filterQuery = query.select(select || "*");
@@ -110,61 +114,39 @@ export async function querySupabase(state, isBatched = false) {
         filterQuery = filterQuery.select();
     }
     const result = await filterQuery;
+    const db = await getSupastashDb();
     if (!result.error &&
         method !== "select" &&
         type !== "remoteOnly" &&
         type !== "remoteFirst") {
         if (method === "insert" && newPayload) {
-            const refreshItems = upsertOrInsertPayload.map((item) => ({
-                id: item.id,
-                synced_at: new Date().toISOString(),
-            }));
-            await supastash
-                .from(table)
-                .upsert(refreshItems)
-                .syncMode("localOnly")
-                .run();
+            for (const item of upsertOrInsertPayload) {
+                await updateLocalSyncedAt(table, item.id);
+            }
         }
         if (method === "upsert" && newPayload) {
             const onConflictKeysArray = onConflictKeys && onConflictKeys.length > 0 ? onConflictKeys : ["id"];
             for (const item of upsertOrInsertPayload) {
                 const colArray = Object.keys(item);
-                const includesConflictKeys = onConflictKeysArray.some((key) => colArray.includes(key));
+                const includesConflictKeys = onConflictKeysArray.every((key) => colArray.includes(key));
                 if (!includesConflictKeys) {
                     throw new Error(`Upsert failed: Conflict keys [${onConflictKeysArray.join(", ")}] must exist in payload. Received: ${JSON.stringify(item)}`);
                 }
+                const whereClause = onConflictKeysArray
+                    .map((key) => `${key} = ?`)
+                    .join(" AND ");
+                const conflictValues = onConflictKeysArray.map((key) => getSafeValue(item[key]));
+                await db.runAsync(`UPDATE ${table} SET synced_at = ? WHERE ${whereClause}`, [timeStamp, ...conflictValues]);
             }
-            const refreshItems = upsertOrInsertPayload.map((item) => {
-                return {
-                    ...item,
-                    synced_at: new Date().toISOString(),
-                };
-            });
-            await supastash
-                .from(table)
-                .upsert(refreshItems, {
-                onConflictKeys: onConflictKeysArray,
-            })
-                .syncMode("localOnly")
-                .run();
         }
         if (filters?.length) {
-            const db = await getSupastashDb();
-            const { clause, values: filterValues } = buildWhereClause(filters ?? []);
-            const refreshItems = await db.getAllAsync(`SELECT id FROM ${table} ${clause}`, filterValues);
-            const refreshItemsWithSyncedAt = refreshItems.map((item) => ({
-                id: item.id,
-                synced_at: new Date().toISOString(),
-            }));
-            await supastash
-                .from(table)
-                .upsert(refreshItemsWithSyncedAt)
-                .syncMode("localOnly")
-                .run();
+            const { clause, values: filterValues } = buildWhereClause(filters);
+            await db.runAsync(`UPDATE ${table} SET synced_at = ? WHERE ${clause}`, filterValues);
             if (method === "delete") {
                 await permanentlyDeleteData(table, filters);
             }
         }
+        refreshScreen(table);
     }
     return result;
 }

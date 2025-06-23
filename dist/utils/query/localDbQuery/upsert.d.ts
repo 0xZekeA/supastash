@@ -5,5 +5,5 @@ import { PayloadListResult, PayloadResult, SyncMode } from "../../../types/query
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export declare function upsertData<T extends boolean, R, Z>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T, onConflictKeys?: string[]): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>>;
+export declare function upsertData<T extends boolean, R, Z>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T, onConflictKeys?: string[], preserveTimestamp?: boolean): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>>;
 //# sourceMappingURL=upsert.d.ts.map

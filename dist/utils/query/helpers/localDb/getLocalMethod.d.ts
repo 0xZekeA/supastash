@@ -11,5 +11,5 @@ import { CrudMethods, FilterCalls, MethodReturnTypeMap, SyncMode } from "../../.
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns query
  */
-export default function getLocalMethod<T extends CrudMethods, U extends boolean, R, Z>(table: string, method: T, select: string | null, payload: R | R[] | null, filters: FilterCalls[] | null, limit: number | null, isSingle: U, onConflictKeys?: string[], syncMode?: SyncMode): () => Promise<MethodReturnTypeMap<U, Z>[T]>;
+export default function getLocalMethod<T extends CrudMethods, U extends boolean, R, Z>(table: string, method: T, select: string | null, payload: R | R[] | null, filters: FilterCalls[] | null, limit: number | null, isSingle: U, onConflictKeys?: string[], syncMode?: SyncMode, preserveTimestamp?: boolean): () => Promise<MethodReturnTypeMap<U, Z>[T]>;
 //# sourceMappingURL=getLocalMethod.d.ts.map

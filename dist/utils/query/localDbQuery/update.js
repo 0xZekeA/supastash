@@ -1,8 +1,10 @@
+import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseFields";
 import { getSafeValue } from "../../serializer";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
+const warned = new Set();
 /**
  * Updates data locally, sets synced_at to null pending update to remote server
  *
@@ -11,7 +13,7 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
-export async function updateData(table, payload, filters, syncMode, isSingle) {
+export async function updateData(table, payload, filters, syncMode, isSingle, preserveTimestamp) {
     if (!payload)
         throw new Error(`Payload data was not provided for an update call on ${table}`);
     if (!table)
@@ -20,13 +22,21 @@ export async function updateData(table, payload, filters, syncMode, isSingle) {
     const timeStamp = new Date().toISOString();
     const newPayload = {
         ...payload,
-        updated_at: payload.updated_at ?? timeStamp,
         synced_at: Object.prototype.hasOwnProperty.call(payload, "synced_at")
             ? payload.synced_at
             : syncMode && (syncMode === "localOnly" || syncMode === "remoteFirst")
                 ? timeStamp
                 : null,
     };
+    if (!preserveTimestamp || payload.updated_at === undefined) {
+        if (!warned.has(table) && !getSupastashConfig().debugMode && __DEV__) {
+            warned.add(table);
+            console.warn(`[Supastash] updated_at not provided for update call on ${table} – defaulting to ${timeStamp}`);
+        }
+        const userUpdatedAt = payload.updated_at;
+        newPayload.updated_at =
+            userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+    }
     const colArray = Object.keys(newPayload);
     const cols = colArray
         .filter((col) => col !== "id")

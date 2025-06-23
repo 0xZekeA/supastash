@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
   FilterCalls,
@@ -10,6 +11,8 @@ import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseField
 import { getSafeValue } from "../../serializer";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
+
+const warned = new Set<string>();
 
 /**
  * Updates data locally, sets synced_at to null pending update to remote server
@@ -24,7 +27,8 @@ export async function updateData<T extends boolean, R, Z>(
   payload: R | null,
   filters: FilterCalls[] | null,
   syncMode?: SyncMode,
-  isSingle?: T
+  isSingle?: T,
+  preserveTimestamp?: boolean
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!payload)
     throw new Error(
@@ -39,13 +43,24 @@ export async function updateData<T extends boolean, R, Z>(
 
   const newPayload: PayloadData = {
     ...payload,
-    updated_at: (payload as any).updated_at ?? timeStamp,
     synced_at: Object.prototype.hasOwnProperty.call(payload, "synced_at")
       ? (payload as any).synced_at
       : syncMode && (syncMode === "localOnly" || syncMode === "remoteFirst")
       ? timeStamp
       : null,
   };
+
+  if (!preserveTimestamp || (payload as any).updated_at === undefined) {
+    if (!warned.has(table) && !getSupastashConfig().debugMode && __DEV__) {
+      warned.add(table);
+      console.warn(
+        `[Supastash] updated_at not provided for update call on ${table} – defaulting to ${timeStamp}`
+      );
+    }
+    const userUpdatedAt = (payload as any).updated_at;
+    newPayload.updated_at =
+      userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+  }
 
   const colArray = Object.keys(newPayload);
   const cols = colArray

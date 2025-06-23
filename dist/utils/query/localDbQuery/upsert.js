@@ -1,15 +1,17 @@
+import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { generateUUIDv4 } from "../../../utils/genUUID";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
+const warned = new Set();
 /**
  * Performs upsert-like logic on local DB:
  * - If a row with the same ID exists, it is updated.
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export async function upsertData(table, payload, syncMode, isSingle, onConflictKeys = ["id"]) {
+export async function upsertData(table, payload, syncMode, isSingle, onConflictKeys = ["id"], preserveTimestamp) {
     if (!payload || !table)
         throw new Error("Table and payload are required for upsert.");
     await assertTableExists(table);
@@ -21,7 +23,6 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
         for (const item of items) {
             const newPayload = {
                 ...item,
-                updated_at: item.updated_at ?? timeStamp,
                 synced_at: Object.prototype.hasOwnProperty.call(item, "synced_at")
                     ? item.synced_at
                     : syncMode && (syncMode === "localOnly" || syncMode === "remoteFirst")
@@ -29,7 +30,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
                         : null,
             };
             const colArray = Object.keys(newPayload);
-            const includesConflictKeys = onConflictKeys.some((key) => colArray.includes(key));
+            const includesConflictKeys = onConflictKeys.every((key) => colArray.includes(key));
             if (!includesConflictKeys) {
                 throw new Error(`onConflictKeys must include at least one key from the payload. Payload: ${JSON.stringify(newPayload)}`);
             }
@@ -41,6 +42,17 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
             if (existingData.length > 0) {
                 if (existingData.length > 1) {
                     throw new Error(`Multiple rows matched onConflictKeys in '${table}' — expected unique constraint. Payload: ${JSON.stringify(newPayload)}`);
+                }
+                if (!preserveTimestamp || item.updated_at === undefined) {
+                    if (!warned.has(table) &&
+                        !getSupastashConfig().debugMode &&
+                        __DEV__) {
+                        warned.add(table);
+                        console.warn(`[Supastash] updated_at not provided for upsert call on ${table} – defaulting to ${timeStamp}`);
+                    }
+                    const userUpdatedAt = item.updated_at;
+                    newPayload.updated_at =
+                        userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
                 }
                 const updateColsArray = Object.keys(newPayload);
                 const updateCols = updateColsArray
@@ -59,6 +71,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
                     ...newPayload,
                     id: newPayload.id ?? generateUUIDv4(),
                     created_at: newPayload.created_at ?? timeStamp,
+                    updated_at: newPayload.updated_at ?? timeStamp,
                 };
                 const newColsArray = Object.keys(insertPayload);
                 const insertCols = newColsArray.join(", ");
