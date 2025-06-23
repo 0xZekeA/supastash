@@ -39,7 +39,8 @@ export default function getLocalMethod<
   limit: number | null,
   isSingle: U,
   onConflictKeys?: string[],
-  syncMode?: SyncMode
+  syncMode?: SyncMode,
+  preserveTimestamp?: boolean
 ): () => Promise<MethodReturnTypeMap<U, Z>[T]> {
   const handlers: HandlerMap<U, Z> = {
     select: buildSelect<U, R, Z>(
@@ -55,7 +56,8 @@ export default function getLocalMethod<
       payload as R | null,
       filters,
       syncMode,
-      isSingle
+      isSingle,
+      preserveTimestamp
     ) as any,
     delete: buildDelete<Z>(table, filters, syncMode),
     upsert: buildUpsert<U, R, Z>(
@@ -63,7 +65,8 @@ export default function getLocalMethod<
       payload,
       syncMode,
       isSingle,
-      onConflictKeys
+      onConflictKeys,
+      preserveTimestamp
     ),
     none: async () => null,
   };

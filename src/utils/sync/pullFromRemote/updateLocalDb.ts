@@ -144,9 +144,6 @@ export async function upsertData(
       );
     }
     await updateLocalSyncedAt(table, record.id);
-    if (doesExist === undefined) {
-      refreshScreen(table);
-    }
   } catch (error) {
     console.error(`[Supastash] Error upserting data for ${table}`, error);
   }

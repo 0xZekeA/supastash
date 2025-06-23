@@ -58,10 +58,18 @@ export function buildUpdate<T extends boolean, R, Z>(
   payload: R | null,
   filters: FilterCalls[] | null,
   syncMode?: SyncMode,
-  isSingle?: T
+  isSingle?: T,
+  preserveTimestamp?: boolean
 ) {
   return async () =>
-    await updateData<T, R, Z>(table, payload, filters, syncMode, isSingle);
+    await updateData<T, R, Z>(
+      table,
+      payload,
+      filters,
+      syncMode,
+      isSingle,
+      preserveTimestamp
+    );
 }
 
 /**
@@ -82,7 +90,8 @@ export function buildUpsert<T extends boolean, R, Z>(
   payload: R | R[] | null,
   syncMode?: SyncMode,
   isSingle?: T,
-  onConflictKeys?: string[]
+  onConflictKeys?: string[],
+  preserveTimestamp?: boolean
 ) {
   return async () =>
     await upsertData<T, R, Z>(
@@ -90,6 +99,7 @@ export function buildUpsert<T extends boolean, R, Z>(
       payload,
       syncMode,
       isSingle,
-      onConflictKeys
+      onConflictKeys,
+      preserveTimestamp
     );
 }

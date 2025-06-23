@@ -32,7 +32,11 @@ export type FilterCalls = {
   value: any;
 };
 
-export interface SupastashQuery<T extends CrudMethods, U extends boolean, R> {
+export interface SupastashQuery<
+  T extends CrudMethods,
+  U extends boolean,
+  R = PayloadData
+> {
   id: string;
   table: string;
   method: T;
@@ -45,13 +49,14 @@ export interface SupastashQuery<T extends CrudMethods, U extends boolean, R> {
   runSelected: boolean;
   viewRemoteResult: boolean;
   onConflictKeys?: string[];
+  preserveTimestamp: boolean;
 }
 
 export interface CrudReturnValue {
   error;
 }
 
-export type SupastashResult<R> = {
+export type SupastashResult<R = PayloadData> = {
   data: R | null;
   error: {
     message: string;
@@ -60,9 +65,9 @@ export type SupastashResult<R> = {
   } | null;
 };
 
-export type PayloadResult<R> = SupastashResult<R>;
-export type PayloadListResult<R> = SupastashResult<R[]>;
-export type SupatashDeleteResult<R> = {
+export type PayloadResult<R = PayloadData> = SupastashResult<R>;
+export type PayloadListResult<R = PayloadData> = SupastashResult<R[]>;
+export type SupatashDeleteResult<R = PayloadData> = {
   data?: R[] | null;
   error: {
     message: string;
@@ -71,7 +76,7 @@ export type SupatashDeleteResult<R> = {
   } | null;
 };
 
-export type MethodReturnTypeMap<U extends boolean, R> = {
+export type MethodReturnTypeMap<U extends boolean, R = PayloadData> = {
   select: U extends true ? SupastashResult<R> : SupastashResult<R[]>;
   insert: U extends true ? SupastashResult<R> : SupastashResult<R[]>;
   update: U extends true ? SupastashResult<R> : SupastashResult<R[]>;
@@ -80,7 +85,7 @@ export type MethodReturnTypeMap<U extends boolean, R> = {
   none: null;
 };
 
-export type HandlerMap<U extends boolean, R> = {
+export type HandlerMap<U extends boolean, R = PayloadData> = {
   [K in CrudMethods]: () => Promise<MethodReturnTypeMap<U, R>[K]>;
 };
 
@@ -94,7 +99,7 @@ export type SupastashQueryResult<
   T extends CrudMethods,
   U extends boolean,
   V extends boolean,
-  R
+  R = PayloadData
 > = V extends true
   ? Promise<{
       remote: SupabaseQueryReturn<U, R> | null;

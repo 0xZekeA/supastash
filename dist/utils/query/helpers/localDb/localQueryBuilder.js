@@ -36,8 +36,8 @@ export function buildInsert(table, payload, syncMode, isSingle) {
  *
  * @returns query
  */
-export function buildUpdate(table, payload, filters, syncMode, isSingle) {
-    return async () => await updateData(table, payload, filters, syncMode, isSingle);
+export function buildUpdate(table, payload, filters, syncMode, isSingle, preserveTimestamp) {
+    return async () => await updateData(table, payload, filters, syncMode, isSingle, preserveTimestamp);
 }
 /**
  * Builds a delete query
@@ -47,6 +47,6 @@ export function buildUpdate(table, payload, filters, syncMode, isSingle) {
 export function buildDelete(table, filters, syncMode) {
     return async () => await deleteData(table, filters, syncMode);
 }
-export function buildUpsert(table, payload, syncMode, isSingle, onConflictKeys) {
-    return async () => await upsertData(table, payload, syncMode, isSingle, onConflictKeys);
+export function buildUpsert(table, payload, syncMode, isSingle, onConflictKeys, preserveTimestamp) {
+    return async () => await upsertData(table, payload, syncMode, isSingle, onConflictKeys, preserveTimestamp);
 }

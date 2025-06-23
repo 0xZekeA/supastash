@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
   PayloadData,
@@ -10,6 +11,8 @@ import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 
+const warned = new Set<string>();
+
 /**
  * Performs upsert-like logic on local DB:
  * - If a row with the same ID exists, it is updated.
@@ -21,7 +24,8 @@ export async function upsertData<T extends boolean, R, Z>(
   payload: R | R[] | null,
   syncMode?: SyncMode,
   isSingle?: T,
-  onConflictKeys: string[] = ["id"]
+  onConflictKeys: string[] = ["id"],
+  preserveTimestamp?: boolean
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
   if (!payload || !table)
     throw new Error("Table and payload are required for upsert.");
@@ -38,15 +42,15 @@ export async function upsertData<T extends boolean, R, Z>(
     for (const item of items) {
       const newPayload: PayloadData = {
         ...item,
-        updated_at: (item as any).updated_at ?? timeStamp,
         synced_at: Object.prototype.hasOwnProperty.call(item, "synced_at")
           ? (item as any).synced_at
           : syncMode && (syncMode === "localOnly" || syncMode === "remoteFirst")
           ? timeStamp
           : null,
       };
+
       const colArray = Object.keys(newPayload);
-      const includesConflictKeys = onConflictKeys.some((key) =>
+      const includesConflictKeys = onConflictKeys.every((key) =>
         colArray.includes(key)
       );
 
@@ -78,6 +82,22 @@ export async function upsertData<T extends boolean, R, Z>(
           );
         }
 
+        if (!preserveTimestamp || (item as any).updated_at === undefined) {
+          if (
+            !warned.has(table) &&
+            !getSupastashConfig().debugMode &&
+            __DEV__
+          ) {
+            warned.add(table);
+            console.warn(
+              `[Supastash] updated_at not provided for upsert call on ${table} – defaulting to ${timeStamp}`
+            );
+          }
+          const userUpdatedAt = (item as any).updated_at;
+          newPayload.updated_at =
+            userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+        }
+
         const updateColsArray = Object.keys(newPayload);
 
         const updateCols = updateColsArray
@@ -97,6 +117,7 @@ export async function upsertData<T extends boolean, R, Z>(
           ...newPayload,
           id: newPayload.id ?? generateUUIDv4(),
           created_at: newPayload.created_at ?? timeStamp,
+          updated_at: newPayload.updated_at ?? timeStamp,
         };
         const newColsArray = Object.keys(insertPayload);
         const insertCols = newColsArray.join(", ");

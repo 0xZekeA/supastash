@@ -58,4 +58,5 @@ export const supastash = new SupastashQueryBuilder({
     runSelected: false,
     viewRemoteResult: false,
     onConflictKeys: ["id"],
+    preserveTimestamp: false,
 });

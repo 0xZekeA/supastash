@@ -71,9 +71,29 @@ You can set sync behavior using `.syncMode("...")`.
 
 ---
 
-## 🕒 Timestamp Handling
+---
 
-- `updated_at` is always set to current timestamp if not provided
+## ⏱️ Timestamp Handling
+
+Supastash helps you keep data in sync by managing timestamps consistently:
+
+- When using [`.update()`](./update-query.md) or `.upsert()`, **if your payload does not include an `updated_at` field**, Supastash will automatically assign `updated_at = new Date().toISOString()` before saving locally and syncing remotely.
+
+- This ensures reliable sync conflict resolution and avoids stale data.
+
+> Want to preserve a custom `updated_at` value (e.g., from an imported backup or pre-synced record)?
+> Simply include it in your payload:
+
+```ts
+await supastash
+  .from("tasks")
+  .upsert({ id: "xyz", title: "Fix bug", updated_at: oldDate })
+  .run();
+```
+
+If `updated_at` is explicitly set to `null` or `undefined`, it will be **replaced with the current timestamp** unless `preserveTimestamp` is configured.
+
+> ⚠️ For full control, use `.preserveTimestamp(true)`.
 
 ---
 

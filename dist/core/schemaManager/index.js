@@ -26,10 +26,10 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
         // Include the columns that must be in the schema
         const safeSchema = {
             ...schema,
-            created_at: "TEXT NOT NULL",
-            updated_at: "TEXT NOT NULL",
+            created_at: schema.created_at ?? "TEXT NOT NULL",
+            updated_at: schema.updated_at ?? "TEXT NOT NULL",
             synced_at: "TEXT DEFAULT NULL",
-            deleted_at: "TEXT DEFAULT NULL",
+            deleted_at: schema.deleted_at ?? "TEXT DEFAULT NULL",
         };
         const schemaString = Object.entries(safeSchema)
             .map(([key, value]) => `${key} ${value}`)
@@ -42,7 +42,7 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             await db.execAsync(dropSql);
             await db.execAsync(clearSyncStatusSql);
             await db.execAsync(clearDeleteStatusSql);
-            await clearSchemaCache(tableName);
+            clearSchemaCache(tableName);
             log(`[Supastash] Dropped table ${tableName}`);
         }
         await db.execAsync(sql);

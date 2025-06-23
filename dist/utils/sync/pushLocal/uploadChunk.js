@@ -1,20 +1,26 @@
 import { getSupastashConfig } from "../../../core/config";
 import log from "../../logs";
-import { supastash } from "../../query/builder";
 import { supabaseClientErr } from "../../supabaseClientErr";
+import { updateLocalSyncedAt } from "../../syncUpdate";
 import { parseStringifiedFields } from "./parseFields";
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
 const CHUNK_SIZE = 500;
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
 async function updateSyncStatus(table, rows) {
-    const refreshItems = rows?.map((row) => ({
-        id: row.id,
-        synced_at: new Date().toISOString(),
-    }));
-    await supastash.from(table).upsert(refreshItems).syncMode("localOnly").run();
+    for (const row of rows) {
+        await updateLocalSyncedAt(table, row.id);
+    }
 }
 function errorHandler(error, table, toUpsert, attempts) {
-    log(`[Supastash] Upsert attempt ${attempts} failed for table ${table}`, toUpsert.map((row) => row.id), error);
+    if (attempts === 5) {
+        log(`[Supastash] Upsert attempt ${attempts} failed for table ${table} \n
+     Error: ${error.message} \n
+     To Upsert: ${toUpsert.map((row) => row.id).join(", ")} \n
+     You can write a custom 'onPushToRemote' callback to handle this error.
+     Check the "onPushToRemote" callback in the "useSupastashData" hook for table ${table}.
+     Also, callback should return a boolean, if successfully pushed to remote.
+     `);
+    }
 }
 /**
  * Uploads a chunk of data to the remote database
@@ -87,32 +93,13 @@ async function uploadChunk(table, chunk, onPushToRemote) {
                 }
             }
             else {
-                if (config.useCustomRPCForUpserts) {
-                    const { error, data, } = await supabase.rpc("supastash_bulk_upsert", {
-                        p_table_name: table,
-                        rows: toUpsert,
-                    });
-                    const { success_ids, failed } = data || {};
-                    if (!error && success_ids?.length === toUpsert.length) {
-                        success = true;
-                    }
-                    else {
-                        if (failed?.length && success_ids?.length) {
-                            toUpsert = toUpsert.filter((row) => !success_ids.includes(row.id));
-                        }
-                        attempts++;
-                        errorHandler({ ...error, failed }, table, toUpsert, attempts);
-                    }
+                const { error } = await supabase.from(table).upsert(toUpsert);
+                if (!error) {
+                    success = true;
                 }
                 else {
-                    const { error } = await supabase.from(table).upsert(toUpsert);
-                    if (!error) {
-                        success = true;
-                    }
-                    else {
-                        attempts++;
-                        errorHandler(error, table, toUpsert, attempts);
-                    }
+                    attempts++;
+                    errorHandler(error, table, toUpsert, attempts);
                 }
             }
             if (success) {

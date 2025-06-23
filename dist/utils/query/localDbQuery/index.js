@@ -5,11 +5,11 @@ import getLocalMethod from "../helpers/localDb/getLocalMethod";
  * @returns The result of the query
  */
 export async function queryLocalDb(state) {
-    const { table, method, payload, filters, limit, select, isSingle, onConflictKeys, } = state;
+    const { table, method, payload, filters, limit, select, isSingle, onConflictKeys, preserveTimestamp, type, } = state;
     if (!method) {
         throw new Error("Method is required for local call");
     }
-    const query = getLocalMethod(table, method, select, payload, filters, limit, isSingle, onConflictKeys);
+    const query = getLocalMethod(table, method, select, payload, filters, limit, isSingle, onConflictKeys, type, preserveTimestamp);
     const result = await query();
     return result;
 }

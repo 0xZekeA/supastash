@@ -25,6 +25,8 @@ export async function queryLocalDb<
     select,
     isSingle,
     onConflictKeys,
+    preserveTimestamp,
+    type,
   } = state;
 
   if (!method) {
@@ -39,7 +41,9 @@ export async function queryLocalDb<
     filters,
     limit,
     isSingle,
-    onConflictKeys
+    onConflictKeys,
+    type,
+    preserveTimestamp
   );
 
   const result = await query();

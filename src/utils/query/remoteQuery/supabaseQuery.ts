@@ -5,7 +5,9 @@ import {
   SupabaseQueryReturn,
   SupastashQuery,
 } from "../../../types/query.types";
-import { supastash } from "../builder";
+import { refreshScreen } from "../../refreshScreenCalls";
+import { getSafeValue } from "../../serializer";
+import { updateLocalSyncedAt } from "../../syncUpdate";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 import { operatorMap } from "../helpers/remoteDb/queryUtils";
 import { permanentlyDeleteData } from "../localDbQuery/delete";
@@ -31,29 +33,36 @@ export async function querySupabase<T extends boolean, R, Z>(
     type,
     onConflictKeys,
     viewRemoteResult,
+    preserveTimestamp,
   } = state;
 
   const config = getSupastashConfig();
 
-  const now = new Date().toISOString();
   let newPayload: any;
+  const timeStamp = new Date().toISOString();
 
   if (Array.isArray(payload) && payload.length > 0) {
     newPayload = payload.map((item: any) => {
       const { synced_at, ...rest } = item;
-      return {
-        ...rest,
-        created_at: item.created_at ?? now,
-        updated_at: item.updated_at ?? now,
-      };
+      const newItem: any = { ...rest };
+
+      if (!preserveTimestamp) {
+        const userUpdatedAt = item.updated_at;
+        newItem.updated_at =
+          userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+      }
+
+      return newItem;
     });
   } else if (payload) {
     const { synced_at, ...rest } = payload as any;
-    newPayload = {
-      ...rest,
-      created_at: rest.created_at ?? now,
-      updated_at: rest.updated_at ?? now,
-    };
+    newPayload = { ...rest };
+
+    if (!preserveTimestamp) {
+      const userUpdatedAt = (payload as any).updated_at;
+      newPayload.updated_at =
+        userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+    }
   }
 
   if (!config.supabaseClient) {
@@ -90,7 +99,6 @@ export async function querySupabase<T extends boolean, R, Z>(
   const supabase = config.supabaseClient;
   let query = supabase.from(table);
   let filterQuery: any;
-  const timeStamp = new Date().toISOString();
 
   switch (method) {
     case "select":
@@ -153,6 +161,7 @@ export async function querySupabase<T extends boolean, R, Z>(
   }
 
   const result = await filterQuery;
+  const db = await getSupastashDb();
 
   if (
     !result.error &&
@@ -161,15 +170,9 @@ export async function querySupabase<T extends boolean, R, Z>(
     type !== "remoteFirst"
   ) {
     if (method === "insert" && newPayload) {
-      const refreshItems = upsertOrInsertPayload.map((item: any) => ({
-        id: item.id,
-        synced_at: new Date().toISOString(),
-      }));
-      await supastash
-        .from(table)
-        .upsert(refreshItems)
-        .syncMode("localOnly")
-        .run();
+      for (const item of upsertOrInsertPayload) {
+        await updateLocalSyncedAt(table, item.id);
+      }
     }
     if (method === "upsert" && newPayload) {
       const onConflictKeysArray =
@@ -177,7 +180,7 @@ export async function querySupabase<T extends boolean, R, Z>(
 
       for (const item of upsertOrInsertPayload) {
         const colArray = Object.keys(item);
-        const includesConflictKeys = onConflictKeysArray.some((key) =>
+        const includesConflictKeys = onConflictKeysArray.every((key) =>
           colArray.includes(key)
         );
 
@@ -188,45 +191,31 @@ export async function querySupabase<T extends boolean, R, Z>(
             )}] must exist in payload. Received: ${JSON.stringify(item)}`
           );
         }
+        const whereClause = onConflictKeysArray
+          .map((key) => `${key} = ?`)
+          .join(" AND ");
+        const conflictValues = onConflictKeysArray.map((key) =>
+          getSafeValue(item[key])
+        );
+
+        await db.runAsync(
+          `UPDATE ${table} SET synced_at = ? WHERE ${whereClause}`,
+          [timeStamp, ...conflictValues]
+        );
       }
-
-      const refreshItems = upsertOrInsertPayload.map((item: any) => {
-        return {
-          ...item,
-          synced_at: new Date().toISOString(),
-        };
-      });
-
-      await supastash
-        .from(table)
-        .upsert(refreshItems, {
-          onConflictKeys: onConflictKeysArray,
-        })
-        .syncMode("localOnly")
-        .run();
     }
     if (filters?.length) {
-      const db = await getSupastashDb();
-      const { clause, values: filterValues } = buildWhereClause(filters ?? []);
-      const refreshItems = await db.getAllAsync(
-        `SELECT id FROM ${table} ${clause}`,
+      const { clause, values: filterValues } = buildWhereClause(filters);
+      await db.runAsync(
+        `UPDATE ${table} SET synced_at = ? WHERE ${clause}`,
         filterValues
       );
 
-      const refreshItemsWithSyncedAt = refreshItems.map((item: any) => ({
-        id: item.id,
-        synced_at: new Date().toISOString(),
-      }));
-
-      await supastash
-        .from(table)
-        .upsert(refreshItemsWithSyncedAt)
-        .syncMode("localOnly")
-        .run();
       if (method === "delete") {
         await permanentlyDeleteData(table, filters);
       }
     }
+    refreshScreen(table);
   }
 
   return result;

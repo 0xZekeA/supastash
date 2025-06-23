@@ -24,7 +24,7 @@ export default class SupastashCrudBuilder<
    * @param data - The data to insert. Could be a single object or an array of objects.
    * @returns filter options.
    */
-  insert<Z>(data: R) {
+  insert<Z = any>(data: R) {
     const newQuery = {
       ...this.query,
       method: "insert" as T,
@@ -41,7 +41,7 @@ export default class SupastashCrudBuilder<
    * @param data - The data to update.
    * @returns filter options.
    */
-  update<Z>(data: R) {
+  update<Z = any>(data: R) {
     const newQuery = {
       ...this.query,
       method: "update" as T,
@@ -57,7 +57,7 @@ export default class SupastashCrudBuilder<
    *
    * @returns filter options.
    */
-  delete<Z>() {
+  delete<Z = any>() {
     const newQuery = {
       ...this.query,
       method: "delete" as T,
@@ -73,7 +73,7 @@ export default class SupastashCrudBuilder<
    * @param column - The column to select.
    * @returns filter options.
    */
-  select<Z>(column?: string) {
+  select<Z = any>(column?: string) {
     const newQuery = {
       ...this.query,
       method: "select" as T,
@@ -102,7 +102,7 @@ export default class SupastashCrudBuilder<
    *
    * @returns filter options.
    */
-  upsert<Z>(data: R | R[], options?: { onConflictKeys?: string[] }) {
+  upsert<Z = any>(data: R | R[], options?: { onConflictKeys?: string[] }) {
     const newQuery = {
       ...this.query,
       method: "upsert" as T,

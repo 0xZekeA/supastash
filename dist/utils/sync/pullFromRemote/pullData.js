@@ -62,11 +62,10 @@ export async function pullData(table, filter) {
         return null;
     }
     log(`Received ${data.length} updates for ${table}`);
-    // Update the supastash_sync_status table with the lastest timestamp
-    const lastest = data.find((r) => r.updated_at)?.updated_at;
-    console.log("lastest", lastest);
-    if (lastest) {
-        await updateLastPulledInfo(table, lastest);
+    // Update the supastash_sync_status table with the latest timestamp
+    const latest = data.find((r) => r.updated_at)?.updated_at;
+    if (latest) {
+        await updateLastPulledInfo(table, latest);
     }
     return data;
 }
