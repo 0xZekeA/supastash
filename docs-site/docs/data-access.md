@@ -208,7 +208,6 @@ refreshTableWithPayload("orders", { id: "abc", ... }, "update");
 
 ## 🔗 What’s Next
 
-- [Avoiding RLS Errors on Upsert](./rls-upsert-resolution.md)
 - [Configuration Guide](./configuration.md)
 - [Query Builder Docs](./supastash-query-builder.md)
 - [Hook Reference](./useSupastash-hook.md)
