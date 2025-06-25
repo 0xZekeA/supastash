@@ -47,51 +47,15 @@ async function deleteChunk(table: string, chunk: PayloadData[]) {
 
   let attempts = 0;
   while (attempts < 3) {
-    if (config.useCustomRPCForUpserts) {
-      const {
-        error,
-        data,
-      }: {
-        error: any;
-        data: {
-          success_ids: string[];
-          failed: { id: string; error: string; detail: string }[];
-        } | null;
-      } = await supabase.rpc("supastash_bulk_upsert", {
-        p_table_name: table,
-        rows: toDelete,
-      });
-      const { success_ids, failed } = data || {};
-
-      if (!error && success_ids?.length === toDelete.length) {
-        await permanentlyDeleteChunkLocally(table, toDelete);
-        break;
-      } else {
-        if (success_ids?.length) {
-          const remaining = [];
-          const toBeDeleted = [];
-          for (const row of toDelete) {
-            if (success_ids.includes(row.id)) {
-              toBeDeleted.push(row);
-            } else {
-              remaining.push(row);
-            }
-          }
-          toDelete = remaining;
-          await permanentlyDeleteChunkLocally(table, toBeDeleted);
-        }
-        errorHandler({ ...error, failed }, table, attempts);
-      }
-    } else {
-      const { error } = await supabase.from(table).upsert(toDelete);
-      if (!error) {
-        await permanentlyDeleteChunkLocally(table, toDelete);
-        break;
-      }
-      errorHandler(error, table, attempts);
+    const { error } = await supabase.from(table).upsert(toDelete);
+    if (!error) {
+      await permanentlyDeleteChunkLocally(table, toDelete);
+      break;
     }
-    await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
+    errorHandler(error, table, attempts);
+
     attempts++;
+    await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
   }
 }
 

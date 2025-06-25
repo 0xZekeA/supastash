@@ -34,7 +34,6 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   listeners?: number;
   onSchemaInit?: () => Promise<void>;
   debugMode?: boolean;
-  useCustomRPCForUpserts?: boolean;
 };
 
 interface SupastashSQLiteDatabase {
