@@ -1,10 +1,12 @@
 # Supastash
 
+[![npm version](https://img.shields.io/npm/v/supastash.svg)](https://www.npmjs.com/package/supastash)
+
 **Offline-First Sync Engine for Supabase + React Native**
 
-> Sync local SQLite data with Supabase in real-time — even when your app is offline. Built for React Native, no boilerplate required.
+> Sync between SQLite and Supabase in real-time — even when your app is offline. Built for React Native, no boilerplate required.
 
-Supastash gives your app **instant offline access**, **two-way syncing**, and **real-time updates** — all while letting you work with local data as the source of truth.
+Supastash gives your app **instant offline access**, **two-way sync**, and **real-time updates** — with local database as the source of truth.
 
 ---
 
@@ -56,6 +58,8 @@ npm install react-native-sqlite-storage
 
 ## ⚙️ Quick Setup
 
+Initialize once, use anywhere
+
 ```ts
 // lib/supastash.ts
 import { configureSupastash, defineLocalSchema } from "supastash";
@@ -85,7 +89,11 @@ configureSupastash({
   debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // enable if using RLS
+    pull: false, // enable if using RLS and want to pull filtered data
+  },
+  excludeTables: {
+    push: ["daily_reminders"],
+    pull: ["daily_reminders"],
   },
 });
 ```
@@ -95,8 +103,13 @@ Then in your root layout:
 ```ts
 // App.tsx or _layout.tsx
 import "@/lib/supastash";
+import { useSupatash } from "supastash";
 
 export default function App() {
+  const { dbReady } = useSupatash();
+
+  if (!dbReady) return null;
+
   return <Stack />;
 }
 ```
@@ -106,7 +119,7 @@ export default function App() {
 ## 🚨 Important Notes
 
 - Timestamp fields (`created_at`, `updated_at`, `deleted_at`) **must be `timestamptz`** in Supabase
-- Every synced table must have a valid `id`
+- Every synced table must have a valid `id` column
 - Create this SQL function in Supabase to allow schema reflection:
 
 ```sql
@@ -142,15 +155,6 @@ const { data: userOrders } = useSupatashData("orders", {
 });
 ```
 
-Ensure sync engine is ready:
-
-```tsx
-import { useSupatash } from "supastash";
-
-const { dbReady } = useSupatash();
-if (!dbReady) return null;
-```
-
 ---
 
 ## 🔧 API Overview
@@ -172,10 +176,10 @@ if (!dbReady) return null;
 ## 🧩 Sync Modes (via query builder)
 
 ```ts
-supastash
+await supastash
   .from("orders")
-  .select("*")
-  .syncMode("remoteOnly") // or localOnly, localFirst, remoteFirst
+  .update({ status: "Dropped-off" })
+  .syncMode("localFirst") // or localOnly, remoteOnly, remoteFirst
   .run();
 ```
 

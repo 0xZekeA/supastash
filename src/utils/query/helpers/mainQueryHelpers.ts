@@ -180,7 +180,7 @@ function addToCache<U extends boolean, R, Z>(
   if (batchTimer) clearTimeout(batchTimer);
   batchTimer = setTimeout(() => {
     runBatchedRemoteQuery<U, R, Z>();
-  }, 1500);
+  }, 200);
 }
 
 export async function runSyncStrategy<

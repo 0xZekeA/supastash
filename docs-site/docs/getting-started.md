@@ -58,23 +58,23 @@ configureSupastash({
   sqliteClientType: "expo", // or "rn-nitro" / "rn-storage"
 
   onSchemaInit: () => {
-    defineLocalSchema(
-      "users",
-      {
-        id: "TEXT PRIMARY KEY",
-        name: "TEXT",
-        email: "TEXT",
-        created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        updated_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-      },
-      true
-    );
+    defineLocalSchema("users", {
+      id: "TEXT PRIMARY KEY",
+      name: "TEXT",
+      email: "TEXT",
+      created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      updated_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+    });
   },
 
   debugMode: true,
   syncEngine: {
     push: true,
     pull: false, // Enable if using RLS and want to pull filtered data
+  },
+  excludeTables: {
+    push: ["daily_reminders"],
+    pull: ["daily_reminders"],
   },
 });
 ```
