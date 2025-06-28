@@ -13,3 +13,22 @@ const log = (...args) => {
     }
 };
 export default log;
+/**
+ * Logs an error to the console if debug mode is enabled
+ * @param args - The arguments to log
+ */
+const logError = (...args) => {
+    if (!DEBUG_MODE)
+        return;
+    if (typeof console !== "undefined" && console.error) {
+        Function.prototype.apply.call(console.error, console, args);
+    }
+};
+const logWarn = (...args) => {
+    if (!DEBUG_MODE)
+        return;
+    if (typeof console !== "undefined" && console.warn) {
+        Function.prototype.apply.call(console.warn, console, args);
+    }
+};
+export { log, logError, logWarn };

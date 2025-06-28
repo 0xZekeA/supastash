@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupastashConfig } from "../core/config";
 import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
+import { logError } from "../utils/logs";
 import { createDeletedStatusTable, createSyncStatusTable, } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
 /**
@@ -25,7 +26,7 @@ export function useSupastash() {
     const initialized = useRef(false);
     const config = getSupastashConfig();
     if (!config.sqliteClient || !config.sqliteClientType) {
-        console.error(`
+        logError(`
       [Supastash] ${supastashDbErrorMsg}`);
         return {
             dbReady: false,
@@ -34,7 +35,7 @@ export function useSupastash() {
         };
     }
     if (!config.supabaseClient) {
-        console.error(`[Supastash] Add a supabase client to config ${supabaseClientErr}`);
+        logError(`[Supastash] Add a supabase client to config ${supabaseClientErr}`);
         return {
             dbReady: false,
             startSync: () => { },
@@ -57,7 +58,7 @@ export function useSupastash() {
                 setDbReady(true);
             }
             catch (error) {
-                console.error(`[Supastash] Error initializing: ${error}`);
+                logError(`[Supastash] Error initializing: ${error}`);
             }
         }
         init();

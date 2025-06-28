@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { logError } from "../../logs";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 /**
@@ -21,7 +22,7 @@ export async function deleteData(table, filters, syncMode) {
         return { error: null, data: itemsToBeDeleted };
     }
     catch (error) {
-        console.error(`[Supastash] ${error}`);
+        logError(`[Supastash] ${error}`);
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),
@@ -44,7 +45,7 @@ export async function permanentlyDeleteData(table, filters) {
         return { error: null };
     }
     catch (error) {
-        console.error(`[Supastash] ${error}`);
+        logError(`[Supastash] ${error}`);
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

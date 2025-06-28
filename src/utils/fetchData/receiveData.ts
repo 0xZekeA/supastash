@@ -2,7 +2,7 @@ import { getSupastashDb } from "../../db/dbInitializer";
 import { PayloadData } from "../../types/query.types";
 import { upsertData } from "../../utils/sync/pullFromRemote/updateLocalDb";
 import { checkIfTableExist } from "../../utils/tableValidator";
-import log from "../logs";
+import log, { logError } from "../logs";
 import { refreshScreen } from "../refreshScreenCalls";
 import { createTable } from "./createTable";
 
@@ -49,6 +49,6 @@ export async function receiveData(
     }
     refreshScreen(table);
   } catch (error) {
-    console.error("[Supastash] Error receiving data:", error);
+    logError("[Supastash] Error receiving data:", error);
   }
 }

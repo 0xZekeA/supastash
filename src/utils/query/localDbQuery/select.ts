@@ -4,6 +4,7 @@ import {
   PayloadListResult,
   PayloadResult,
 } from "../../../types/query.types";
+import { logError } from "../../logs";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
@@ -52,7 +53,7 @@ export async function selectData<T extends boolean, R, Z>(
       ? PayloadResult<Z>
       : PayloadListResult<Z>;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

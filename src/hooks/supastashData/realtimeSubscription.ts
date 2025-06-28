@@ -10,6 +10,7 @@ import {
 } from "../../types/realtimeData.types";
 import { buildFilterString } from "../../utils/fetchData/buildFilter";
 import { RealtimeManager } from "../../utils/fetchData/realTimeManager";
+import { logError } from "../../utils/logs";
 import { supabaseClientErr } from "../../utils/supabaseClientErr";
 
 const generateHookId = () => `hook_${Date.now()}_${Math.random().toString(36)}`;
@@ -81,7 +82,7 @@ function useRealtimeSubscription(
 
   useEffect(() => {
     if (!supabase) {
-      console.error("[Supastash] No supabase client found", supabaseClientErr);
+      logError("[Supastash] No supabase client found", supabaseClientErr);
       return;
     }
 

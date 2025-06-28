@@ -8,6 +8,7 @@ import {
   SyncMode,
 } from "../../../types/query.types";
 import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseFields";
+import { logError, logWarn } from "../../logs";
 import { getSafeValue } from "../../serializer";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
@@ -53,7 +54,7 @@ export async function updateData<T extends boolean, R, Z>(
   if (!preserveTimestamp || (payload as any).updated_at === undefined) {
     if (!warned.has(table) && !getSupastashConfig().debugMode && __DEV__) {
       warned.add(table);
-      console.warn(
+      logWarn(
         `[Supastash] updated_at not provided for update call on ${table} – defaulting to ${timeStamp}`
       );
     }
@@ -100,7 +101,7 @@ export async function updateData<T extends boolean, R, Z>(
       data: result,
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

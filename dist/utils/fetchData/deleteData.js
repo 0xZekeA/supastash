@@ -1,5 +1,6 @@
 import { permanentlyDeleteData } from "../../utils/query/localDbQuery/delete";
 import { checkIfTableExist } from "../../utils/tableValidator";
+import { logError } from "../logs";
 import { refreshScreen } from "../refreshScreenCalls";
 import { createTable } from "./createTable";
 export async function deleteData(payload, table, shouldFetch = true) {
@@ -19,6 +20,6 @@ export async function deleteData(payload, table, shouldFetch = true) {
         refreshScreen(table);
     }
     catch (error) {
-        console.error("[Supastash] Error receiving data:", error);
+        logError("[Supastash] Error receiving data:", error);
     }
 }

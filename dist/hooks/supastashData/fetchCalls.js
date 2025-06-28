@@ -3,6 +3,7 @@ import { syncCalls } from "../../store/syncCalls";
 import { tableFilters } from "../../store/tableFilters";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
+import { logError } from "../../utils/logs";
 export function fetchCalls(table, options, initialized) {
     const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, } = options;
     const cancelled = useRef(false);
@@ -49,7 +50,7 @@ export function fetchCalls(table, options, initialized) {
             await fetch();
         }
         catch (error) {
-            console.error(`[Supastash] Error on initial fetch for ${table}`, error);
+            logError(`[Supastash] Error on initial fetch for ${table}`, error);
         }
     };
     return {

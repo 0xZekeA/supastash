@@ -5,6 +5,7 @@ import {
   PayloadResult,
   SyncMode,
 } from "../../../types/query.types";
+import { logError } from "../../logs";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
@@ -90,7 +91,7 @@ export async function insertData<T extends boolean, R, Z>(
       data: isSingle ? inserted[0] : inserted,
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

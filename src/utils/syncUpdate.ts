@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../db/dbInitializer";
+import { logError } from "./logs";
 
 /**
  * Updates synced_at from null to a timeStamp
@@ -15,6 +16,6 @@ export async function updateLocalSyncedAt(tableName: string, id: string) {
       id,
     ]);
   } catch (error) {
-    console.error(error);
+    logError(error);
   }
 }

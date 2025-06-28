@@ -8,7 +8,7 @@ import {
   SubscriptionKey,
   TableSubscription,
 } from "../../types/realtimeData.types";
-import log from "../logs";
+import log, { logError } from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 
 class SupastashRealtimeManager {
@@ -51,7 +51,7 @@ class SupastashRealtimeManager {
   private async createConnection(): Promise<RealtimeChannel | null> {
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase) {
-      console.error("[Supastash] No supabase client found", supabaseClientErr);
+      logError("[Supastash] No supabase client found", supabaseClientErr);
       return null;
     }
 

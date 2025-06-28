@@ -1,5 +1,6 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
-const DEFAULT_LAST_DELETED_AT = "2024-01-01T00:00:00Z";
+import { logWarn } from "../../logs";
+const DEFAULT_LAST_DELETED_AT = "2000-01-01T00:00:00Z";
 const DELETED_STATUS_TABLE = "supastash_deleted_status";
 /**
  * Gets the last deleted timestamp for a given table
@@ -14,6 +15,10 @@ export async function getLastDeletedInfo(table) {
     const result = await db.getFirstAsync(`SELECT last_deleted_at FROM ${DELETED_STATUS_TABLE} WHERE table_name = ?`, [table]);
     const original = result?.last_deleted_at || DEFAULT_LAST_DELETED_AT;
     const timestamp = Date.parse(original);
+    if (isNaN(timestamp)) {
+        logWarn(`[Supastash] Invalid date string found on deleted_at column for ${table}: ${original}`);
+        return original;
+    }
     const lastDeletedAt = new Date(timestamp + 1);
     const lastDeletedAtISOString = lastDeletedAt.toISOString();
     return lastDeletedAtISOString;

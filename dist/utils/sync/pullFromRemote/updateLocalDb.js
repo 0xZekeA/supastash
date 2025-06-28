@@ -2,7 +2,7 @@ import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { isOnline } from "../../connection";
 import { getTableSchema } from "../../getTableSchema";
-import log from "../../logs";
+import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { pullData } from "./pullData";
@@ -24,18 +24,18 @@ export async function updateLocalDb(table, filters, onReceiveData) {
         const db = await getSupastashDb();
         const deletedData = await pullDeletedData(table, filters);
         const data = await pullData(table, filters);
-        const dataToUpdate = data?.filter((d) => !deletedData?.deletedDataMap.has(d.id));
-        const changes = !!deletedData || !!dataToUpdate;
+        const refreshNeeded = !!deletedData?.records.length || !!data?.length;
         // Delete records that are no longer in the remote data
-        if (deletedData) {
+        if (deletedData && deletedData.records.length > 0) {
             for (const record of deletedData.records) {
                 await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [record.id]);
             }
-            refreshScreen(table);
         }
         // Update local database with remote changes
-        if (dataToUpdate) {
-            for (const record of dataToUpdate) {
+        if (data && data.length > 0) {
+            for (const record of data) {
+                if (deletedData?.deletedDataMap.has(record.id))
+                    continue;
                 const { doesExist, newer } = await checkIfRecordExistsAndIsNewer(table, record);
                 if (newer) {
                     if (onReceiveData) {
@@ -47,11 +47,13 @@ export async function updateLocalDb(table, filters, onReceiveData) {
                 }
             }
         }
-        if (changes)
+        if (refreshNeeded)
             refreshScreen(table);
     }
     catch (error) {
-        console.error(`[Supastash] Error updating local db for ${table}`, error);
+        if (__DEV__) {
+            logError(`[Supastash] Error updating local db for ${table}`, error);
+        }
     }
     finally {
         isInSync.delete(table);
@@ -83,20 +85,17 @@ export async function upsertData(table, record, doesExist) {
             const unknownKeys = Object.keys(record).filter((key) => !columns.includes(key));
             if (unknownKeys.length > 0 && !warned.get(table)) {
                 warned.set(table, true);
-                console.warn(`⚠️ [Supastash] ${table} record contains keys not in local schema: ${unknownKeys.join(", ")}. Data will still be stored`);
+                logWarn(`⚠️ [Supastash] ${table} record contains keys not in local schema: ${unknownKeys.join(", ")}. Data will still be stored`);
             }
         }
         // Prep for upsert
         const keys = columns;
         const placeholders = keys.map(() => "?").join(", ");
-        const updateParts = keys
-            .filter((key) => key !== "id")
-            .map((key) => `${key} = ?`);
+        const updateColumns = keys.filter((key) => key !== "id");
+        const updateParts = updateColumns.map((key) => `${key} = ?`);
         const updatePlaceholders = updateParts.join(", ");
         const values = keys.map((key) => recordToSave[key]);
-        const updateValues = keys
-            .filter((key) => key !== "id")
-            .map((key) => recordToSave[key]);
+        const updateValues = updateColumns.map((key) => recordToSave[key]);
         if (itemExists) {
             // Update existing record
             await db.runAsync(`UPDATE ${table} SET ${updatePlaceholders} WHERE id = ?`, [...updateValues, record.id]);
@@ -108,7 +107,7 @@ export async function upsertData(table, record, doesExist) {
         await updateLocalSyncedAt(table, record.id);
     }
     catch (error) {
-        console.error(`[Supastash] Error upserting data for ${table}`, error);
+        logError(`[Supastash] Error upserting data for ${table}`, error);
     }
 }
 async function checkIfRecordExistsAndIsNewer(table, item) {

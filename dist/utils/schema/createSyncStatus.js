@@ -8,7 +8,12 @@ export async function createSyncStatusTable() {
     table_name TEXT NOT NULL,
     last_synced_at TEXT NOT NULL
   );`;
+    const sql2 = `CREATE TABLE IF NOT EXISTS supastash_last_created (
+    table_name TEXT NOT NULL,
+    last_created_at TEXT NOT NULL
+  );`;
     await db.execAsync(sql);
+    await db.execAsync(sql2);
 }
 /**
  * Creates the supastash_deleted_status table if it doesn't exist

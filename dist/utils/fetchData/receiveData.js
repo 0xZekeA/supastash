@@ -1,7 +1,7 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { upsertData } from "../../utils/sync/pullFromRemote/updateLocalDb";
 import { checkIfTableExist } from "../../utils/tableValidator";
-import log from "../logs";
+import log, { logError } from "../logs";
 import { refreshScreen } from "../refreshScreenCalls";
 import { createTable } from "./createTable";
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
@@ -34,6 +34,6 @@ export async function receiveData(payload, table, shouldFetch = true, upsertCall
         refreshScreen(table);
     }
     catch (error) {
-        console.error("[Supastash] Error receiving data:", error);
+        logError("[Supastash] Error receiving data:", error);
     }
 }

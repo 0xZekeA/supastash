@@ -1,7 +1,7 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
 import { PayloadData } from "../../types/query.types";
-import log from "../logs";
+import log, { logError, logWarn } from "../logs";
 import { notifySubscribers } from "./snapShot";
 
 const fetchingPromises = new Map<
@@ -44,7 +44,7 @@ function getNewVersion(table: string): void {
   clearTimeout(debounceMap.get(table));
   const timeout = setTimeout(() => {
     if (queue.length > 10) {
-      console.warn(
+      logWarn(
         `[Supastash] Table "${table}" is noisy: ${queue.length} events in ${timeoutMs}ms`
       );
     }
@@ -122,7 +122,7 @@ export async function fetchLocalData<R>(
         if (extraMapKeys?.length) {
           for (const key of extraMapKeys) {
             if (item[key] == null) {
-              console.warn(
+              logWarn(
                 `[Supastash] Item ${item.id} has no ${String(key)} field`
               );
               continue;
@@ -143,10 +143,7 @@ export async function fetchLocalData<R>(
       getNewVersion(table);
       return { data, dataMap, groupedBy };
     } catch (error) {
-      console.error(
-        `[Supastash] Error fetching local data for ${table}:`,
-        error
-      );
+      logError(`[Supastash] Error fetching local data for ${table}:`, error);
       return null;
     }
   })();

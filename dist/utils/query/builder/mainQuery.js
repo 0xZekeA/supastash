@@ -1,3 +1,4 @@
+import { logError } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { assignInsertIds, getCommonError, runSyncStrategy, validatePayloadForSingleInsert, } from "../helpers/mainQueryHelpers";
 import { validateQuery } from "../helpers/queryValidator";
@@ -41,7 +42,7 @@ export async function queryDb(state) {
         });
     }
     catch (error) {
-        console.error(`[Supastash] ${error instanceof Error ? error.message : String(error)}`);
+        logError(`[Supastash] ${error instanceof Error ? error.message : String(error)}`);
         if (state.viewRemoteResult) {
             return Promise.resolve({
                 remote: null,

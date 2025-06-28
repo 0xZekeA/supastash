@@ -128,6 +128,7 @@ This prevents timezone issues and ensures reliable sync.
 Before rendering your app, make sure the Supastash engine is ready:
 
 ```ts
+// App.tsx or _layout.tsx
 import { useSupatash } from "supastash";
 
 const { dbReady } = useSupatash();
@@ -152,15 +153,44 @@ type Order = {
   created_at: string;
 };
 
-const { data: orders, dataMap: ordersMap } = useSupatashData<Order>("orders");
+const {
+  data: orders,
+  dataMap: ordersMap,
+  groupedBy,
+} = useSupatashData<Order>("orders", { extraMapKeys: ["user_id"] });
 ```
 
 You get:
 
 - `data` – An array of rows
-- `dataMap` – A map keyed by ID for fast lookup
+- `dataMap` – A map keyed by `id` for fast lookup
 
 Supastash keeps this in sync with SQLite and Supabase.
+
+---
+
+### 🧩 `extraMapKeys`: Smarter Derived Maps — for Free
+
+Need to group, lookup, or filter your data by a specific column?
+
+Pass any field(s) into `extraMapKeys`, and Supastash will automatically generate map structures for you — _efficiently and in the background_.
+
+```ts
+const { dataMap, groupedBy } = useSupatashData("orders", {
+  extraMapKeys: ["user_id", "status"],
+});
+```
+
+You get:
+
+- `dataMap`: Fast lookup by `id`
+- `groupedBy.user_id`: Grouped orders by `user_id`
+- `groupedBy.status`: Grouped orders by status
+
+✅ No need to `reduce()` or create memoized maps manually
+⚡️ This is optimized to run in sync with the rest of your hook’s data processing — zero wasted renders.
+
+> 💡 Use this when rendering lists by user, status, etc.
 
 ---
 
@@ -205,6 +235,23 @@ useEffect(() => {
 ```
 
 ---
+
+### 📋 Monitoring & Debugging
+
+Enable `debugMode: true` in `configureSupastash()` to log:
+
+- When sync starts or fails
+- Which rows are retried
+- Offline batching behavior
+
+```ts
+configureSupastash({
+  ...
+  debugMode: true,
+});
+```
+
+This will help during dev to know when things aren’t syncing — especially useful when testing offline.
 
 ## 🧠 Next Steps
 

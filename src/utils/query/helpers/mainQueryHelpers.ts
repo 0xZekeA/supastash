@@ -6,7 +6,7 @@ import {
   SupastashQuery,
 } from "../../../types/query.types";
 import { isOnline } from "../../../utils/connection";
-import log from "../../../utils/logs";
+import log, { logError } from "../../../utils/logs";
 import { generateUUIDv4 } from "../../genUUID";
 import { queryLocalDb } from "../localDbQuery";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
@@ -102,7 +102,7 @@ async function runBatchedRemoteQuery<U extends boolean, R, Z>() {
       calledOfflineRetries.get(state.id) &&
       calledOfflineRetries.get(state.id)! >= MAX_OFFLINE_RETRIES
     ) {
-      console.error(
+      logError(
         `[Supastash] Failed to send remote batch query:\n` +
           `  Table: ${state.table}\n` +
           `  Method: ${state.method}\n` +
@@ -155,7 +155,7 @@ async function runBatchedRemoteQuery<U extends boolean, R, Z>() {
         await delay(100 * retryCount);
         continue;
       } else {
-        console.error(
+        logError(
           `[Supastash] Remote sync failed on ${state.table} with ${
             state.method
           } after ${retryCount + 1} tries: ${error.message}`

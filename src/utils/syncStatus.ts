@@ -6,6 +6,7 @@ import {
 
 const SYNC_STATUS_TABLE = "supastash_sync_status";
 const DELETED_STATUS_TABLE = "supastash_deleted_status";
+const LAST_CREATED_TABLE = "supastash_last_created";
 
 /**
  * Clears the sync log for a given table
@@ -28,6 +29,7 @@ export async function clearLocalSyncLog(tableName: string) {
 export async function clearAllLocalSyncLog() {
   const db = await getSupastashDb();
   await db.runAsync(`DROP TABLE IF EXISTS ${SYNC_STATUS_TABLE}`);
+  await db.runAsync(`DROP TABLE IF EXISTS ${LAST_CREATED_TABLE}`);
   await createSyncStatusTable();
 }
 

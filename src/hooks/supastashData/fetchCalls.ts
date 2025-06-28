@@ -4,6 +4,7 @@ import { tableFilters } from "../../store/tableFilters";
 import { RealtimeOptions } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
+import { logError } from "../../utils/logs";
 
 export function fetchCalls<R>(
   table: string,
@@ -68,7 +69,7 @@ export function fetchCalls<R>(
       await initialFetch(table, filter, onInsertAndUpdate, onPushToRemote);
       await fetch();
     } catch (error) {
-      console.error(`[Supastash] Error on initial fetch for ${table}`, error);
+      logError(`[Supastash] Error on initial fetch for ${table}`, error);
     }
   };
 

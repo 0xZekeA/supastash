@@ -5,6 +5,7 @@ import {
   SupastashQuery,
   SupastashQueryResult,
 } from "../../../types/query.types";
+import { logError } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import {
   assignInsertIds,
@@ -80,7 +81,7 @@ export async function queryDb<
       success,
     }) as SupastashQueryResult<T, U, V, Z>;
   } catch (error) {
-    console.error(
+    logError(
       `[Supastash] ${error instanceof Error ? error.message : String(error)}`
     );
 

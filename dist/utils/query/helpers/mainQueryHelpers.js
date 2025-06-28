@@ -1,5 +1,5 @@
 import { isOnline } from "../../../utils/connection";
-import log from "../../../utils/logs";
+import log, { logError } from "../../../utils/logs";
 import { generateUUIDv4 } from "../../genUUID";
 import { queryLocalDb } from "../localDbQuery";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
@@ -68,7 +68,7 @@ async function runBatchedRemoteQuery() {
         const state = stateCache.shift();
         if (calledOfflineRetries.get(state.id) &&
             calledOfflineRetries.get(state.id) >= MAX_OFFLINE_RETRIES) {
-            console.error(`[Supastash] Failed to send remote batch query:\n` +
+            logError(`[Supastash] Failed to send remote batch query:\n` +
                 `  Table: ${state.table}\n` +
                 `  Method: ${state.method}\n` +
                 `  Retries: ${MAX_OFFLINE_RETRIES}\n` +
@@ -108,7 +108,7 @@ async function runBatchedRemoteQuery() {
                 continue;
             }
             else {
-                console.error(`[Supastash] Remote sync failed on ${state.table} with ${state.method} after ${retryCount + 1} tries: ${error.message}`);
+                logError(`[Supastash] Remote sync failed on ${state.table} with ${state.method} after ${retryCount + 1} tries: ${error.message}`);
             }
         }
     }
@@ -124,7 +124,7 @@ function addToCache(state) {
         clearTimeout(batchTimer);
     batchTimer = setTimeout(() => {
         runBatchedRemoteQuery();
-    }, 1500);
+    }, 200);
 }
 export async function runSyncStrategy(state) {
     const { type } = state;

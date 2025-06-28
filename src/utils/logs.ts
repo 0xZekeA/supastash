@@ -9,9 +9,27 @@ const DEBUG_MODE = __DEV__; // Log only in dev mode
 const log = (...args: any[]) => {
   const config = getSupastashConfig();
   if (!DEBUG_MODE || !config.debugMode) return;
-  if (typeof console !== "undefined" && console.log) {
-    Function.prototype.apply.call(console.log, console, args);
-  }
+  console.log(...args);
 };
 
 export default log;
+
+/**
+ * Logs an error to the console if debug mode is enabled
+ * @param args - The arguments to log
+ */
+const logError = (...args: any[]) => {
+  if (!DEBUG_MODE) return;
+  console.error(...args);
+};
+
+/**
+ * Logs a warning to the console if debug mode is enabled
+ * @param args - The arguments to log
+ */
+const logWarn = (...args: any[]) => {
+  if (!DEBUG_MODE) return;
+  console.warn(...args);
+};
+
+export { log, logError, logWarn };

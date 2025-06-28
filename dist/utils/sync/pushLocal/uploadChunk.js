@@ -1,5 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
-import log from "../../logs";
+import log, { logError } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { parseStringifiedFields } from "./parseFields";
@@ -77,7 +77,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             if (onPushToRemote) {
                 const result = await onPushToRemote(toUpsert);
                 if (typeof result !== "boolean") {
-                    console.error(`[Supastash] Invalid return type from "onPushToRemote" callback on table ${table}.\n
+                    logError(`[Supastash] Invalid return type from "onPushToRemote" callback on table ${table}.\n
              Expected boolean but received ${typeof result}.\n
              Skipping this chunk.
              Check the "onPushToRemote" callback in the "useSupastashData" hook for table ${table}.

@@ -1,3 +1,4 @@
+import { logError } from "../logs";
 import { updateLocalDb } from "../sync/pullFromRemote/updateLocalDb";
 import { pushLocalDataToRemote } from "../sync/pushLocal/sendUnsyncedToSupabase";
 import { createTable } from "./createTable";
@@ -12,7 +13,7 @@ export async function initialFetch(table, filter, onReceiveData, onPushToRemote)
         await pushLocalDataToRemote(table, onPushToRemote);
     }
     catch (error) {
-        console.error(`[Supastash] Error on initial fetch for ${table}`, error);
+        logError(`[Supastash] Error on initial fetch for ${table}`, error);
     }
     finally {
         isInSync.delete(table);

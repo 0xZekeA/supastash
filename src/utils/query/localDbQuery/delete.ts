@@ -4,6 +4,7 @@ import {
   SupatashDeleteResult,
   SyncMode,
 } from "../../../types/query.types";
+import { logError } from "../../logs";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 
@@ -41,7 +42,7 @@ export async function deleteData<Z = any>(
     }
     return { error: null, data: itemsToBeDeleted } as SupatashDeleteResult<Z>;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),
@@ -70,7 +71,7 @@ export async function permanentlyDeleteData<R = any>(
 
     return { error: null } as any;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

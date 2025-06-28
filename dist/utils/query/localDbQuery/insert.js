@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { logError } from "../../logs";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
@@ -54,7 +55,7 @@ export async function insertData(table, payload, syncMode, isSingle) {
         };
     }
     catch (error) {
-        console.error(`[Supastash] ${error}`);
+        logError(`[Supastash] ${error}`);
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

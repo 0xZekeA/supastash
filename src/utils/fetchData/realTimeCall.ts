@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { getSupastashConfig } from "../../core/config";
 import { PayloadData } from "../../types/query.types";
 import { RealtimeOptions } from "../../types/realtimeData.types";
+import { logError } from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 import { buildFilterString } from "./buildFilter";
 
@@ -31,7 +32,7 @@ const useRealtimeData = (
 
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase) {
-      console.error("[Supastash] No supabase client found", supabaseClientErr);
+      logError("[Supastash] No supabase client found", supabaseClientErr);
       return;
     }
 

@@ -1,6 +1,7 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { generateUUIDv4 } from "../../../utils/genUUID";
+import { logError, logWarn } from "../../logs";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
@@ -48,7 +49,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
                         !getSupastashConfig().debugMode &&
                         __DEV__) {
                         warned.add(table);
-                        console.warn(`[Supastash] updated_at not provided for upsert call on ${table} – defaulting to ${timeStamp}`);
+                        logWarn(`[Supastash] updated_at not provided for upsert call on ${table} – defaulting to ${timeStamp}`);
                     }
                     const userUpdatedAt = item.updated_at;
                     newPayload.updated_at =
@@ -90,7 +91,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
         };
     }
     catch (error) {
-        console.error(`[Supastash] ${error}`);
+        logError(`[Supastash] ${error}`);
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

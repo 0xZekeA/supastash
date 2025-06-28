@@ -11,7 +11,13 @@ export async function createSyncStatusTable() {
     last_synced_at TEXT NOT NULL
   );`;
 
+  const sql2 = `CREATE TABLE IF NOT EXISTS supastash_last_created (
+    table_name TEXT NOT NULL,
+    last_created_at TEXT NOT NULL
+  );`;
+
   await db.execAsync(sql);
+  await db.execAsync(sql2);
 }
 
 /**

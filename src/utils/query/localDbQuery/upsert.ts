@@ -7,6 +7,7 @@ import {
   SyncMode,
 } from "../../../types/query.types";
 import { generateUUIDv4 } from "../../../utils/genUUID";
+import { logError, logWarn } from "../../logs";
 import { getSafeValue } from "../../serializer";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
@@ -89,7 +90,7 @@ export async function upsertData<T extends boolean, R, Z>(
             __DEV__
           ) {
             warned.add(table);
-            console.warn(
+            logWarn(
               `[Supastash] updated_at not provided for upsert call on ${table} – defaulting to ${timeStamp}`
             );
           }
@@ -142,7 +143,7 @@ export async function upsertData<T extends boolean, R, Z>(
       data: isSingle ? upserted[0] : upserted,
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
-    console.error(`[Supastash] ${error}`);
+    logError(`[Supastash] ${error}`);
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

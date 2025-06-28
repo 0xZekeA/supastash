@@ -1,4 +1,5 @@
 import { isOnline } from "../../connection";
+import { logError } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { deleteData } from "./deleteChunks";
 import { getAllDeletedData, getAllUnsyncedData } from "./getAllUnsyncedData";
@@ -35,7 +36,7 @@ export async function pushLocalDataToRemote(table, onPushToRemote, noSync) {
         }
     }
     catch (error) {
-        console.error(`[Supastash] Error pushing local data to remote for ${table}`, error);
+        logError(`[Supastash] Error pushing local data to remote for ${table}`, error);
     }
     finally {
         isInSync.delete(table);

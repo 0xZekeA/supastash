@@ -1,4 +1,5 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { logError } from "../../logs";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
@@ -33,7 +34,7 @@ export async function selectData(table, select, filters, limit, isSingle) {
         return { data, error: null };
     }
     catch (error) {
-        console.error(`[Supastash] ${error}`);
+        logError(`[Supastash] ${error}`);
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

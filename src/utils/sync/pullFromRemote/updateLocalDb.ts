@@ -3,7 +3,7 @@ import { getSupastashDb } from "../../../db/dbInitializer";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
 import { isOnline } from "../../connection";
 import { getTableSchema } from "../../getTableSchema";
-import log from "../../logs";
+import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { pullData } from "./pullData";
@@ -32,22 +32,19 @@ export async function updateLocalDb(
 
     const data = await pullData(table, filters);
 
-    const dataToUpdate = data?.filter(
-      (d) => !deletedData?.deletedDataMap.has(d.id)
-    );
-    const changes = !!deletedData || !!dataToUpdate;
+    const refreshNeeded = !!deletedData?.records.length || !!data?.length;
 
     // Delete records that are no longer in the remote data
-    if (deletedData) {
+    if (deletedData && deletedData.records.length > 0) {
       for (const record of deletedData.records) {
         await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [record.id]);
       }
-      refreshScreen(table);
     }
 
     // Update local database with remote changes
-    if (dataToUpdate) {
-      for (const record of dataToUpdate) {
+    if (data && data.length > 0) {
+      for (const record of data) {
+        if (deletedData?.deletedDataMap.has(record.id)) continue;
         const { doesExist, newer } = await checkIfRecordExistsAndIsNewer(
           table,
           record
@@ -62,9 +59,11 @@ export async function updateLocalDb(
       }
     }
 
-    if (changes) refreshScreen(table);
+    if (refreshNeeded) refreshScreen(table);
   } catch (error) {
-    console.error(`[Supastash] Error updating local db for ${table}`, error);
+    if (__DEV__) {
+      logError(`[Supastash] Error updating local db for ${table}`, error);
+    }
   } finally {
     isInSync.delete(table);
   }
@@ -109,7 +108,7 @@ export async function upsertData(
       );
       if (unknownKeys.length > 0 && !warned.get(table)) {
         warned.set(table, true);
-        console.warn(
+        logWarn(
           `⚠️ [Supastash] ${table} record contains keys not in local schema: ${unknownKeys.join(
             ", "
           )}. Data will still be stored`
@@ -120,14 +119,13 @@ export async function upsertData(
     // Prep for upsert
     const keys = columns;
     const placeholders = keys.map(() => "?").join(", ");
-    const updateParts = keys
-      .filter((key) => key !== "id")
-      .map((key) => `${key} = ?`);
+
+    const updateColumns = keys.filter((key) => key !== "id");
+    const updateParts = updateColumns.map((key) => `${key} = ?`);
     const updatePlaceholders = updateParts.join(", ");
+
     const values = keys.map((key) => recordToSave[key]);
-    const updateValues = keys
-      .filter((key) => key !== "id")
-      .map((key) => recordToSave[key]);
+    const updateValues = updateColumns.map((key) => recordToSave[key]);
 
     if (itemExists) {
       // Update existing record
@@ -145,7 +143,7 @@ export async function upsertData(
     }
     await updateLocalSyncedAt(table, record.id);
   } catch (error) {
-    console.error(`[Supastash] Error upserting data for ${table}`, error);
+    logError(`[Supastash] Error upserting data for ${table}`, error);
   }
 }
 

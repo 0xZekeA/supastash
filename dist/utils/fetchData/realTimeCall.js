@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { getSupastashConfig } from "../../core/config";
+import { logError } from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 import { buildFilterString } from "./buildFilter";
 const hasRegistered = new Map();
@@ -15,7 +16,7 @@ const useRealtimeData = (table, queueHandler, options, initialized, realtime) =>
             return;
         const supabase = getSupastashConfig().supabaseClient;
         if (!supabase) {
-            console.error("[Supastash] No supabase client found", supabaseClientErr);
+            logError("[Supastash] No supabase client found", supabaseClientErr);
             return;
         }
         hasRegistered.set(subKey, true);
