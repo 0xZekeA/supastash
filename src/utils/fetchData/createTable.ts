@@ -7,7 +7,7 @@ import log from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 import { checkIfTableExist } from "../tableValidator";
 import { mapPgTypeToSQLite } from "./getKeyType";
-import { validatePayload } from "./validatePayload";
+import { validatePayload, validatePayloadForTable } from "./validatePayload";
 
 let errorCount = new Map<string, number>();
 
@@ -34,8 +34,17 @@ async function getTableSchema(table: string): Promise<TableSchema[] | null> {
     errorCount.set(table, (errorCount.get(table) || 0) + 1);
     return null;
   }
+  if (!data || !Array.isArray(data)) return null;
+  validatePayloadForTable(data);
   tableSchemaData.set(table, data);
-  return data;
+  return [
+    ...data,
+    {
+      column_name: "synced_at",
+      data_type: "text",
+      is_nullable: "YES",
+    },
+  ];
 }
 
 /**
