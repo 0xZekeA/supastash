@@ -1,5 +1,5 @@
-import { TableSchema } from "src/types/realtimeData.types";
 import { PayloadData } from "../../types/query.types";
+import { TableSchema } from "../../types/realtimeData.types";
 
 /**
  * Validates the payload

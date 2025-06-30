@@ -39,9 +39,11 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
             const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
             const clearDeleteStatusSql = `DELETE FROM supastash_deleted_status WHERE table_name = '${tableName}'`;
+            const clearLastCreatedStatusSql = `DELETE FROM supastash_last_created WHERE table_name = '${tableName}'`;
             await db.execAsync(dropSql);
             await db.execAsync(clearSyncStatusSql);
             await db.execAsync(clearDeleteStatusSql);
+            await db.execAsync(clearLastCreatedStatusSql);
             clearSchemaCache(tableName);
             log(`[Supastash] Dropped table ${tableName}`);
         }

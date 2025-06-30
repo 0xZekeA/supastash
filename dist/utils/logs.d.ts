@@ -9,6 +9,10 @@ export default log;
  * @param args - The arguments to log
  */
 declare const logError: (...args: any[]) => void;
+/**
+ * Logs a warning to the console if debug mode is enabled
+ * @param args - The arguments to log
+ */
 declare const logWarn: (...args: any[]) => void;
 export { log, logError, logWarn };
 //# sourceMappingURL=logs.d.ts.map

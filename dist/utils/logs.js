@@ -8,9 +8,7 @@ const log = (...args) => {
     const config = getSupastashConfig();
     if (!DEBUG_MODE || !config.debugMode)
         return;
-    if (typeof console !== "undefined" && console.log) {
-        Function.prototype.apply.call(console.log, console, args);
-    }
+    console.log(...args);
 };
 export default log;
 /**
@@ -20,15 +18,15 @@ export default log;
 const logError = (...args) => {
     if (!DEBUG_MODE)
         return;
-    if (typeof console !== "undefined" && console.error) {
-        Function.prototype.apply.call(console.error, console, args);
-    }
+    console.error(...args);
 };
+/**
+ * Logs a warning to the console if debug mode is enabled
+ * @param args - The arguments to log
+ */
 const logWarn = (...args) => {
     if (!DEBUG_MODE)
         return;
-    if (typeof console !== "undefined" && console.warn) {
-        Function.prototype.apply.call(console.warn, console, args);
-    }
+    console.warn(...args);
 };
 export { log, logError, logWarn };

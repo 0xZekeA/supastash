@@ -16,3 +16,17 @@ export async function validatePayload(payload) {
         throw new Error("'deleted_at' column of type timestampz is required");
     }
 }
+export function validatePayloadForTable(payload) {
+    if (!payload.some((col) => col.column_name === "id")) {
+        throw new Error("Unique 'id' column of type uuid/text is required");
+    }
+    if (!payload.some((col) => col.column_name === "updated_at")) {
+        throw new Error("'updated_at' column of type timestampz is required");
+    }
+    if (!payload.some((col) => col.column_name === "created_at")) {
+        throw new Error("'created_at' column of type timestampz is required");
+    }
+    if (!payload.some((col) => col.column_name === "deleted_at")) {
+        throw new Error("'deleted_at' column of type timestampz is required");
+    }
+}
