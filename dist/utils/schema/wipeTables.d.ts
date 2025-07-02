@@ -31,17 +31,23 @@ export declare function wipeTable(tableName: string): Promise<void>;
  */
 export declare function wipeAllTables(): Promise<void>;
 /**
- * Wipes old data for a table
- * @param tableName - The name of the table to wipe old data for
- * @param daysFromNow - The number of days from now to wipe old data for
+ * Wipes old rows from a specified table based on the `created_at` timestamp.
+ *
+ * This is useful for maintaining a lean local cache by removing stale data
+ * during Supastash initialization or periodic syncs.
+ *
+ * @param tableName - Name of the table to clean up (must have a `created_at` column).
+ * @param daysFromNow - Number of days to retain; older rows will be deleted.
+ *
  * @example
  * ```ts
- * // in _layout.tsx or App.tsx or supastash.ts(read more about this in the docs)
+ * // Typically used during Supastash schema setup:
  * configureSupastash({
- *  ...
- * onSchemaInit: async () => {
- *  await wipeOldDataForATable("users", 30); // will wipe all data for the users table that is older than 30 days
- * }
+ *   ...,
+ *   onSchemaInit: async () => {
+ *     await wipeOldDataForATable("users", 30);
+ *     // Removes all rows in "users" created more than 30 days ago
+ *   }
  * });
  * ```
  */
