@@ -48,7 +48,7 @@ export function useSupastash() {
         initialized.current = true;
         async function init() {
             try {
-                // Create tables
+                // Create supastash metadata tables
                 await createSyncStatusTable();
                 await createDeletedStatusTable();
                 // On schema init

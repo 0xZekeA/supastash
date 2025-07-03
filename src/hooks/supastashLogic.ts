@@ -59,7 +59,7 @@ export function useSupastash(): SupastashHookReturn {
 
     async function init() {
       try {
-        // Create tables
+        // Create supastash metadata tables
         await createSyncStatusTable();
         await createDeletedStatusTable();
         // On schema init

@@ -7,12 +7,12 @@ export async function createSyncStatusTable() {
   const db = await getSupastashDb();
 
   const sql = `CREATE TABLE IF NOT EXISTS supastash_sync_status (
-    table_name TEXT NOT NULL,
+    table_name TEXT PRIMARY KEY,
     last_synced_at TEXT NOT NULL
   );`;
 
   const sql2 = `CREATE TABLE IF NOT EXISTS supastash_last_created (
-    table_name TEXT NOT NULL,
+    table_name TEXT PRIMARY KEY,
     last_created_at TEXT NOT NULL
   );`;
 
@@ -27,7 +27,7 @@ export async function createDeletedStatusTable() {
   const db = await getSupastashDb();
 
   const sql = `CREATE TABLE IF NOT EXISTS supastash_deleted_status (
-    table_name TEXT NOT NULL,
+    table_name TEXT PRIMARY KEY,
     last_deleted_at TEXT DEFAULT NULL
   );`;
 
