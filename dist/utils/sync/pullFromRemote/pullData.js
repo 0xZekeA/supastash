@@ -1,5 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
-import log from "../../logs";
+import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { getLastCreatedInfo, updateLastCreatedInfo, } from "./getLastCreatedInfo";
 import { getLastPulledInfo, updateLastPulledInfo } from "./getLastPulledInfo";
@@ -30,10 +30,16 @@ export async function pullData(table, filter) {
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase)
         throw new Error(`No supabase client found: ${supabaseClientErr}`);
-    let filteredQuery = supabase
+    let filteredLastCreatedQuery = supabase
         .from(table)
         .select("*")
-        .or(`created_at.gte.${lastCreatedAt},updated_at.gte.${lastSyncedAt}`)
+        .gte("created_at", lastCreatedAt || RANDOM_OLD_DATE)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false, nullsFirst: false });
+    let filteredLastSyncedQuery = supabase
+        .from(table)
+        .select("*")
+        .gte("updated_at", lastSyncedAt || RANDOM_OLD_DATE)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false, nullsFirst: false });
     if (filter &&
@@ -51,14 +57,27 @@ export async function pullData(table, filter) {
         validOperators.has(filter.operator) &&
         filter.column &&
         isValidValue) {
-        filteredQuery = filteredQuery[filter.operator](filter.column, filter.value);
+        filteredLastCreatedQuery = filteredLastCreatedQuery[filter.operator](filter.column, filter.value);
+        filteredLastSyncedQuery = filteredLastSyncedQuery[filter.operator](filter.column, filter.value);
     }
     // Fetch records where created_at >= lastCreatedAt OR updated_at >= lastSyncedAt
-    const { data, error } = await filteredQuery;
-    if (error) {
-        log(`[Supastash] Error fetching from ${table}:`, error.message);
+    const { data: lastCreatedData, error: lastCreatedError, } = await filteredLastCreatedQuery;
+    const { data: lastSyncedData, error: lastSyncedError, } = await filteredLastSyncedQuery;
+    if (lastCreatedError || lastSyncedError) {
+        log(`[Supastash] Error fetching from ${table}:`, lastCreatedError?.message || lastSyncedError?.message);
         return null;
     }
+    const allRows = [...(lastCreatedData ?? []), ...(lastSyncedData ?? [])];
+    const merged = {};
+    for (const row of allRows) {
+        if (!row.id) {
+            logWarn(`[Supastash] Skipped row without id from "${table}":`, row);
+            continue;
+        }
+        const id = row.id;
+        merged[id] = row;
+    }
+    const data = Object.values(merged);
     if (!data || data.length === 0) {
         timesPulled.set(table, (timesPulled.get(table) || 0) + 1);
         if ((timesPulled.get(table) || 0) >= DEFAULT_MAX_PULL_ATTEMPTS) {
@@ -71,7 +90,8 @@ export async function pullData(table, filter) {
     }
     log(`Received ${data.length} updates for ${table}`);
     // Update the sync status tables with the latest timestamps
-    const { createdMaxDate, updatedMaxDate } = getMaxDate(data);
+    const createdMaxDate = getMaxCreatedDate(lastCreatedData ?? []);
+    const updatedMaxDate = getMaxUpdatedDate(lastSyncedData ?? []);
     if (updatedMaxDate) {
         await updateLastPulledInfo(table, updatedMaxDate);
     }
@@ -80,23 +100,35 @@ export async function pullData(table, filter) {
     }
     return data;
 }
-function getMaxDate(data) {
-    let createdMaxDate = RANDOM_OLD_DATE;
-    let updatedMaxDate = RANDOM_OLD_DATE;
+export function getMaxCreatedDate(data) {
+    if (!data || data.length === 0)
+        return null;
     const createdColumn = "created_at";
-    const updatedColumn = "updated_at";
+    let maxDate = RANDOM_OLD_DATE;
     for (const item of data) {
         const createdValue = item[createdColumn];
-        const updatedValue = item[updatedColumn];
         if (typeof createdValue === "string" && !isNaN(Date.parse(createdValue))) {
-            createdMaxDate = new Date(Math.max(new Date(createdMaxDate).getTime(), new Date(createdValue).getTime())).toISOString();
-        }
-        if (typeof updatedValue === "string" && !isNaN(Date.parse(updatedValue))) {
-            updatedMaxDate = new Date(Math.max(new Date(updatedMaxDate).getTime(), new Date(updatedValue).getTime())).toISOString();
+            const createdTime = new Date(createdValue).getTime();
+            if (createdTime > new Date(maxDate).getTime()) {
+                maxDate = new Date(createdTime).toISOString();
+            }
         }
     }
-    return {
-        createdMaxDate: createdMaxDate === RANDOM_OLD_DATE ? null : createdMaxDate,
-        updatedMaxDate: updatedMaxDate === RANDOM_OLD_DATE ? null : updatedMaxDate,
-    };
+    return maxDate === RANDOM_OLD_DATE ? null : maxDate;
+}
+export function getMaxUpdatedDate(data) {
+    if (!data || data.length === 0)
+        return null;
+    const updatedColumn = "updated_at";
+    let maxDate = RANDOM_OLD_DATE;
+    for (const item of data) {
+        const updatedValue = item[updatedColumn];
+        if (typeof updatedValue === "string" && !isNaN(Date.parse(updatedValue))) {
+            const updatedTime = new Date(updatedValue).getTime();
+            if (updatedTime > new Date(maxDate).getTime()) {
+                maxDate = new Date(updatedTime).toISOString();
+            }
+        }
+    }
+    return maxDate === RANDOM_OLD_DATE ? null : maxDate;
 }
