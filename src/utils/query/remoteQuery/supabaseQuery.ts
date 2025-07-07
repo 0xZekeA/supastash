@@ -52,6 +52,12 @@ export async function querySupabase<T extends boolean, R, Z>(
           userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
       }
 
+      if (method === "insert") {
+        const userCreatedAt = item.created_at;
+        newItem.created_at =
+          userCreatedAt !== undefined ? userCreatedAt : timeStamp;
+      }
+
       return newItem;
     });
   } else if (payload) {
@@ -62,6 +68,12 @@ export async function querySupabase<T extends boolean, R, Z>(
       const userUpdatedAt = (payload as any).updated_at;
       newPayload.updated_at =
         userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+    }
+
+    if (method === "insert") {
+      const userCreatedAt = (payload as any).created_at;
+      newPayload.created_at =
+        userCreatedAt !== undefined ? userCreatedAt : timeStamp;
     }
   }
 
@@ -204,7 +216,7 @@ export async function querySupabase<T extends boolean, R, Z>(
         );
       }
     }
-    if (filters?.length) {
+    if ((method === "update" || method === "delete") && filters?.length) {
       const { clause, values: filterValues } = buildWhereClause(filters);
       await db.runAsync(
         `UPDATE ${table} SET synced_at = ? WHERE ${clause}`,

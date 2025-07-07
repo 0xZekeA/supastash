@@ -26,6 +26,11 @@ export async function querySupabase(state, isBatched = false) {
                 newItem.updated_at =
                     userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
             }
+            if (method === "insert") {
+                const userCreatedAt = item.created_at;
+                newItem.created_at =
+                    userCreatedAt !== undefined ? userCreatedAt : timeStamp;
+            }
             return newItem;
         });
     }
@@ -36,6 +41,11 @@ export async function querySupabase(state, isBatched = false) {
             const userUpdatedAt = payload.updated_at;
             newPayload.updated_at =
                 userUpdatedAt !== undefined ? userUpdatedAt : timeStamp;
+        }
+        if (method === "insert") {
+            const userCreatedAt = payload.created_at;
+            newPayload.created_at =
+                userCreatedAt !== undefined ? userCreatedAt : timeStamp;
         }
     }
     if (!config.supabaseClient) {
@@ -139,7 +149,7 @@ export async function querySupabase(state, isBatched = false) {
                 await db.runAsync(`UPDATE ${table} SET synced_at = ? WHERE ${whereClause}`, [timeStamp, ...conflictValues]);
             }
         }
-        if (filters?.length) {
+        if ((method === "update" || method === "delete") && filters?.length) {
             const { clause, values: filterValues } = buildWhereClause(filters);
             await db.runAsync(`UPDATE ${table} SET synced_at = ? WHERE ${clause}`, filterValues);
             if (method === "delete") {
