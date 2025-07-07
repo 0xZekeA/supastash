@@ -56,7 +56,6 @@ function getNewVersion(table: string): void {
 }
 
 const timesFetched = new Map<string, number>();
-let lastFetched = new Map<string, number>();
 
 /**
  * Fetches the local data from the database
@@ -80,7 +79,7 @@ export async function fetchLocalData<R>(
 } | null> {
   if (!shouldFetch || fetchingPromises.has(table)) return null;
   timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
-  if ((timesFetched.get(table) || 0) > 50) {
+  if ((timesFetched.get(table) || 0) > 150) {
     log(
       `[Supastash] Fetching data for ${table} (times fetched: ${timesFetched.get(
         table

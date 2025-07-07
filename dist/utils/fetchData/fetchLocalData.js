@@ -36,7 +36,6 @@ function getNewVersion(table) {
     debounceMap.set(table, timeout);
 }
 const timesFetched = new Map();
-let lastFetched = new Map();
 /**
  * Fetches the local data from the database
  * @param table - The table name to fetch from
@@ -48,7 +47,7 @@ export async function fetchLocalData(table, shouldFetch = true, limit = 200, ext
     if (!shouldFetch || fetchingPromises.has(table))
         return null;
     timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
-    if ((timesFetched.get(table) || 0) > 50) {
+    if ((timesFetched.get(table) || 0) > 150) {
         log(`[Supastash] Fetching data for ${table} (times fetched: ${timesFetched.get(table)})`);
         timesFetched.delete(table);
     }

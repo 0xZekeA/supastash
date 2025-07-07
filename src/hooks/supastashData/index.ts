@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { AppState } from "react-native";
+import { AppState, NativeEventSubscription } from "react-native";
 import {
   RealtimeOptions,
   SupastashDataResult,
@@ -10,7 +10,6 @@ import useRealtimeData from "../../utils/fetchData/realTimeCall";
 import useDataState from "./dataState";
 import useEventQueues from "./eventQueues";
 import { fetchCalls } from "./fetchCalls";
-import { unregisterSub } from "./registerSub";
 
 const tableSubscriptions = new Map<string, boolean>();
 
@@ -79,6 +78,7 @@ export function useSupastashData<R = any>(
     realtime = true,
   } = options;
   const hasTriggeredRef = useRef(false);
+  const unsub = useRef<NativeEventSubscription | null>(null);
 
   const {
     dataMap,
@@ -99,32 +99,35 @@ export function useSupastashData<R = any>(
     options,
     hasTriggeredRef
   );
+  const subKey = useMemo(
+    () => `${table}:${buildFilterString(filter)}`,
+    [table, filter]
+  );
 
   useEffect(() => {
     if (!shouldFetch || (lazy && !hasTriggeredRef.current)) return;
-
-    const subKey = `${table}:${buildFilterString(filter)}`;
 
     if (!tableSubscriptions.get(subKey)) {
       tableSubscriptions.set(subKey, true);
 
       initialFetchAndSync();
-      const unsub = AppState.addEventListener("change", (state: string) => {
+      unsub.current = AppState.addEventListener("change", (state: string) => {
         if (state === "active") {
           initialFetchAndSync();
         }
       });
       supastashEventBus.on(`refresh:${table}`, triggerRefresh);
       supastashEventBus.on(`refresh:all`, triggerRefresh);
-
-      return () => {
-        supastashEventBus.off?.(`refresh:${table}`, triggerRefresh);
-        supastashEventBus.off?.(`refresh:all`, triggerRefresh);
-        unsub.remove();
-        unregisterSub(table, filter);
-      };
+    } else {
+      initialFetchAndSync();
     }
-  }, [lazy, shouldFetch]);
+    return () => {
+      supastashEventBus.off?.(`refresh:${table}`, triggerRefresh);
+      supastashEventBus.off?.(`refresh:all`, triggerRefresh);
+      unsub.current?.remove();
+      tableSubscriptions.delete(subKey);
+    };
+  }, [lazy, shouldFetch, subKey]);
 
   // TEMP
   useRealtimeData(

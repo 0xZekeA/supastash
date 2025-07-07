@@ -23,6 +23,9 @@ export function fetchCalls(table, options, initialized) {
                 pull: onInsertAndUpdate,
             });
         }
+        return () => {
+            tableFilters.delete(table);
+        };
     }, []);
     const fetch = async () => {
         if (!cancelled.current) {

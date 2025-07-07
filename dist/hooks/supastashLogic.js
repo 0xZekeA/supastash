@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupastashConfig } from "../core/config";
 import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
-import { logError } from "../utils/logs";
+import { logError, logWarn } from "../utils/logs";
 import { createDeletedStatusTable, createSyncStatusTable, } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
 /**
@@ -25,6 +25,7 @@ export function useSupastash() {
     const [dbReady, setDbReady] = useState(false);
     const initialized = useRef(false);
     const config = getSupastashConfig();
+    const { startSync, stopSync } = useSyncEngine();
     if (!config.sqliteClient || !config.sqliteClientType) {
         logError(`
       [Supastash] ${supastashDbErrorMsg}`);
@@ -55,18 +56,27 @@ export function useSupastash() {
                 if (config.onSchemaInit) {
                     await config.onSchemaInit();
                 }
-                setDbReady(true);
             }
             catch (error) {
                 logError(`[Supastash] Error initializing: ${error}`);
             }
+            finally {
+                setDbReady(true);
+            }
         }
         init();
+        return () => {
+            initialized.current = false;
+        };
     }, []);
-    const { startSync, stopSync } = useSyncEngine();
     useEffect(() => {
         if (dbReady) {
-            startSync();
+            try {
+                startSync();
+            }
+            catch (error) {
+                logWarn(`[Supastash] Error starting sync: ${error}`);
+            }
         }
         return () => {
             stopSync();

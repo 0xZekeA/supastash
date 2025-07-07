@@ -52,9 +52,12 @@ const useRealtimeData = (
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      hasRegistered.delete(subKey);
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
     };
-  }, [table, lazy, initialized, realtime, shouldFetch]);
+  }, [table, lazy, initialized, realtime, shouldFetch, subKey]);
 };
 
 export default useRealtimeData;

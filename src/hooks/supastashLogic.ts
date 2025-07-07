@@ -3,7 +3,7 @@ import { getSupastashConfig } from "../core/config";
 import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
 import { SupastashHookReturn } from "../types/supastashConfig.types";
-import { logError } from "../utils/logs";
+import { logError, logWarn } from "../utils/logs";
 import {
   createDeletedStatusTable,
   createSyncStatusTable,
@@ -30,6 +30,8 @@ export function useSupastash(): SupastashHookReturn {
   const [dbReady, setDbReady] = useState(false);
   const initialized = useRef(false);
   const config = getSupastashConfig();
+
+  const { startSync, stopSync } = useSyncEngine();
 
   if (!config.sqliteClient || !config.sqliteClientType) {
     logError(`
@@ -66,19 +68,26 @@ export function useSupastash(): SupastashHookReturn {
         if (config.onSchemaInit) {
           await config.onSchemaInit();
         }
-        setDbReady(true);
       } catch (error) {
         logError(`[Supastash] Error initializing: ${error}`);
+      } finally {
+        setDbReady(true);
       }
     }
 
     init();
+    return () => {
+      initialized.current = false;
+    };
   }, []);
 
-  const { startSync, stopSync } = useSyncEngine();
   useEffect(() => {
     if (dbReady) {
-      startSync();
+      try {
+        startSync();
+      } catch (error) {
+        logWarn(`[Supastash] Error starting sync: ${error}`);
+      }
     }
 
     return () => {

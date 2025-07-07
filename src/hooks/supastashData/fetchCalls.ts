@@ -39,6 +39,9 @@ export function fetchCalls<R>(
         pull: onInsertAndUpdate,
       });
     }
+    return () => {
+      tableFilters.delete(table);
+    };
   }, []);
 
   const fetch = async () => {
