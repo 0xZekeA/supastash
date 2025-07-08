@@ -26,7 +26,7 @@ import { supabaseClientErr } from "../utils/supabaseClientErr";
  *   stopSync: () => void
  * }} Object containing the DB readiness state and sync control functions.
  */
-export function useSupastash(): SupastashHookReturn {
+export function useSupastash(lazy: boolean = false): SupastashHookReturn {
   const [dbReady, setDbReady] = useState(false);
   const initialized = useRef(false);
   const config = getSupastashConfig();
@@ -82,6 +82,7 @@ export function useSupastash(): SupastashHookReturn {
   }, []);
 
   useEffect(() => {
+    if (lazy) return;
     if (dbReady) {
       try {
         startSync();

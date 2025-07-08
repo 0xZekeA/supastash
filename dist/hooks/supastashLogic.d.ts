@@ -15,5 +15,5 @@ import { SupastashHookReturn } from "../types/supastashConfig.types";
  *   stopSync: () => void
  * }} Object containing the DB readiness state and sync control functions.
  */
-export declare function useSupastash(): SupastashHookReturn;
+export declare function useSupastash(lazy?: boolean): SupastashHookReturn;
 //# sourceMappingURL=supastashLogic.d.ts.map
