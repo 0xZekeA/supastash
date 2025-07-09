@@ -74,6 +74,15 @@ export interface RealtimeOptions<R = any> {
   filter?: RealtimeFilter;
 
   /**
+   * If true, only use the filter for the realtime subscription stream.
+   * Default is false, meaning the filter is applied to both the realtime subscription stream and the local database.
+   *
+   * @example
+   * onlyUseFilterForRealtime: true
+   */
+  onlyUseFilterForRealtime?: boolean;
+
+  /**
    * Maximum number of records to fetch initially from the local database.
    * @default 1000
    *

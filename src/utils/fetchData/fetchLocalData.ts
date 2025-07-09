@@ -1,7 +1,10 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
 import { PayloadData } from "../../types/query.types";
+import { RealtimeFilter } from "../../types/realtimeData.types";
+import { getTableSchema } from "../getTableSchema";
 import log, { logError, logWarn } from "../logs";
+import { buildFilterForSql } from "./buildFilter";
 import { notifySubscribers } from "./snapShot";
 
 const fetchingPromises = new Map<
@@ -69,7 +72,8 @@ export async function fetchLocalData<R>(
   shouldFetch: boolean = true,
   limit: number = 200,
   extraMapKeys?: (keyof R)[],
-  daylength?: number
+  daylength?: number,
+  filter?: RealtimeFilter
 ): Promise<{
   data: PayloadData[];
   dataMap: Map<string, PayloadData>;
@@ -98,10 +102,26 @@ export async function fetchLocalData<R>(
         ? `AND datetime(created_at) >= datetime('now', '-${day} days')`
         : "";
 
+    const schema = await getTableSchema(table);
+    const simplify = (column: string | undefined) =>
+      column?.trim().toLowerCase();
+    const columnExists = schema.some(
+      (column) => simplify(column) === simplify(filter?.column)
+    );
+    if (!columnExists) {
+      logWarn(
+        `[Supastash] Filter column ${filter?.column} does not exist in table ${table}`
+      );
+    }
+
+    const filterString = buildFilterForSql(filter);
+    const filterClause =
+      filterString && columnExists ? `AND ${filterString}` : "";
+
     try {
       const db = await getSupastashDb();
       const localData: PayloadData[] = await db.getAllAsync(
-        `SELECT * FROM ${table} WHERE deleted_at IS NULL ${daylengthClause} ORDER BY created_at DESC LIMIT ?`,
+        `SELECT * FROM ${table} WHERE deleted_at IS NULL ${filterClause} ${daylengthClause} ORDER BY created_at DESC LIMIT ?`,
         [limit]
       );
 

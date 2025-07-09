@@ -1,6 +1,8 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
+import { getTableSchema } from "../getTableSchema";
 import log, { logError, logWarn } from "../logs";
+import { buildFilterForSql } from "./buildFilter";
 import { notifySubscribers } from "./snapShot";
 const fetchingPromises = new Map();
 const versionMap = new Map();
@@ -43,7 +45,7 @@ const timesFetched = new Map();
  * @param limit - Optional limit for rows
  * @param extraMapKeys - Optional fields to group data by
  */
-export async function fetchLocalData(table, shouldFetch = true, limit = 200, extraMapKeys, daylength) {
+export async function fetchLocalData(table, shouldFetch = true, limit = 200, extraMapKeys, daylength, filter) {
     if (!shouldFetch || fetchingPromises.has(table))
         return null;
     timesFetched.set(table, (timesFetched.get(table) || 0) + 1);
@@ -59,9 +61,17 @@ export async function fetchLocalData(table, shouldFetch = true, limit = 200, ext
         const daylengthClause = !isNaN(day) && day > 0
             ? `AND datetime(created_at) >= datetime('now', '-${day} days')`
             : "";
+        const schema = await getTableSchema(table);
+        const simplify = (column) => column?.trim().toLowerCase();
+        const columnExists = schema.some((column) => simplify(column) === simplify(filter?.column));
+        if (!columnExists) {
+            logWarn(`[Supastash] Filter column ${filter?.column} does not exist in table ${table}`);
+        }
+        const filterString = buildFilterForSql(filter);
+        const filterClause = filterString && columnExists ? `AND ${filterString}` : "";
         try {
             const db = await getSupastashDb();
-            const localData = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ${daylengthClause} ORDER BY created_at DESC LIMIT ?`, [limit]);
+            const localData = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ${filterClause} ${daylengthClause} ORDER BY created_at DESC LIMIT ?`, [limit]);
             const dataMap = new Map();
             const data = [];
             const groupedBy = {};

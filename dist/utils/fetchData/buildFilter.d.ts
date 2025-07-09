@@ -4,4 +4,9 @@ export declare function buildFilterString(filters: {
     operator: FilterOperator;
     value: string | number | null | (string | number)[];
 } | undefined): string | undefined;
+export declare function buildFilterForSql(filter: {
+    column: string;
+    operator: FilterOperator;
+    value: string | number | null | (string | number)[];
+} | undefined): string | undefined;
 //# sourceMappingURL=buildFilter.d.ts.map

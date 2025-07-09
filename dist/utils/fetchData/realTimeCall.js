@@ -35,6 +35,6 @@ const useRealtimeData = (table, queueHandler, options, initialized, realtime) =>
                 supabase.removeChannel(subscription);
             }
         };
-    }, [table, lazy, initialized, realtime, shouldFetch, subKey]);
+    }, [table, lazy, initialized, realtime, shouldFetch, subKey, filterString]);
 };
 export default useRealtimeData;

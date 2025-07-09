@@ -20,6 +20,7 @@ export function fetchCalls<R>(
     useFilterWhileSyncing = true,
     extraMapKeys,
     daylength,
+    onlyUseFilterForRealtime,
   } = options;
   const cancelled = useRef(false);
 
@@ -46,7 +47,14 @@ export function fetchCalls<R>(
 
   const fetch = async () => {
     if (!cancelled.current) {
-      await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength);
+      await fetchLocalData(
+        table,
+        shouldFetch,
+        limit,
+        extraMapKeys,
+        daylength,
+        onlyUseFilterForRealtime ? undefined : filter
+      );
     }
   };
 

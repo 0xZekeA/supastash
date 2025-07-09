@@ -5,7 +5,7 @@ import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
 import { logError } from "../../utils/logs";
 export function fetchCalls(table, options, initialized) {
-    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, } = options;
+    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, onlyUseFilterForRealtime, } = options;
     const cancelled = useRef(false);
     useEffect(() => {
         if (filter && useFilterWhileSyncing && !tableFilters.get(table)) {
@@ -29,7 +29,7 @@ export function fetchCalls(table, options, initialized) {
     }, []);
     const fetch = async () => {
         if (!cancelled.current) {
-            await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength);
+            await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength, onlyUseFilterForRealtime ? undefined : filter);
         }
     };
     const trigger = () => {
