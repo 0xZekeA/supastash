@@ -61,14 +61,17 @@ export async function fetchLocalData(table, shouldFetch = true, limit = 200, ext
         const daylengthClause = !isNaN(day) && day > 0
             ? `AND datetime(created_at) >= datetime('now', '-${day} days')`
             : "";
-        const schema = await getTableSchema(table);
-        const simplify = (column) => column?.trim().toLowerCase();
-        const columnExists = schema.some((column) => simplify(column) === simplify(filter?.column));
-        if (!columnExists) {
-            logWarn(`[Supastash] Filter column ${filter?.column} does not exist in table ${table}`);
+        let filterClause = "";
+        if (filter?.column) {
+            const schema = await getTableSchema(table);
+            const simplify = (column) => column?.trim().toLowerCase();
+            const columnExists = schema.some((column) => simplify(column) === simplify(filter.column));
+            if (!columnExists) {
+                logWarn(`[Supastash] Filter column ${filter.column} does not exist in table ${table}`);
+            }
+            const filterString = buildFilterForSql(filter);
+            filterClause = filterString && columnExists ? `AND ${filterString}` : "";
         }
-        const filterString = buildFilterForSql(filter);
-        const filterClause = filterString && columnExists ? `AND ${filterString}` : "";
         try {
             const db = await getSupastashDb();
             const localData = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ${filterClause} ${daylengthClause} ORDER BY created_at DESC LIMIT ?`, [limit]);

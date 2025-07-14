@@ -102,21 +102,24 @@ export async function fetchLocalData<R>(
         ? `AND datetime(created_at) >= datetime('now', '-${day} days')`
         : "";
 
-    const schema = await getTableSchema(table);
-    const simplify = (column: string | undefined) =>
-      column?.trim().toLowerCase();
-    const columnExists = schema.some(
-      (column) => simplify(column) === simplify(filter?.column)
-    );
-    if (!columnExists) {
-      logWarn(
-        `[Supastash] Filter column ${filter?.column} does not exist in table ${table}`
+    let filterClause = "";
+    if (filter?.column) {
+      const schema = await getTableSchema(table);
+      const simplify = (column: string | undefined) =>
+        column?.trim().toLowerCase();
+      const columnExists = schema.some(
+        (column) => simplify(column) === simplify(filter.column)
       );
-    }
 
-    const filterString = buildFilterForSql(filter);
-    const filterClause =
-      filterString && columnExists ? `AND ${filterString}` : "";
+      if (!columnExists) {
+        logWarn(
+          `[Supastash] Filter column ${filter.column} does not exist in table ${table}`
+        );
+      }
+
+      const filterString = buildFilterForSql(filter);
+      filterClause = filterString && columnExists ? `AND ${filterString}` : "";
+    }
 
     try {
       const db = await getSupastashDb();
