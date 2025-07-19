@@ -85,7 +85,7 @@ async function runRemoteQuery(opKey) {
             calledOfflineRetries.delete(opKey);
             const { error } = await querySupabase({ ...state }, true);
             if (!error) {
-                log(`[Supastash] Synced successfully: ${opKey}`);
+                log(`[Supastash] Synced item on ${state.table} with ${state.method} to supabase`);
                 break;
             }
             const currentRetry = (retryCount.get(opKey) ?? 0) + 1;

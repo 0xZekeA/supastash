@@ -218,10 +218,10 @@ export async function querySupabase<T extends boolean, R, Z>(
     }
     if ((method === "update" || method === "delete") && filters?.length) {
       const { clause, values: filterValues } = buildWhereClause(filters);
-      await db.runAsync(
-        `UPDATE ${table} SET synced_at = ? WHERE ${clause}`,
-        filterValues
-      );
+      await db.runAsync(`UPDATE ${table} SET synced_at = ? ${clause}`, [
+        timeStamp,
+        ...filterValues,
+      ]);
 
       if (method === "delete") {
         await permanentlyDeleteData(table, filters);

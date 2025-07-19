@@ -130,7 +130,9 @@ async function runRemoteQuery(opKey: string) {
 
       const { error } = await querySupabase({ ...state }, true);
       if (!error) {
-        log(`[Supastash] Synced successfully: ${opKey}`);
+        log(
+          `[Supastash] Synced item on ${state.table} with ${state.method} to supabase`
+        );
         break;
       }
 
