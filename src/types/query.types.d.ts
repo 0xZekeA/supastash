@@ -168,3 +168,10 @@ export interface ExecuteOptions {
    */
   debug?: boolean;
 }
+
+interface BatchedCall<T extends CrudMethods, U extends boolean, R> {
+  state: SupastashQuery<T, U, R>;
+  opKey: string;
+  resolve: (success: boolean) => void;
+  reject: (error: any) => void;
+}

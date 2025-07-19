@@ -1,12 +1,13 @@
 import { PostgrestError } from "@supabase/supabase-js";
 import {
+  BatchedCall,
   CrudMethods,
   MethodReturnTypeMap,
   SupabaseQueryReturn,
   SupastashQuery,
 } from "../../../types/query.types";
 import { isOnline } from "../../../utils/connection";
-import { log, logError, logWarn } from "../../../utils/logs";
+import { log, logWarn } from "../../../utils/logs";
 import { generateUUIDv4 } from "../../genUUID";
 import { queryLocalDb } from "../localDbQuery";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
@@ -76,83 +77,117 @@ export function getCommonError<U extends boolean, T extends CrudMethods, R, Z>(
 
   return null;
 }
-const stateCache = new Map<string, SupastashQuery<CrudMethods, boolean, any>>();
+
+let batchQueue: BatchedCall<any, any, any>[] = [];
+let isProcessing = false;
+let batchTimer: NodeJS.Timeout | number | null = null;
+const BATCH_DELAY = 10;
+
 const retryCount = new Map<string, number>();
 const calledOfflineRetries = new Map<string, number>();
+const successfulCalls = new Set<string>();
+const MAX_RETRIES = 3;
+const MAX_OFFLINE_RETRIES = 5;
 
-const opQueue: string[] = [];
-let isProcessing = false;
-
-const MAX_RETRIES = 2;
-const MAX_OFFLINE_RETRIES = 10;
-
-const getOpKey = (state: SupastashQuery<CrudMethods, boolean, any>) =>
-  `${state.method}:${state.table}:${state.id}`;
-
-function delay(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function addToCache(state: SupastashQuery<CrudMethods, boolean, any>) {
-  const opKey = getOpKey(state);
-  if (stateCache.has(opKey)) return;
-
-  stateCache.set(opKey, state);
-  opQueue.push(opKey);
-  processQueue();
+function generateOpKey<T extends CrudMethods, U extends boolean, R>(
+  state: SupastashQuery<T, U, R>
+): string {
+  return `${state.table}_${state.method}_${state.id}_${JSON.stringify(
+    state.payload
+  )}`;
 }
 
-async function processQueue() {
-  if (isProcessing) return;
+export function queueRemoteCall<T extends CrudMethods, U extends boolean, R>(
+  state: SupastashQuery<T, U, R>
+): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const opKey = generateOpKey(state);
+
+    if (successfulCalls.has(opKey)) {
+      resolve(true);
+      return;
+    }
+
+    batchQueue.push({ state, opKey, resolve, reject });
+    scheduleBatch();
+  });
+}
+
+function scheduleBatch(): void {
+  if (batchTimer) return;
+
+  batchTimer = setTimeout(() => {
+    processBatch();
+    batchTimer = null;
+  }, BATCH_DELAY);
+}
+
+async function processBatch(): Promise<void> {
+  if (isProcessing || batchQueue.length === 0) return;
+
   isProcessing = true;
+  const batch = [...batchQueue];
+  batchQueue = [];
 
-  while (opQueue.length > 0) {
-    const opKey = opQueue.shift();
-    const state = stateCache.get(opKey!);
-    if (!state) continue;
+  for (const call of batch) {
+    const { state, opKey, resolve, reject } = call;
 
-    retryCount.set(opKey!, retryCount.get(opKey!) ?? 0);
+    if (successfulCalls.has(opKey)) {
+      resolve(true);
+      continue;
+    }
 
     try {
-      while ((retryCount.get(opKey!) ?? 0) <= MAX_RETRIES) {
+      while ((retryCount.get(opKey) ?? 0) <= MAX_RETRIES) {
         const isConnected = await isOnline();
-        if (!isConnected) {
-          const offlineRetries = (calledOfflineRetries.get(opKey!) || 0) + 1;
 
+        if (!isConnected) {
+          const offlineRetries = (calledOfflineRetries.get(opKey) || 0) + 1;
           if (offlineRetries > MAX_OFFLINE_RETRIES) {
-            logError(
+            logWarn(
               `[Supastash] Gave up on ${opKey} after ${MAX_OFFLINE_RETRIES} offline retries`
             );
+            reject(new Error(`Offline retry limit exceeded for ${opKey}`));
             break;
           }
-
-          calledOfflineRetries.set(opKey!, offlineRetries);
+          calledOfflineRetries.set(opKey, offlineRetries);
           await delay(1000);
           continue;
         }
 
-        calledOfflineRetries.delete(opKey!);
+        calledOfflineRetries.delete(opKey);
 
         const { error } = await querySupabase({ ...state }, true);
+
         if (!error) {
+          successfulCalls.add(opKey);
+          retryCount.delete(opKey);
           log(
             `[Supastash] Synced item on ${state.table} with ${state.method} to supabase`
           );
+          resolve(true);
           break;
-        }
+        } else {
+          const currentRetries = retryCount.get(opKey) ?? 0;
+          retryCount.set(opKey, currentRetries + 1);
 
-        const currentRetry = (retryCount.get(opKey!) ?? 0) + 1;
-        logError(
-          `[Supastash] Remote sync failed: ${opKey} (${currentRetry}/${MAX_RETRIES}) → ${error.message}`
-        );
-        retryCount.set(opKey!, currentRetry);
-        await delay(100 * currentRetry);
+          if (currentRetries >= MAX_RETRIES) {
+            logWarn(
+              `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries`
+            );
+            reject(new Error(`Max retries exceeded for ${opKey}`));
+            break;
+          }
+
+          await delay(1000 * (currentRetries + 1));
+        }
       }
     } catch (error) {
-      logWarn(`[Supastash] Error running remote query: ${opKey} → ${error}`);
-    } finally {
-      retryCount.delete(opKey!);
-      stateCache.delete(opKey!);
+      reject(error);
     }
   }
 
@@ -197,7 +232,9 @@ export async function runSyncStrategy<
       if (state.viewRemoteResult) {
         remoteResult = await querySupabase<U, R, Z>(state);
       } else {
-        addToCache(state);
+        queueRemoteCall(state).catch((error) => {
+          console.error(`[Supastash] Failed to sync ${state.table}:`, error);
+        });
       }
       break;
     case "remoteFirst":
