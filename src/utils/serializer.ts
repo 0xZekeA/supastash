@@ -27,6 +27,25 @@ function stableStringify(obj: any): string {
  */
 export function getSafeValue(value: any): any {
   if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+
+  if (Array.isArray(value)) {
+    const allPrimitives = value.every(
+      (v) =>
+        typeof v === "string" ||
+        typeof v === "number" ||
+        typeof v === "boolean" ||
+        v === null
+    );
+    if (allPrimitives) return value;
+
+    const allObjects = value.every((v) => typeof v === "object" && v !== null);
+    if (allObjects) return value.map(stableStringify);
+
+    return stableStringify(value);
+  }
+
   if (typeof value === "object") return stableStringify(value);
+
   return value;
 }

@@ -18,8 +18,26 @@ export function buildWhereClause(filters: FilterCalls[] | null) {
     switch (operator) {
       case "IN":
         if (!Array.isArray(value) || value.length === 0) continue;
+        const isValid = safeValue.every(
+          (v: any) =>
+            typeof v === "string" ||
+            typeof v === "number" ||
+            typeof v === "boolean" ||
+            v === null
+        );
+
+        if (!isValid) {
+          throw new Error(
+            `❌ IN clause only supports strings, numbers, or booleans. You passed: ${JSON.stringify(
+              value,
+              null,
+              2
+            )}`
+          );
+        }
+
         clauseParts.push(`${column} IN (${value.map(() => "?").join(", ")})`);
-        values.push(...safeValue);
+        values.push(...value);
         break;
 
       case "IS":

@@ -18,7 +18,7 @@ async function permanentlyDeleteChunkLocally(
   const db = await getSupastashDb();
 
   for (const row of chunk) {
-    await db.runAsync(`DELETE FROM ${table} WHERE id = ${row.id}`);
+    await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [row.id]);
   }
 }
 
@@ -68,8 +68,8 @@ export async function deleteData(
   table: string,
   unsyncedRecords: PayloadData[]
 ) {
-  const cleanRecords = unsyncedRecords.map(
-    ({ synced_at, deleted_at, ...rest }) => parseStringifiedFields(rest)
+  const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) =>
+    parseStringifiedFields(rest)
   );
 
   for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {

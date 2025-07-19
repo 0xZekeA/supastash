@@ -1,5 +1,5 @@
 import { isOnline } from "../../../utils/connection";
-import log, { logError } from "../../../utils/logs";
+import { log, logError } from "../../../utils/logs";
 import { generateUUIDv4 } from "../../genUUID";
 import { queryLocalDb } from "../localDbQuery";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
@@ -46,85 +46,62 @@ export function getCommonError(table, method, localResult, remoteResult) {
     }
     return null;
 }
-let stateCache = [];
-const pendingIds = new Set();
-let isRunning = false;
+const stateCache = new Map();
+const runningStates = new Set();
+const calledOfflineRetries = new Map();
+const retryCount = new Map();
 const MAX_RETRIES = 2;
 const MAX_OFFLINE_RETRIES = 10;
-const calledOfflineRetries = new Map();
-const retryDelay = 1000 * 30;
-function enqueueState(query) {
-    if (pendingIds.has(query.id))
-        return;
-    stateCache.push(query);
-    pendingIds.add(query.id);
-}
-async function runBatchedRemoteQuery() {
-    if (isRunning)
-        return;
-    isRunning = true;
-    while (stateCache.length > 0) {
-        const isConnected = await isOnline();
-        const state = stateCache.shift();
-        if (calledOfflineRetries.get(state.id) &&
-            calledOfflineRetries.get(state.id) >= MAX_OFFLINE_RETRIES) {
-            logError(`[Supastash] Failed to send remote batch query:\n` +
-                `  Table: ${state.table}\n` +
-                `  Method: ${state.method}\n` +
-                `  Retries: ${MAX_OFFLINE_RETRIES}\n` +
-                `  Retrying in ${retryDelay}ms`);
-            calledOfflineRetries.delete(state.id);
-            batchTimer = setTimeout(() => {
-                isRunning = false;
-                if (!isRunning)
-                    runBatchedRemoteQuery();
-                batchTimer = null;
-            }, retryDelay);
-            return;
-        }
-        if (!isConnected) {
-            if (!calledOfflineRetries.has(state.id)) {
-                log(`[Supastash] Not connected to internet\n` +
-                    `  Table: ${state.table}\n` +
-                    `  Method: ${state.method}\n` +
-                    `  Retries: ${MAX_OFFLINE_RETRIES}\n`);
-            }
-            stateCache.unshift(state);
-            calledOfflineRetries.set(state.id, (calledOfflineRetries.get(state.id) || 0) + 1);
-            await delay(1000);
-            continue;
-        }
-        calledOfflineRetries.delete(state.id);
-        const retryCount = state.retryCount || 0;
-        const { error } = await querySupabase({
-            ...state,
-            isSingle: state.isSingle,
-        }, true);
-        if (error) {
-            if (retryCount < MAX_RETRIES) {
-                state.retryCount = retryCount + 1;
-                stateCache.unshift(state);
-                await delay(100 * retryCount);
-                continue;
-            }
-            else {
-                logError(`[Supastash] Remote sync failed on ${state.table} with ${state.method} after ${retryCount + 1} tries: ${error.message}`);
-            }
-        }
-    }
-    isRunning = false;
-}
+const getOpKey = (state) => `${state.method}:${state.table}:${state.id}`;
 function delay(ms) {
     return new Promise((res) => setTimeout(res, ms));
 }
-let batchTimer = null;
-function addToCache(state) {
-    enqueueState(state);
-    if (batchTimer)
-        clearTimeout(batchTimer);
-    batchTimer = setTimeout(() => {
-        runBatchedRemoteQuery();
-    }, 200);
+export function addToCache(state) {
+    const opKey = getOpKey(state);
+    if (runningStates.has(opKey))
+        return;
+    runningStates.add(opKey);
+    stateCache.set(opKey, state);
+    runRemoteQuery(opKey);
+}
+async function runRemoteQuery(opKey) {
+    const state = stateCache.get(opKey);
+    if (!state)
+        return;
+    retryCount.set(opKey, retryCount.get(opKey) ?? 0);
+    try {
+        while ((retryCount.get(opKey) ?? 0) <= MAX_RETRIES) {
+            const isConnected = await isOnline();
+            if (!isConnected) {
+                const offlineRetries = (calledOfflineRetries.get(opKey) || 0) + 1;
+                if (offlineRetries > MAX_OFFLINE_RETRIES) {
+                    logError(`[Supastash] Gave up on ${opKey} after ${MAX_OFFLINE_RETRIES} offline retries`);
+                    break;
+                }
+                calledOfflineRetries.set(opKey, offlineRetries);
+                await delay(1000);
+                continue;
+            }
+            calledOfflineRetries.delete(opKey);
+            const { error } = await querySupabase({ ...state }, true);
+            if (!error) {
+                log(`[Supastash] Synced successfully: ${opKey}`);
+                break;
+            }
+            const currentRetry = (retryCount.get(opKey) ?? 0) + 1;
+            logError(`[Supastash] Remote sync failed: ${opKey} (${currentRetry}/${MAX_RETRIES}) → ${error.message}`);
+            retryCount.set(opKey, currentRetry);
+            await delay(100 * currentRetry);
+        }
+    }
+    catch (error) {
+        logError(`[Supastash] Error running remote query: ${opKey} → ${error}`);
+    }
+    finally {
+        retryCount.delete(opKey);
+        stateCache.delete(opKey);
+        runningStates.delete(opKey);
+    }
 }
 export async function runSyncStrategy(state) {
     const { type } = state;

@@ -11,7 +11,7 @@ const CHUNK_SIZE = 500;
 async function permanentlyDeleteChunkLocally(table, chunk) {
     const db = await getSupastashDb();
     for (const row of chunk) {
-        await db.runAsync(`DELETE FROM ${table} WHERE id = ${row.id}`);
+        await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [row.id]);
     }
 }
 function errorHandler(error, table, attempts) {
@@ -47,7 +47,7 @@ async function deleteChunk(table, chunk) {
  * @param unsyncedRecords - The unsynced records to delete
  */
 export async function deleteData(table, unsyncedRecords) {
-    const cleanRecords = unsyncedRecords.map(({ synced_at, deleted_at, ...rest }) => parseStringifiedFields(rest));
+    const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) => parseStringifiedFields(rest));
     for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
         const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
         await deleteChunk(table, chunk);

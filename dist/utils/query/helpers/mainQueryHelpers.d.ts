@@ -5,6 +5,7 @@ export declare function assignInsertIds<R>(payload: R | R[] | null): R | R[] | n
 export declare function getCommonError<U extends boolean, T extends CrudMethods, R, Z>(table: string, method: CrudMethods, localResult: MethodReturnTypeMap<U, Z>[T] | null, remoteResult: SupabaseQueryReturn<U, Z> | null): (Error & {
     supabaseError?: PostgrestError;
 }) | null;
+export declare function addToCache(state: SupastashQuery<CrudMethods, boolean, any>): void;
 export declare function runSyncStrategy<T extends CrudMethods, U extends boolean, R, Z>(state: SupastashQuery<T, U, R>): Promise<{
     localResult: MethodReturnTypeMap<U, Z>[T] | null;
     remoteResult: SupabaseQueryReturn<U, Z> | null;
