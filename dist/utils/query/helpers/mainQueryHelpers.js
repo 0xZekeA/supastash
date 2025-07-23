@@ -161,9 +161,7 @@ export async function runSyncStrategy(state) {
                 remoteResult = await querySupabase(state);
             }
             else {
-                queueRemoteCall(state).catch((error) => {
-                    console.error(`[Supastash] Failed to sync ${state.table}:`, error);
-                });
+                queueRemoteCall(state);
             }
             break;
         case "remoteFirst":

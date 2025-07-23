@@ -232,9 +232,7 @@ export async function runSyncStrategy<
       if (state.viewRemoteResult) {
         remoteResult = await querySupabase<U, R, Z>(state);
       } else {
-        queueRemoteCall(state).catch((error) => {
-          console.error(`[Supastash] Failed to sync ${state.table}:`, error);
-        });
+        queueRemoteCall(state);
       }
       break;
     case "remoteFirst":
