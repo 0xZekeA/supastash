@@ -21,6 +21,7 @@ export function refreshTable(table: string) {
 
 const debouncedRefreshAll = debounce(() => {
   supastashEventBus.emit(`refresh:all`);
+  supastashEventBus.emit(`liteQueryRefresh:all`);
 }, 1000);
 
 /**

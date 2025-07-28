@@ -58,7 +58,7 @@ configureSupastash({
 
 ### `useFiltersFromStore` (default: `true`)
 
-- When enabled, pull sync applies filters stored during hook usage (e.g., from [`useSupatashData()`](./data-access.md)).
+- When enabled, pull sync applies filters stored during hook usage (e.g., from [`useSupatashData()`](./useSupastashData.md)).
 - This ensures only relevant data is pulled even when pull is globally enabled.
 
 ---
@@ -135,10 +135,10 @@ The config can only be set once per session. To reset:
 - Restart the app
 - Drop and recreate the local DB if necessary using [`defineLocalSchema(..., true)`](./schema-management.md).
 - ⚠️ **Avoid setting** `deletePreviousSchema` to `true` in production. Use [`defineLocalSchema(...)`](./schema-management.md) without the second argument for safe behavior.
-- [`useSupastashData(...)`](./data-access.md) will auto-create tables **if** the [`get_table_schema`](./getting-started.md) RPC is properly set up on Supabase. (See the Getting Started guide for setup)
+- [`useSupastashData(...)`](./useSupastashData.md) will auto-create tables **if** the [`get_table_schema`](./getting-started.md) RPC is properly set up on Supabase. (See the Getting Started guide for setup)
 
 ### 🔗 What’s Next?
 
-- [Data Access docs](./data-access.md)
+- [Data Access docs](./useSupastashData.md)
 - [useSupastash docs](useSupastash-hook.md)
 - [Query Builder docs](./supastash-query-builder.md)

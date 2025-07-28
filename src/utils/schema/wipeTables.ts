@@ -2,9 +2,10 @@ import { getSupastashDb } from "../../db/dbInitializer";
 import { clearSchemaCache } from "../getTableSchema";
 import log from "../logs";
 import { getAllTables } from "../sync/getAllTables";
+import { clearLocalDeleteLog, clearLocalSyncLog } from "../syncStatus";
 
 /**
- * Drops a specific table from the local SQLite database and removes its sync metadata.
+ * Wipes a specific table from the local SQLite database and removes its sync metadata.
  *
  * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
  * as it will permanently delete all local data for the specified table.
@@ -23,24 +24,71 @@ export async function wipeTable(tableName: string) {
   try {
     const db = await getSupastashDb();
     await db.runAsync(`DELETE FROM ${tableName}`);
-    await db.runAsync(
-      `DELETE FROM supastash_sync_status WHERE table_name = ?`,
-      [tableName]
-    );
-    await db.runAsync(
-      `DELETE FROM supastash_deleted_status WHERE table_name = ?`,
-      [tableName]
-    );
+    await clearLocalSyncLog(tableName);
+    await clearLocalDeleteLog(tableName);
 
     clearSchemaCache(tableName);
-    log(`[Supastash] Dropped table "${tableName}" and cleared sync metadata.`);
+    log(`[Supastash] Wiped table "${tableName}" and cleared sync metadata.`);
   } catch (error) {
     log(`[Supastash] Failed to wipe table "${tableName}": ${error}`);
   }
 }
 
 /**
- * Drops all local tables managed by Supastash and clears associated sync metadata.
+ * Drops a specific table from the local SQLite database and removes its sync metadata.
+ *
+ * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
+ * as it will permanently delete all local data for the specified table.
+ *
+ * @param tableName - Name of the table to drop.
+ *
+ * @example
+ * configureSupastash({
+ *   ...
+ *   onSchemaInit: async () => {
+ *     await dropTable("users"); // dev-only: drops the "users" table on app start
+ *   }
+ * });
+ */
+export async function dropTable(tableName: string) {
+  try {
+    const db = await getSupastashDb();
+    await db.runAsync(`DROP TABLE IF EXISTS ${tableName}`);
+    await clearLocalSyncLog(tableName);
+    await clearLocalDeleteLog(tableName);
+
+    clearSchemaCache(tableName);
+    log(`[Supastash] Dropped table "${tableName}" and cleared sync metadata.`);
+  } catch (error) {
+    log(`[Supastash] Failed to drop table "${tableName}": ${error}`);
+  }
+}
+
+/**
+ * Drops all tables from the local SQLite database and removes their sync metadata.
+ *
+ * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
+ * as it will permanently delete all local data for all tables.
+ *
+ * @example
+ */
+export async function dropAllTables() {
+  try {
+    const tables = await getAllTables();
+    if (!tables) {
+      log("No tables found");
+      return;
+    }
+    for (const table of tables) {
+      await dropTable(table);
+    }
+  } catch (error) {
+    log(`[Supastash] Error wiping all tables: ${error}`);
+  }
+}
+
+/**
+ * Wipes all local tables managed by Supastash and clears associated sync metadata.
  *
  * ⚠️ WARNING: This will irreversibly delete all local tables and their data.
  * Intended only for development or reset scenarios.

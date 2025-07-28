@@ -7,19 +7,7 @@ import {
   getLastDeletedInfo,
   updateLastDeletedInfo,
 } from "./getLastDeletedInfo";
-
-const validOperators = new Set([
-  "eq",
-  "neq",
-  "gt",
-  "lt",
-  "gte",
-  "lte",
-  "like",
-  "ilike",
-  "is",
-  "in",
-]);
+import isValidFilter from "./validateFilters";
 
 let timesPulled = 0;
 let lastPulled = 0;
@@ -31,7 +19,7 @@ let lastPulled = 0;
  */
 export async function pullDeletedData(
   table: string,
-  filter?: RealtimeFilter
+  filters?: RealtimeFilter[]
 ): Promise<{
   deletedDataMap: Map<string, PayloadData>;
   records: PayloadData[];
@@ -48,24 +36,12 @@ export async function pullDeletedData(
     .gt("deleted_at", lastDeletedAt)
     .order("deleted_at", { ascending: false, nullsFirst: false });
 
-  if (
-    filter &&
-    (!filter.operator ||
-      !validOperators.has(filter.operator) ||
-      !filter.column ||
-      !filter.value)
-  ) {
-    throw new Error(
-      `Invalid filter: ${JSON.stringify(filter)} for table ${table}`
-    );
-  }
-
-  if (
-    filter?.operator &&
-    validOperators.has(filter.operator) &&
-    filter.column &&
-    filter.value
-  ) {
+  for (const filter of filters || []) {
+    if (!isValidFilter([filter])) {
+      throw new Error(
+        `Invalid syncFilter: ${JSON.stringify(filter)} for table ${table}`
+      );
+    }
     filteredQuery = (filteredQuery as any)[filter.operator](
       filter.column,
       filter.value

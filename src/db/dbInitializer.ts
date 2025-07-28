@@ -17,20 +17,28 @@ export async function getSupastashDb(): Promise<SupastashSQLiteDatabase> {
     throw new Error(supastashDbErrorMsg);
   }
 
-  const client = config.sqliteClient;
-  const clientType = config.sqliteClientType;
+  const { sqliteClient: client, sqliteClientType: clientType } = config;
 
   if (!db) {
-    if (clientType === "expo") {
-      db = await SQLiteAdapterExpo.openDatabaseAsync(config.dbName, client);
-    } else if (clientType === "rn-storage") {
-      db = await SQLiteAdapterStorage.openDatabaseAsync(config.dbName, client);
-    } else if (clientType === "rn-nitro") {
-      db = await SQLiteAdapterNitro.openDatabaseAsync(config.dbName, client);
+    switch (clientType) {
+      case "expo":
+        db = await SQLiteAdapterExpo.openDatabaseAsync(config.dbName, client);
+        break;
+      case "rn-storage":
+        db = await SQLiteAdapterStorage.openDatabaseAsync(
+          config.dbName,
+          client
+        );
+        break;
+      case "rn-nitro":
+        db = await SQLiteAdapterNitro.openDatabaseAsync(config.dbName, client);
+        break;
+      default:
+        throw new Error(`Unsupported SQLite client type: ${clientType}`);
     }
+
+    await db.runAsync("PRAGMA foreign_keys = OFF;");
   }
-  if (!db) {
-    throw new Error(supastashDbErrorMsg);
-  }
-  return db;
+
+  return db!;
 }

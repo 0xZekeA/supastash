@@ -6,6 +6,7 @@ import {
   SupastashQueryResult,
   SyncMode,
 } from "../../../types/query.types";
+import log from "../../../utils/logs";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
 import { queryDb } from "./mainQuery";
 
@@ -218,7 +219,7 @@ export default class SupastashFilterBuilder<
     const delay = options?.remoteRetryDelay ?? 500;
 
     if (options?.debug) {
-      console.debug("[Supastash] Executing query with state:", newQuery);
+      log("[Supastash] Executing query with state:", newQuery);
     }
 
     const attemptQuery = async (): Promise<
@@ -243,9 +244,7 @@ export default class SupastashFilterBuilder<
         await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (options?.debug) {
-          console.debug(
-            `[Supastash] Retry ${i}/${maxRetries} after ${delayMs}ms...`
-          );
+          log(`[Supastash] Retry ${i}/${maxRetries} after ${delayMs}ms...`);
         }
 
         const remoteResult = await querySupabase<U, R, Z>(

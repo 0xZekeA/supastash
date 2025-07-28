@@ -1,3 +1,4 @@
+export declare function isTrulyNullish(value: any): boolean;
 /**
  * Converts a value into a stable JSON string representation.
  *

@@ -1,6 +1,9 @@
 # 🚀 Getting Started with Supastash
 
-Supastash helps you build **offline-first apps** by syncing local SQLite data with Supabase in the background. This guide walks you through setting it up from scratch.
+Supastash helps you build **offline-first apps** by syncing local SQLite with Supabase — all in the background.
+Whether you're building a point-of-sale, chat, delivery, or CRM app, Supastash gives you **control, performance, and reliability** even when users are offline.
+
+This guide walks you through setting it up from scratch.
 
 ---
 
@@ -14,7 +17,7 @@ npm install supastash
 
 ### 2. Install Required Peer Dependencies
 
-These are required and **must be installed manually**:
+These must be installed manually:
 
 ```bash
 npm install @supabase/supabase-js \
@@ -23,18 +26,18 @@ npm install @supabase/supabase-js \
              react-native
 ```
 
-### 3. Choose a SQLite Adapter (Only ONE)
+### 3. Choose ONE SQLite Adapter
 
-Choose based on your project type:
+Pick the adapter based on your project setup:
 
 ```bash
 # For Expo projects
 npm install expo-sqlite
 
-# For better performance in bare React Native
+# For bare React Native (better performance)
 npm install react-native-nitro-sqlite
 
-# Or use the classic SQLite option
+# Classic RN SQLite adapter
 npm install react-native-sqlite-storage
 ```
 
@@ -42,20 +45,20 @@ npm install react-native-sqlite-storage
 
 ## ⚙️ Project Setup
 
-### 1. Create the Supastash Config
+### 1. Configure Supastash
 
-Setup early in your app — e.g., `lib/supastash.ts`
+Set this up early — e.g., `lib/supastash.ts`
 
 ```ts
 import { configureSupastash, defineLocalSchema } from "supastash";
 import { supabase } from "./supabase";
-import { openDatabaseAsync } from "expo-sqlite"; // or nitro/sqlite-storage client
+import { openDatabaseAsync } from "expo-sqlite"; // or your adapter
 
 configureSupastash({
   supabaseClient: supabase,
   dbName: "supastash_db",
   sqliteClient: { openDatabaseAsync },
-  sqliteClientType: "expo", // or "rn-nitro" / "rn-storage"
+  sqliteClientType: "expo", // "rn-nitro" or "rn-storage"
 
   onSchemaInit: () => {
     defineLocalSchema("users", {
@@ -64,13 +67,14 @@ configureSupastash({
       email: "TEXT",
       created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
       updated_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      __indices: ["email", "user_id"],
     });
   },
 
   debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // Enable if using RLS and want to pull filtered data
+    pull: false, // Enable if you're using RLS and filters
   },
   excludeTables: {
     push: ["daily_reminders"],
@@ -79,30 +83,28 @@ configureSupastash({
 });
 ```
 
-### 2. Initialize It Once (in your main layout)
+---
+
+### 2. Initialize Once in Your App
 
 ```ts
 // App.tsx or _layout.tsx
-import "@/lib/supastash"; // Just import to initialize
+import "@/lib/supastash"; // Triggers initialization
 
 export default function App() {
-  return <Stack />; // or your main app entry
+  return <Stack />; // or your app shell
 }
 ```
 
 ---
 
-## 🛡️ Server-Side Setup for RLS
+## 🛡️ Server-Side Setup (for Filtered Pulls)
 
-Supastash needs access to your table schema. Run this **SQL function** in the Supabase SQL Editor:
+To enable safe, filtered data pulling from Supabase, run this SQL function:
 
 ```sql
 create or replace function get_table_schema(table_name text)
-returns table(
-  column_name text,
-  data_type text,
-  is_nullable text
-)
+returns table(column_name text, data_type text, is_nullable text)
 security definer
 as $$
   select column_name, data_type, is_nullable
@@ -113,153 +115,138 @@ $$ language sql;
 grant execute on function get_table_schema(text) to anon, authenticated;
 ```
 
-> ✅ This works with **Row-Level Security (RLS)**. Without this, Supastash can't sync filtered data.
-
-### Important Timestamp Rule
-
-All timestamp columns used for syncing — like `created_at`, `updated_at`, `deleted_at` — **must be `timestamptz`** (timestamp with time zone).
-
-This prevents timezone issues and ensures reliable sync.
+✅ Required if using **Row Level Security (RLS)**
+⚠️ Make sure all sync-related timestamps (`created_at`, `updated_at`, `deleted_at`) use `timestamptz` — not plain `timestamp`.
 
 ---
 
-## ⚙️ Bootstrapping the Sync Engine
-
-Before rendering your app, make sure the Supastash engine is ready:
+## ⚙️ Wait for Initialization Before Rendering
 
 ```ts
-// App.tsx or _layout.tsx
 import { useSupatash } from "supastash";
 
 const { dbReady } = useSupatash();
 if (!dbReady) return null;
-return <Stack />;
+
+return <AppRoutes />;
 ```
 
 ---
 
-## 🧪 Basic Hook Usage: [`useSupatashData`](data-access.md)
+### 🧠 Optional: Zustand Auto-Hydration
 
-This hook gives you live local-first data access.
+If you're using Zustand for state management, you can **automatically sync your stores** with local Supastash data — no need to manually reload after every change.
+
+Whenever a table like `orders` is updated (via sync or local change), Supastash emits:
 
 ```ts
-import { useSupatashData } from "supastash";
-
-type Order = {
-  id: string;
-  user_id: string;
-  deleted_at: string | null;
-  updated_at: string;
-  created_at: string;
-};
-
-const {
-  data: orders,
-  dataMap: ordersMap,
-  groupedBy,
-} = useSupatashData<Order>("orders", { extraMapKeys: ["user_id"] });
+supastashEventBus.on("supastash:refreshZustand:orders", hydrateOrders);
 ```
 
-You get:
+This allows you to call your Zustand store's `hydrateOrders()` method to fetch the latest local data.
 
-- `data` – An array of rows
-- `dataMap` – A map keyed by `id` for fast lookup
+✅ Tip: Set this up in a reusable hook like `useHydrateStores()` so your app stays up-to-date in the background.
 
-Supastash keeps this in sync with SQLite and Supabase.
+👉 **[Read integration with zustand](zustand.md)** for full examples and best practices.
 
 ---
 
-### 🧩 `extraMapKeys`: Smarter Derived Maps — for Free
+## 📡 Data Fetching Options
 
-Need to group, lookup, or filter your data by a specific column?
+Supastash gives you **two main hooks** for fetching and syncing local data:
 
-Pass any field(s) into `extraMapKeys`, and Supastash will automatically generate map structures for you — _efficiently and in the background_.
+---
+
+### 🧠 [`useSupastashData`](useSupastashData.md) – Full Sync, Realtime-Aware
 
 ```ts
-const { dataMap, groupedBy } = useSupatashData("orders", {
-  extraMapKeys: ["user_id", "status"],
+const { data, dataMap, groupedBy } = useSupastashData("orders", {
+  filter: { column: "user_id", operator: "eq", value: userId },
+  extraMapKeys: ["status"],
 });
 ```
 
-You get:
-
-- `dataMap`: Fast lookup by `id`
-- `groupedBy.user_id`: Grouped orders by `user_id`
-- `groupedBy.status`: Grouped orders by status
-
-✅ No need to `reduce()` or create memoized maps manually
-⚡️ This is optimized to run in sync with the rest of your hook’s data processing — zero wasted renders.
-
-> 💡 Use this when rendering lists by user, status, etc.
+- Syncs with Supabase in **realtime**
+- Uses **global cache**
+- Automatically keeps state updated across screens
+- Best for dashboards, shared state, live data
 
 ---
 
-## 🔍 With Filtering
+## 🧩 Dynamic Filtering (All Hooks)
 
-Only fetch rows for a specific user:
+Supastash lets you filter synced data based on user, shop, etc.
 
 ```ts
-import { useSupatashData } from "supastash";
-
-const { userId } = useAuth();
-const { data: userOrders } = useSupatashData("orders", {
+const { data } = useSupastashData("orders", {
   filter: {
     column: "user_id",
     operator: "eq",
-    value: userId,
-  },
-  shouldFetch: !!userId,
+    value: currentUserId,
+  }, // RealtimeFilter
+  sqlFilter: [{ column: "user_id", operator: "eq", value: currentUserId }], //sql (optional)
 });
 ```
 
-This ensures you don’t load data until the `userId` is available.
+> 💡 `filter` = for Supabase realtime
+> 💡 `sqlFilter` = for actual query filtering
 
 ---
 
-## 🔧 Querying Supabase Directly
+## 🛡️ Registering Table Filters: [`useSupastashFilters`](useSupastashFilters.md)
 
-Use `supastash.from()` for one-off server queries (like `supabase.from(...)` but integrated with Supastash):
+If you’re pulling data (i.e., using `pull: true` in [`configureSupastash`](configuration.md)), always call this hook at startup:
+
+```ts
+useSupastashFilters({
+  orders: [{ column: "shop_id", operator: "eq", value: activeShopId }],
+  inventory: [
+    { column: "location_id", operator: "eq", value: selectedLocation },
+  ],
+});
+```
+
+- Ensures only **scoped rows** are pulled from Supabase
+- Prevents unnecessary or insecure full-table syncs
+- Validates your filters and warns you if anything’s wrong
+
+---
+
+## 🔍 One-Off Queries with Supabase
+
+Use Supastash's built-in wrapper for direct Supabase access:
 
 ```ts
 import { supastash } from "supastash";
 
-useEffect(() => {
-  const fetchOrders = async () => {
-    const { data, error } = await supastash.from("orders").select("*").run();
-    if (error) console.error(error);
-    else setOrders(data);
-  };
-
-  fetchOrders();
-}, []);
+const { data, error } = await supastash.from("orders").select("*").run();
 ```
+
+It works just like `supabase.from(...)`, but ensures it respects your Supastash config.
 
 ---
 
-### 📋 Monitoring & Debugging
+## 🔧 Debugging
 
-Enable `debugMode: true` in `configureSupastash()` to log:
-
-- When sync starts or fails
-- Which rows are retried
-- Offline batching behavior
+Enable `debugMode: true` to log sync events, retries, or failures:
 
 ```ts
 configureSupastash({
-  ...
+  ...,
   debugMode: true,
 });
 ```
 
-This will help during dev to know when things aren’t syncing — especially useful when testing offline.
+---
 
-## 🧠 Next Steps
+## ✅ Next Steps
 
-- [Configuration Guide](./configuration.md)
-- [Data Access Hook (`useSupatashData`)](./data-access.md)
-- [Sync Engine Setup (`useSupatash`)](./useSupastash-hook.md)
-- [Supastash Query Builder](./supastash-query-builder.md)
+- [useSupastashData Docs](./useSupastashData.md)
+- [useSupastashFilters Docs](./useSupastashFilters.md)
+- [Query Builder](./supastash-query-builder.md)
+- [Advanced Schema Setup](./schema-management.md)
 
 ---
 
-That’s it! You’re now set up to build offline-first, realtime-ready apps with Supastash.
+That’s it — you're now ready to build **offline-first**, **scalable**, and **Supabase-powered** apps using Supastash.
+Whether you're going full realtime or keeping it lite, **you’re in control**.

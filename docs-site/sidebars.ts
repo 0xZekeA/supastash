@@ -57,7 +57,12 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Database Management",
-      items: ["schema-management", "destructives", "sync-status-manager"],
+      items: [
+        "schema-management",
+        "destructives",
+        "sync-status-manager",
+        "manual-refreshes",
+      ],
     },
     {
       type: "doc",
@@ -66,8 +71,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "doc",
-      id: "data-access",
+      id: "useSupastashData",
       label: "useSupastashData",
+    },
+    {
+      type: "doc",
+      id: "zustand",
+      label: "Zustand integration",
     },
     {
       type: "doc",

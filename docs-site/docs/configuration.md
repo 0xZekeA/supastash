@@ -29,18 +29,18 @@ configureSupastash({
 
 ## 🧱 Configuration Options
 
-| Option             | Type                                                                | Required | Default                                                  | Description                                                                                          |
-| ------------------ | ------------------------------------------------------------------- | -------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `dbName`           | `string`                                                            | ✅ Yes   | `"supastash_db"`                                         | Name of the local SQLite database.                                                                   |
-| `supabaseClient`   | `SupabaseClient`                                                    | ✅ Yes   | `null`                                                   | A configured instance of your Supabase client.                                                       |
-| `sqliteClient`     | `object`                                                            | ✅ Yes   | `null`                                                   | The SQLite adapter instance. Must match the selected `sqliteClientType`.                             |
-| `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro"`                              | ✅ Yes   | `null`                                                   | Specifies which SQLite engine you're using.                                                          |
-| `onSchemaInit`     | `() => Promise<void> \| void`                                       | ❌ No    | `undefined`                                              | Optional callback to define local tables using `defineLocalSchema()`. Called once after DB creation. |
-| `debugMode`        | `boolean`                                                           | ❌ No    | `false`                                                  | Logs internal sync and DB activity for debugging.                                                    |
-| `listeners`        | `number`                                                            | ❌ No    | `250`                                                    | Maximum number of Realtime listeners to attach.                                                      |
-| `excludeTables`    | `{ pull?: string[], push?: string[] }`                              | ❌ No    | `{ pull: [], push: [] }`                                 | Prevents specific tables from being synced (pull/push).                                              |
-| `pollingInterval`  | `{ pull?: number, push?: number }`                                  | ❌ No    | `{ pull: 30000, push: 30000 }`                           | Interval (ms) for polling Supabase for changes.                                                      |
-| `syncEngine`       | `{ push?: boolean, pull?: boolean, useFiltersFromStore?: boolean }` | ❌ No    | `{ push: true, pull: false, useFiltersFromStore: true }` | Controls sync behavior. See below.                                                                   |
+| Option             | Type                                                                | Required | Default                                                 | Description                                                                                          |
+| ------------------ | ------------------------------------------------------------------- | -------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `dbName`           | `string`                                                            | ✅ Yes   | `"supastash_db"`                                        | Name of the local SQLite database.                                                                   |
+| `supabaseClient`   | `SupabaseClient`                                                    | ✅ Yes   | `null`                                                  | A configured instance of your Supabase client.                                                       |
+| `sqliteClient`     | `object`                                                            | ✅ Yes   | `null`                                                  | The SQLite adapter instance. Must match the selected `sqliteClientType`.                             |
+| `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro"`                              | ✅ Yes   | `null`                                                  | Specifies which SQLite engine you're using.                                                          |
+| `onSchemaInit`     | `() => Promise<void> \| void`                                       | ❌ No    | `undefined`                                             | Optional callback to define local tables using `defineLocalSchema()`. Called once after DB creation. |
+| `debugMode`        | `boolean`                                                           | ❌ No    | `true`                                                  | Logs internal sync and DB activity for debugging.                                                    |
+| `listeners`        | `number`                                                            | ❌ No    | `250`                                                   | Maximum number of Realtime listeners to attach.                                                      |
+| `excludeTables`    | `{ pull?: string[], push?: string[] }`                              | ❌ No    | `{ pull: [], push: [] }`                                | Prevents specific tables from being synced (pull/push).                                              |
+| `pollingInterval`  | `{ pull?: number, push?: number }`                                  | ❌ No    | `{ pull: 30000, push: 30000 }`                          | Interval (ms) for polling Supabase for changes.                                                      |
+| `syncEngine`       | `{ push?: boolean, pull?: boolean, useFiltersFromStore?: boolean }` | ❌ No    | `{ push: true, pull: true, useFiltersFromStore: true }` | Controls sync behavior. See below.                                                                   |
 
 ---
 
@@ -51,14 +51,14 @@ configureSupastash({
 - Automatically pushes local changes to Supabase.
 - If disabled, changes are stored locally but not uploaded.
 
-### `pull` (default: `false`)
+### `pull` (default: `true`)
 
 - Enables automatic background pull sync from Supabase to SQLite.
 - **Only enable if** your tables are protected with RLS or you have safe public filters in place.
 
 ### `useFiltersFromStore` (default: `true`)
 
-- When enabled, pull sync applies filters stored during hook usage (e.g., from [`useSupatashData()`](./data-access.md)).
+- When enabled, pull sync applies filters stored during hook usage (e.g., from [`useSupatashData()`](./useSupastashData.md)).
 - This ensures only relevant data is pulled even when pull is globally enabled.
 
 ---
@@ -135,10 +135,10 @@ The config can only be set once per session. To reset:
 - Restart the app
 - Drop and recreate the local DB if necessary using [`defineLocalSchema(..., true)`](./schema-management.md).
 - ⚠️ **Avoid setting** `deletePreviousSchema` to `true` in production. Use [`defineLocalSchema(...)`](./schema-management.md) without the second argument for safe behavior.
-- [`useSupastashData(...)`](./data-access.md) will auto-create tables **if** the [`get_table_schema`](./getting-started.md) RPC is properly set up on Supabase. (See the Getting Started guide for setup)
+- [`useSupastashData(...)`](./useSupastashData.md) will auto-create tables **if** the [`get_table_schema`](./getting-started.md) RPC is properly set up on Supabase. (See the Getting Started guide for setup)
 
 ### 🔗 What’s Next?
 
-- [Data Access docs](./data-access.md)
+- [Data Access docs](./useSupastashData.md)
 - [useSupastash docs](useSupastash-hook.md)
 - [Query Builder docs](./supastash-query-builder.md)

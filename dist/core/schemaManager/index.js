@@ -1,21 +1,36 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { clearSchemaCache } from "../../utils/getTableSchema";
-import log from "../../utils/logs";
+import log, { logError } from "../../utils/logs";
 /**
- * Defines the schema for a local table manually
+ * 🧱 defineLocalSchema
+ *
+ * Defines a local SQLite table schema programmatically, with support for foreign keys and indices.
+ * Intended for offline-first apps using Supastash. Ensures consistency in structure and indexing while
+ * allowing runtime control of schema migration through `deletePreviousSchema`.
+ *
+ * ---
+ *
+ * @param tableName - The name of the local SQLite table.
+ * @param schema - The column definitions (e.g. `{ id: "TEXT NOT NULL", name: "TEXT" }`) and optional metadata:
+ *   - `__indices`: Column names to be indexed.
+ * @param deletePreviousSchema - If `true`, drops the existing table and related Supastash metadata before re-creating.
+ *   ⚠️ WARNING: If left `true` in production, the table will be dropped and re-created **on every load**.
+ *
+ * ---
  *
  * @example
  * defineLocalSchema("users", {
- *   id: "TEXT NOT NULL",
+ *   id: "TEXT PRIMARY KEY",
  *   name: "TEXT NOT NULL",
- *   email: "TEXT NOT NULL",
- * }, true // deletes previous schema if true. Must be true if schema already exists
- * // ⚠️ Living option as true will continually delete table on load.
- * );
+ *   email: "TEXT",
+ *   user_id: "TEXT NOT NULL",
+ *   __indices: ["email"]
+ * }, true);
  *
- * @param tableName - The name of the table
- * @param schema - The schema for the table
- * @param deletePreviousSchema - Whether to delete the previous schema. Default(false)
+ * @remarks
+ * - Automatically injects `created_at`, `updated_at`, `deleted_at`, and `synced_at` columns.
+ * - Requires an `id` column to exist.
+ * - Validates all foreign keys and index columns exist in the schema before applying.
  */
 export async function defineLocalSchema(tableName, schema, deletePreviousSchema = false) {
     try {
@@ -23,17 +38,22 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             throw new Error(`'id' of type UUID column is required for table ${tableName}`);
         }
         const db = await getSupastashDb();
-        // Include the columns that must be in the schema
+        const { __indices, ...columnSchema } = schema;
+        const indexNotInSchema = __indices?.some((i) => !columnSchema[i]);
+        if (__indices && indexNotInSchema) {
+            throw new Error(`Index ${indexNotInSchema} not found in schema. Please ensure all indices are defined in the schema.`);
+        }
+        // Ensure required columns
         const safeSchema = {
-            ...schema,
-            created_at: schema.created_at ?? "TEXT NOT NULL",
-            updated_at: schema.updated_at ?? "TEXT NOT NULL",
+            ...columnSchema,
+            created_at: columnSchema.created_at ?? "TEXT NOT NULL",
+            updated_at: columnSchema.updated_at ?? "TEXT NOT NULL",
             synced_at: "TEXT DEFAULT NULL",
-            deleted_at: schema.deleted_at ?? "TEXT DEFAULT NULL",
+            deleted_at: columnSchema.deleted_at ?? "TEXT DEFAULT NULL",
         };
-        const schemaString = Object.entries(safeSchema)
-            .map(([key, value]) => `${key} ${value}`)
-            .join(", ");
+        // Build column definitions
+        const schemaParts = Object.entries(safeSchema).map(([key, value]) => `${key} ${value}`);
+        const schemaString = schemaParts.join(", ");
         const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString});`;
         if (deletePreviousSchema) {
             const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
@@ -48,8 +68,16 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             log(`[Supastash] Dropped table ${tableName}`);
         }
         await db.execAsync(sql);
+        // Generate and create index SQL
+        if (__indices?.length) {
+            for (const col of __indices) {
+                const indexName = `idx_${tableName}_${col}`;
+                const indexSql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${tableName}(${col});`;
+                await db.execAsync(indexSql);
+            }
+        }
     }
     catch (error) {
-        console.error(`[Supastash] Error defining schema for table ${tableName}`, error);
+        logError(`[Supastash] Error defining schema for table ${tableName}`, error);
     }
 }

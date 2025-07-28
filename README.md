@@ -4,24 +4,32 @@
 
 **Offline-First Sync Engine for Supabase + React Native**
 
-> Sync between SQLite and Supabase in real-time — even when your app is offline. Built for React Native, no boilerplate required.
-
-Supastash gives your app **instant offline access**, **two-way sync**, and **real-time updates** — with local database as the source of truth.
+> Supastash syncs your Supabase data with SQLite — live, offline, and conflict-safe. No boilerplate. Built for React Native and Expo.
 
 ---
 
-## 📚 **[Read the Full Docs »](https://0xzekea.github.io/supastash/)**
+## 📚 [Full Docs](https://0xzekea.github.io/supastash/)
 
 ---
 
 ## ✨ Features
 
-- 🔁 Two-way sync with Supabase
-- 💾 Local-first querying via SQLite
-- ⚡ Realtime updates (INSERT, UPDATE, DELETE)
-- 🔌 Works with any SQLite adapter (`expo-sqlite`, `rn-nitro`, `sqlite-storage`)
-- 🧠 Handles conflict resolution, batching, retries
-- 🧩 Supports filtering, job staging, and advanced sync control
+- 🔁 **Two-way sync** (Supabase ↔ SQLite)
+- 💾 **Offline-first** querying with local cache
+- ⚡ **Realtime updates** (INSERT, UPDATE, DELETE)
+- 🔌 Compatible with all major SQLite clients:
+
+  - `expo-sqlite`
+  - `react-native-nitro-sqlite`
+  - `react-native-sqlite-storage`
+
+- 🧠 Built-in:
+
+  - Conflict resolution
+  - Sync retries
+  - Batched updates
+  - Row-level filtering
+  - Staged job processing
 
 ---
 
@@ -31,40 +39,43 @@ Supastash gives your app **instant offline access**, **two-way sync**, and **rea
 npm install supastash
 ```
 
-### Required Peer Dependencies
+### ➕ Required Peer Dependencies
 
 ```bash
 npm install @supabase/supabase-js \
              @react-native-community/netinfo \
-             react react-native
+             react \
+             react-native
 ```
 
-### Choose one SQLite adapter:
+### 🧱 Choose a SQLite Adapter
+
+Choose **only one**, based on your stack:
 
 ```bash
-# Expo
+# Expo (most common)
 npm install expo-sqlite
 
-# React Native Nitro (faster)
+# Bare RN with better speed
 npm install react-native-nitro-sqlite
 
-# Or classic storage
+# Classic RN SQLite
 npm install react-native-sqlite-storage
 ```
 
-> Match with: `"sqliteClientType": "expo"`, `"rn-nitro"`, or `"rn-storage"`
+> Match with `sqliteClientType`: `"expo"`, `"rn-nitro"`, or `"rn-storage"`
 
 ---
 
 ## ⚙️ Quick Setup
 
-Initialize once, use anywhere
+### 1. Configure Supastash
 
 ```ts
 // lib/supastash.ts
 import { configureSupastash, defineLocalSchema } from "supastash";
 import { supabase } from "./supabase";
-import { openDatabaseAsync } from "expo-sqlite";
+import { openDatabaseAsync } from "expo-sqlite"; // or your adapter
 
 configureSupastash({
   supabaseClient: supabase,
@@ -73,23 +84,19 @@ configureSupastash({
   sqliteClientType: "expo",
 
   onSchemaInit: () => {
-    defineLocalSchema(
-      "users",
-      {
-        id: "TEXT PRIMARY KEY",
-        name: "TEXT",
-        email: "TEXT",
-        created_at: "TIMESTAMP",
-        updated_at: "TIMESTAMP",
-      },
-      true
-    );
+    defineLocalSchema("users", {
+      id: "TEXT PRIMARY KEY",
+      name: "TEXT",
+      email: "TEXT",
+      created_at: "TIMESTAMP",
+      updated_at: "TIMESTAMP",
+    });
   },
 
   debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // enable if using RLS and want to pull filtered data
+    pull: false, // enable this if using filters or RLS
   },
   excludeTables: {
     push: ["daily_reminders"],
@@ -98,29 +105,73 @@ configureSupastash({
 });
 ```
 
-Then in your root layout:
+### 2. Initialize Once
 
 ```ts
 // App.tsx or _layout.tsx
-import "@/lib/supastash";
+import "@/lib/supastash"; // triggers init
 import { useSupatash } from "supastash";
 
 export default function App() {
   const { dbReady } = useSupatash();
-
   if (!dbReady) return null;
-
   return <Stack />;
 }
 ```
 
 ---
 
+### 🧠 Optional: Zustand Auto-Hydration
+
+To auto-update Zustand stores when local data changes, listen for refresh events:
+
+```ts
+supastashEventBus.on("supastash:refreshZustand:orders", hydrateOrders);
+```
+
+Use this in a hook like `useHydrateStores()` to stay in sync without polling.
+👉 **[Read Docs](https://0xzekea.github.io/supastash/docs/zustand)**
+
+---
+
+### 🔁 `useSupastashData` (Global, Realtime)
+
+```ts
+const { data, groupedBy } = useSupastashData("orders", {
+  filter: { column: "user_id", operator: "eq", value: userId },
+  extraMapKeys: ["status"],
+});
+```
+
+- ✅ Auto-syncs with Supabase Realtime
+- ✅ Keeps your UI in sync automatically
+- ✅ Ideal for dashboards, chat, shared data
+
+---
+
+### 🛡️ Use Filters for Pull Syncing
+
+If you use `pull: true`, you **must** define filters per table:
+
+```ts
+useSupastashFilters({
+  orders: [{ column: "shop_id", operator: "eq", value: activeShopId }],
+  inventory: [{ column: "location_id", operator: "eq", value: location }],
+});
+```
+
+> Without filters or RLS, Supastash may try to pull full tables — which could lead to empty results or large sync payloads.
+
+---
+
 ## 🚨 Important Notes
 
-- Timestamp fields (`created_at`, `updated_at`, `deleted_at`) **must be `timestamptz`** in Supabase
-- Every synced table must have a valid `id` column
-- Create this SQL function in Supabase to allow schema reflection:
+- Your Supabase tables must have:
+
+  - A primary key `id` (string or UUID)
+  - `timestamptz` columns for `created_at`, `updated_at`, and optionally `deleted_at`
+
+- Run this SQL in Supabase to allow schema reflection:
 
 ```sql
 create or replace function get_table_schema(table_name text)
@@ -142,85 +193,80 @@ grant execute on function get_table_schema(text) to anon, authenticated;
 ```tsx
 import { useSupatashData } from "supastash";
 
-const { data, dataMap } = useSupatashData("orders");
-```
-
-Filtered by user:
-
-```tsx
-const { userId } = useAuth();
-const { data: userOrders } = useSupatashData("orders", {
+const { data: orders } = useSupatashData("orders", {
   filter: { column: "user_id", operator: "eq", value: userId },
-  shouldFetch: !!userId,
 });
 ```
 
 ---
 
-## 🔧 API Overview
-
-- [`configureSupastash()`](https://0xzekea.github.io/supastash/docs/configuration)) – setup + schema
-- [`useSupatashData()`](https://0xzekea.github.io/supastash/docs/data-access)) – read/write synced local data
-
----
-
 ## 🔄 How Sync Works
 
-- Tracks changes with `created_at`, `updated_at`, `deleted_at`
-- Retries failed syncs with exponential backoff
-- Batches realtime + manual changes efficiently
-- Keeps local cache as the main source of truth
+- Tracks rows using `updated_at`, `deleted_at`, and `created_at`
+- Batches changes in background and retries failed ones
+- Keeps **local database as the source of truth**
+- Runs pull/push jobs efficiently using staged task pipelines
 
 ---
 
-## 🧩 Sync Modes (via query builder)
+## 🧠 Advanced Querying (Optional)
+
+Supastash includes a built-in query builder:
 
 ```ts
 await supastash
   .from("orders")
-  .update({ status: "Dropped-off" })
-  .syncMode("localFirst") // or localOnly, remoteOnly, remoteFirst
+  .update({ status: "delivered" })
+  .syncMode("localFirst") // localOnly, remoteOnly also available
   .run();
 ```
 
 ---
 
-## 🗂 Example Project Structure
+## 🗂 Recommended Project Structure
 
 ```
 src/
-  ├─ core/         # Config
-  ├─ hooks/        # Custom hooks
-  ├─ types/        # Type definitions
-  ├─ utils/        # Helpers
+  ├─ core/         # Supastash config, Supabase client
+  ├─ hooks/        # useSupatashData, useSupastashFilters etc.
+  ├─ types/        # Zod schemas, DB types
+  ├─ utils/        # Local helpers
 ```
 
 ---
 
-## 🧪 Testing & Dev
+## 🧪 Dev & Testing
 
 ```bash
-# Run tests
-yarn test
-
-# Start local dev build
-yarn dev
+yarn test       # Run tests
+yarn dev        # Dev mode (watch)
 ```
+
+---
+
+## 🔧 API Docs
+
+- [`configureSupastash()`](https://0xzekea.github.io/supastash/docs/configuration)
+- [`useSupatashData()`](https://0xzekea.github.io/supastash/docs/useSupastashData)
+- [`useSupastashFilters()`](https://0xzekea.github.io/supastash/docs/useSupastashFilters)
+- [`supastash.from(...).run()`](https://0xzekea.github.io/supastash/docs/supastash-query-builder)
 
 ---
 
 ## 🤝 Contributing
 
-PRs welcome! Please include tests and type signatures.
+PRs are welcome! Please write clear commit messages and add tests when relevant.
 
 ---
 
 ## 📜 License
 
-MIT © Ezekiel Akpan
+MIT © [Ezekiel Akpan](https://x.com/0xZekeA)
 
 ---
 
-## 💬 Questions?
+## 💬 Need Help?
 
-Open an issue or reach out on [X (Twitter) @0xZekeA](https://x.com/0xZekeA)
+Open an issue or reach out on [Twitter/X](https://x.com/0xZekeA)
+
+---

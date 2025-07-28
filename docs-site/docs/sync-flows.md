@@ -93,4 +93,4 @@ useEffect(() => {
 }, []);
 ```
 
-→ See also: [`useSupastashData`](data-access.md)
+→ See also: [`useSupastashData`](useSupastashData.md)

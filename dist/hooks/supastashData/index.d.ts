@@ -3,54 +3,64 @@ import { RealtimeOptions, SupastashDataResult } from "../../types/realtimeData.t
  * @description
  * React hook to sync and subscribe to local-first data from a Supabase table using Supastash.
  *
- * This hook:
- * - Fetches initial data from local SQLite (offline-first).
- * - Optionally subscribes to Supabase `postgres_changes` for realtime updates.
- * - Batches and flushes changes into state at a controlled interval.
- * - Supports lazy loading, manual triggers, and event callbacks.
+ * Use `useSupastashData` when you want:
+ * - Offline-first reads from local SQLite.
+ * - Optional realtime syncing via Supabase `postgres_changes`.
+ * - Batching, lazy loading, and event-driven updates.
  *
  * @example
- * const authenticated = !!session?.user;
+ * ```tsx
  * const { data, dataMap, trigger, cancel } = useSupastashData("users", {
- *   shouldFetch: authenticated,
- *   filter: { column: "user_id", operator: "eq", value: 1 },
- *   flushIntervalMs: 200,
- *   onInsert: (user) => console.log("User added:", user),
+ *   shouldFetch: !!session?.user,
  *   lazy: true,
+ *   limit: 100,
+ *   orderBy: "created_at",
+ *   orderDesc: true,
+ *   sqlFilter: [
+ *     { column: "user_id", operator: "eq", value: 1 },
+ *     { column: "is_active", operator: "eq", value: true },
+ *   ],
+ *   onInsert: (user) => console.log("New user:", user),
  * });
  *
  * useEffect(() => {
- *   trigger(); // manually start sync
+ *   trigger(); // Manually start sync
  * }, []);
+ * ```
  *
- * @param table - The table name (must match local SQLite table).
- * @param options - Configuration object:
+ * @param table - Name of the table (must match local SQLite schema).
+ * @param options - Configuration object.
  *
- * ### Fetch Options:
- * @param options.shouldFetch - If `false`, prevents initial fetch. Defaults to `true`.
- * @param options.lazy - If `true`, disables auto-fetch. Call `trigger()` manually.
- * @param options.limit - Max number of records to load from local DB. Defaults to `200`.
- * @param options.useFilterWhileSyncing - If `true`, applies filter while syncing. Defaults to `true`.
- * @param options.extraMapKey - Field to additionally group data by (`groupedBy`).
+ * ## Fetch Options
+ * @param options.shouldFetch - If false, disables initial fetch. Defaults to `true`.
+ * @param options.lazy - If true, skips auto-fetch. Call `trigger()` manually.
+ * @param options.limit - Max records to load. Defaults to `200`.
+ * @param options.orderBy - Column to sort by. Defaults to `"created_at"`.
+ * @param options.orderDesc - If true, sorts descending. Defaults to `true`.
+ * @param options.sqlFilter - Optional SQL-level filters (`WHERE` clause).
+ * @param options.useFilterWhileSyncing - Applies filter during sync. Defaults to `true`.
+ * @param options.extraMapKey - Additional field to group `dataMap` by.
+ * @param options.clearCacheOnMount - Clears in-memory cache on mount. Defaults to `false`.
  *
- * ### Realtime Options:
- * @param options.realtime - If `true`, subscribes to Supabase realtime. Defaults to `true`.
- * @param options.filter - Structured filter (column, operator, value) for realtime subscription.
- * @param options.flushIntervalMs - How often (ms) to apply batched changes to UI. Defaults to `100`.
+ * ## Realtime Options
+ * @param options.realtime - Enables Supabase `postgres_changes` subscription. Defaults to `true`.
+ * @param options.filter - Realtime filter (column/operator/value).
+ * @param options.flushIntervalMs - Flush interval (in ms) for UI updates. Defaults to `100`.
  *
- * ### Event Callbacks:
- * @param options.onInsert - Triggered on INSERT event.
- * @param options.onUpdate - Triggered on UPDATE event.
- * @param options.onDelete - Triggered on DELETE event.
- * @param options.onInsertAndUpdate - Triggered on both INSERT and UPDATE.
- * @param options.onPushToRemote - Called when a record is pushed to Supabase.
+ * ## Event Callbacks
+ * @param options.onInsert - Called on `INSERT` event.
+ * @param options.onUpdate - Called on `UPDATE` event.
+ * @param options.onDelete - Called on `DELETE` event.
+ * @param options.onInsertAndUpdate - Called on both `INSERT` and `UPDATE`.
+ * @param options.onPushToRemote - Called after pushing a local change to Supabase.
  *
- * @returns Object with:
- * - `data`: Array of records.
- * - `dataMap`: Map of records keyed by ID.
- * - `groupedBy`: Optional maps grouped by fields (like `chat_id`).
- * - `trigger()`: Manually start sync (used with lazy).
- * - `cancel()`: Cancel a pending or lazy fetch.
+ * @returns {
+ *   data: Array of records,
+ *   dataMap: Map of records by ID,
+ *   groupedBy: Optional maps grouped by field,
+ *   trigger: Manually trigger sync,
+ *   cancel: Cancel pending fetch or sync
+ * }
  */
 export declare function useSupastashData<R = any>(table: string, options?: RealtimeOptions): SupastashDataResult<R>;
 //# sourceMappingURL=index.d.ts.map

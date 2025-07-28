@@ -1,0 +1,1 @@
+{"version":3,"file":"liteReducer.d.ts","sourceRoot":"","sources":["../../../src/utils/fetchData/liteReducer.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,cAAc,EAAE,MAAM,6BAA6B,CAAC;AAC1E,wBAAgB,YAAY,CAAC,CAAC,GAAG,GAAG,EAClC,KAAK,EAAE,cAAc,CAAC,CAAC,CAAC,EACxB,MAAM,EAAE,WAAW,CAAC,CAAC,CAAC,GACrB,cAAc,CAAC,CAAC,CAAC,CAyFnB"}

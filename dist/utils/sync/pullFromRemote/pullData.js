@@ -3,18 +3,7 @@ import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { getLastCreatedInfo, updateLastCreatedInfo, } from "./getLastCreatedInfo";
 import { getLastPulledInfo, updateLastPulledInfo } from "./getLastPulledInfo";
-const validOperators = new Set([
-    "eq",
-    "neq",
-    "gt",
-    "lt",
-    "gte",
-    "lte",
-    "like",
-    "ilike",
-    "is",
-    "in",
-]);
+import isValidFilter from "./validateFilters";
 const DEFAULT_MAX_PULL_ATTEMPTS = 150;
 let timesPulled = new Map();
 let lastPulled = new Map();
@@ -24,7 +13,7 @@ const RANDOM_OLD_DATE = "2000-01-01T00:00:00Z";
  * @param table - The table to pull data from
  * @returns The data from the table
  */
-export async function pullData(table, filter) {
+export async function pullData(table, filters) {
     const lastSyncedAt = await getLastPulledInfo(table);
     const lastCreatedAt = await getLastCreatedInfo(table);
     const supabase = getSupastashConfig().supabaseClient;
@@ -42,21 +31,10 @@ export async function pullData(table, filter) {
         .gte("updated_at", lastSyncedAt || RANDOM_OLD_DATE)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false, nullsFirst: false });
-    if (filter &&
-        (!filter.operator ||
-            !validOperators.has(filter.operator) ||
-            !filter.column ||
-            !filter.value)) {
-        throw new Error(`Invalid filter: ${JSON.stringify(filter)} for table ${table}`);
-    }
-    const isValidValue = filter &&
-        (filter.operator === "is" ||
-            filter.operator === "in" ||
-            typeof filter.value !== "undefined");
-    if (filter?.operator &&
-        validOperators.has(filter.operator) &&
-        filter.column &&
-        isValidValue) {
+    for (const filter of filters || []) {
+        if (!isValidFilter([filter])) {
+            throw new Error(`Invalid syncFilter: ${JSON.stringify(filter)} for table ${table}`);
+        }
         filteredLastCreatedQuery = filteredLastCreatedQuery[filter.operator](filter.column, filter.value);
         filteredLastSyncedQuery = filteredLastSyncedQuery[filter.operator](filter.column, filter.value);
     }

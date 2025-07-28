@@ -8,9 +8,6 @@ import { updateLocalDb } from "../../../utils/sync/pullFromRemote/updateLocalDb"
  * Pulls the data from the remote database to the local database
  */
 export async function pullFromRemote() {
-    const config = getSupastashConfig();
-    const { useFiltersFromStore = true } = config?.syncEngine || {};
-    const filter = (table) => useFiltersFromStore ? tableFilters.get(table) : undefined;
     try {
         const tables = await getAllTables();
         if (!tables) {
@@ -20,7 +17,7 @@ export async function pullFromRemote() {
         const excludeTables = getSupastashConfig()?.excludeTables?.pull || [];
         const tablesToPull = tables.filter((table) => !excludeTables?.includes(table));
         for (const table of tablesToPull) {
-            await updateLocalDb(table, filter(table), syncCalls.get(table)?.pull);
+            await updateLocalDb(table, tableFilters.get(table), syncCalls.get(table)?.pull);
         }
     }
     catch (error) {

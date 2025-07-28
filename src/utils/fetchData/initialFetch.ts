@@ -8,7 +8,7 @@ let isInSync = new Map<string, boolean>();
 
 export async function initialFetch(
   table: string,
-  filter?: RealtimeFilter,
+  filter?: RealtimeFilter[],
   onReceiveData?: (payload: any) => Promise<void>,
   onPushToRemote?: (payload: any[]) => Promise<boolean>
 ) {

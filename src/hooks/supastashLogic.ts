@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { getSupastashConfig } from "../core/config";
 import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
+import { localCache } from "../store/localCache";
+import {
+  filterTracker,
+  tableFilters,
+  tableFiltersUsed,
+} from "../store/tableFilters";
 import { SupastashHookReturn } from "../types/supastashConfig.types";
 import { logError, logWarn } from "../utils/logs";
 import {
@@ -78,6 +84,10 @@ export function useSupastash(lazy: boolean = false): SupastashHookReturn {
     init();
     return () => {
       initialized.current = false;
+      filterTracker.clear();
+      tableFilters.clear();
+      tableFiltersUsed.clear();
+      localCache.clear();
     };
   }, []);
 

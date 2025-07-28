@@ -87,5 +87,5 @@ await wipeOldDataForAllTables(60, ["settings", "user_preferences"]);
 
 ### 🔗 What’s Next?
 
-- [Data Access docs](./data-access.md)
+- [Data Access docs](./useSupastashData.md)
 - [useSupastash docs](useSupastash-hook.md)

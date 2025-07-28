@@ -89,22 +89,27 @@ useEffect(() => {
 
 ## ⚙️ Hook Options
 
-| Option                  | Type                                 | Default | Description                                            |
-| ----------------------- | ------------------------------------ | ------- | ------------------------------------------------------ |
-| `shouldFetch`           | `boolean`                            | `true`  | Fetch on mount?                                        |
-| `lazy`                  | `boolean`                            | `false` | If true, nothing runs until you call `trigger()`       |
-| `extraMapKeys`          | `string[]`                           | —       | Build grouped maps (e.g., `groupedBy.chat_id`)         |
-| `filter`                | `RealtimeFilter`                     | —       | Only sync matching rows (`eq`, `lt`, etc.)             |
-| `flushIntervalMs`       | `number`                             | `100`   | Debounce for batched UI updates                        |
-| `realtime`              | `boolean`                            | `true`  | Subscribe to Supabase `postgres_changes`               |
-| `limit`                 | `number`                             | `200`   | Limit for local rows                                   |
-| `daylength`             | `number`                             | —       | Fetch only records from the last _n_ days              |
-| `useFilterWhileSyncing` | `boolean`                            | `true`  | Use same filter when syncing with Supabase             |
-| `onInsert`              | `(item: any) => void`                | —       | Called on Supabase `INSERT`                            |
-| `onUpdate`              | `(item: any) => void`                | —       | Called on Supabase `UPDATE`                            |
-| `onDelete`              | `(item: any) => void`                | —       | Called on Supabase `DELETE`                            |
-| `onInsertAndUpdate`     | `(item: any) => void`                | —       | Shortcut for insert + update                           |
-| `onPushToRemote`        | `(items: any[]) => Promise<boolean>` | —       | Handle custom push logic (must return success boolean) |
+| Option                     | Type                                 | Default        | Description                                                               |
+| -------------------------- | ------------------------------------ | -------------- | ------------------------------------------------------------------------- |
+| `shouldFetch`              | `boolean`                            | `true`         | Whether to automatically fetch local data on mount                        |
+| `lazy`                     | `boolean`                            | `false`        | If true, hook does nothing until you manually call `trigger()`            |
+| `extraMapKeys`             | `string[]`                           | —              | Build secondary maps for grouping by additional keys (e.g., `chat_id`)    |
+| `filter`                   | `RealtimeFilter`                     | —              | Filter applied only to Supabase realtime events                           |
+| `onlyUseFilterForRealtime` | `boolean`                            | `false`        | If true, `filter` won’t affect local query—just realtime stream           |
+| `sqlFilter`                | `RealtimeFilter[]`                   | —              | SQL-style filters applied to local and remote queries                     |
+| `flushIntervalMs`          | `number`                             | `100`          | Debounce interval for UI updates                                          |
+| `realtime`                 | `boolean`                            | `true`         | Whether to subscribe to Supabase `postgres_changes`                       |
+| `limit`                    | `number`                             | `1000`         | Max number of local records to load                                       |
+| `daylength`                | `number`                             | —              | Fetch only rows created within the last `n` days                          |
+| `useFilterWhileSyncing`    | `boolean`                            | `true`         | Apply `filter` to remote sync as well                                     |
+| `orderBy`                  | `string`                             | `"created_at"` | Column to order results by                                                |
+| `orderDesc`                | `boolean`                            | `true`         | Whether to sort in descending order                                       |
+| `clearCacheOnMount`        | `boolean`                            | `false`        | Clears the shared cache for this table when the hook mounts               |
+| `onInsert`                 | `(item: any) => void`                | —              | Called when a record is inserted via Supabase                             |
+| `onUpdate`                 | `(item: any) => void`                | —              | Called when a record is updated via Supabase                              |
+| `onDelete`                 | `(item: any) => void`                | —              | Called when a record is deleted via Supabase                              |
+| `onInsertAndUpdate`        | `(item: any) => void`                | —              | Called for both insert and update events                                  |
+| `onPushToRemote`           | `(items: any[]) => Promise<boolean>` | —              | Custom push logic for unsynced local records; return `true` if successful |
 
 ---
 
@@ -184,67 +189,6 @@ onPushToRemote: async (payload) => {
 ```
 
 Return `true` on success — Supastash will retry otherwise.
-
----
-
-## 🔄 Manual Refresh
-
-Need to manually trigger a refresh? Use these from:
-
-```ts
-import {
-  refreshTable,
-  refreshAllTables,
-} from "supastash/utils/sync/refreshTables";
-```
-
-### 🔁 `refreshTable(table: string): void`
-
-For refreshing one table's local data:
-
-```ts
-refreshTable("orders");
-```
-
-Emits a `refresh:orders` event. Re-fetches local rows + triggers UI update.
-
-### 🔁 `refreshAllTables(): void`
-
-Refreshes everything:
-
-```ts
-refreshAllTables();
-```
-
-Good after a full sync or reset.
-
-### ⚠️ `refreshTableWithPayload()` (Deprecated)
-
-This used to manually reflect data in the UI. No longer needed — use Supastash queries or `refreshTable()`.
-
-```ts
-// Deprecated — avoid
-refreshTableWithPayload("orders", { id: "abc", ... }, "update");
-```
-
----
-
-## 🔍 Behind the Scenes
-
-- 🔐 Supastash uses a **version-based cache**: if nothing changes, no re-renders.
-- 🧼 Realtime listeners are de-duped per `table + filter`.
-- ⚡ Flushes UI updates only after debounce (default 100ms).
-- 🧠 Grouped maps (via `extraMapKeys`) use `Map<string, R[]>`.
-
----
-
-## 💡 Best Practices
-
-- Use `dataMap` for instant lookups (e.g., `dataMap.get(id)`)
-- Use `groupedBy.chat_id` for message grouping
-- Use `lazy: true` in modal screens or deeply nested routes
-- Bump `flushIntervalMs` higher if syncing high-volume tables
-- Leverage `onPushToRemote` for custom API pipelines
 
 ---
 

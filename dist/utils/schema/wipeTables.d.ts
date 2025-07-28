@@ -1,5 +1,5 @@
 /**
- * Drops a specific table from the local SQLite database and removes its sync metadata.
+ * Wipes a specific table from the local SQLite database and removes its sync metadata.
  *
  * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
  * as it will permanently delete all local data for the specified table.
@@ -16,7 +16,33 @@
  */
 export declare function wipeTable(tableName: string): Promise<void>;
 /**
- * Drops all local tables managed by Supastash and clears associated sync metadata.
+ * Drops a specific table from the local SQLite database and removes its sync metadata.
+ *
+ * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
+ * as it will permanently delete all local data for the specified table.
+ *
+ * @param tableName - Name of the table to drop.
+ *
+ * @example
+ * configureSupastash({
+ *   ...
+ *   onSchemaInit: async () => {
+ *     await dropTable("users"); // dev-only: drops the "users" table on app start
+ *   }
+ * });
+ */
+export declare function dropTable(tableName: string): Promise<void>;
+/**
+ * Drops all tables from the local SQLite database and removes their sync metadata.
+ *
+ * ⚠️ WARNING: This is a destructive operation. It should only be used in development mode,
+ * as it will permanently delete all local data for all tables.
+ *
+ * @example
+ */
+export declare function dropAllTables(): Promise<void>;
+/**
+ * Wipes all local tables managed by Supastash and clears associated sync metadata.
  *
  * ⚠️ WARNING: This will irreversibly delete all local tables and their data.
  * Intended only for development or reset scenarios.

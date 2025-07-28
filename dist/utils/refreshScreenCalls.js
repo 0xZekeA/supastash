@@ -10,6 +10,7 @@ export function refreshScreen(table) {
     clearTimeout(debounceMap.get(table));
     const timeout = setTimeout(() => {
         supastashEventBus.emit(`refresh:${table}`);
+        supastashEventBus.emit(`supastash:refreshZustand:${table}`);
         timesFetched.delete(table);
         debounceMap.delete(table);
     }, timeoutMs);

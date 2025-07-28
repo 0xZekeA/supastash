@@ -2,18 +2,7 @@ import { getSupastashConfig } from "../../../core/config";
 import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { getLastDeletedInfo, updateLastDeletedInfo, } from "./getLastDeletedInfo";
-const validOperators = new Set([
-    "eq",
-    "neq",
-    "gt",
-    "lt",
-    "gte",
-    "lte",
-    "like",
-    "ilike",
-    "is",
-    "in",
-]);
+import isValidFilter from "./validateFilters";
 let timesPulled = 0;
 let lastPulled = 0;
 /**
@@ -21,7 +10,7 @@ let lastPulled = 0;
  * @param table - The table to pull deleted data from
  * @returns The deleted data from the table as a map of id to record and the reordered data
  */
-export async function pullDeletedData(table, filter) {
+export async function pullDeletedData(table, filters) {
     const lastDeletedAt = await getLastDeletedInfo(table);
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase)
@@ -31,17 +20,10 @@ export async function pullDeletedData(table, filter) {
         .select("*")
         .gt("deleted_at", lastDeletedAt)
         .order("deleted_at", { ascending: false, nullsFirst: false });
-    if (filter &&
-        (!filter.operator ||
-            !validOperators.has(filter.operator) ||
-            !filter.column ||
-            !filter.value)) {
-        throw new Error(`Invalid filter: ${JSON.stringify(filter)} for table ${table}`);
-    }
-    if (filter?.operator &&
-        validOperators.has(filter.operator) &&
-        filter.column &&
-        filter.value) {
+    for (const filter of filters || []) {
+        if (!isValidFilter([filter])) {
+            throw new Error(`Invalid syncFilter: ${JSON.stringify(filter)} for table ${table}`);
+        }
         filteredQuery = filteredQuery[filter.operator](filter.column, filter.value);
     }
     // Fetch records deleted after the last sync

@@ -8,11 +8,13 @@ export type FilterOperator =
   | "in"
   | "is";
 
-export type RealtimeFilter = {
-  column: string;
+export type RealtimeFilter<R = any> = {
+  column: keyof R;
   operator: FilterOperator;
   value: string | number | null | (string | number)[];
 };
+
+export type SupastashFilter<R = any> = RealtimeFilter<R>;
 
 export interface RealtimeOptions<R = any> {
   /**
@@ -53,13 +55,55 @@ export interface RealtimeOptions<R = any> {
   daylength?: number;
 
   /**
-   * Whether to use the filter while syncing.
+   * Whether to use the realtime filter while syncing.
    * @default true
    *
    * @example
    * useFilterWhileSyncing: true
    */
   useFilterWhileSyncing?: boolean;
+
+  /**
+   * Column to order results by.
+   * Defaults to "created_at".
+   *
+   * @example
+   * orderBy: "created_at"
+   */
+  orderBy?: keyof R;
+
+  /**
+   * Whether to sort in descending order.
+   * Defaults to true.
+   *
+   * @example
+   * orderDesc: true // newest first
+   */
+  orderDesc?: boolean;
+
+  /**
+   * Optional SQL WHERE filters.
+   * These are applied directly to the query.
+   *
+   * @example
+   * sqlFilter: [{ column: "user_id", operator: "eq", value: "123" }]
+   */
+  sqlFilter?: RealtimeFilter<R>[];
+
+  /**
+   * Clears the shared cache for this table when the hook mounts.
+   * Use this **only if** you're sure no other component is using the same table
+   * via this hook at the same time. Otherwise, clearing the cache will affect
+   * those components too — potentially causing flickers, forced re-fetches,
+   * or empty states.
+   *
+   *
+   * @default false
+   *
+   * @example
+   * clearCacheOnMount: true
+   */
+  clearCacheOnMount?: boolean;
 
   /**
    * Filter condition applied to the Supabase realtime subscription stream.
@@ -71,11 +115,13 @@ export interface RealtimeOptions<R = any> {
    *   value: "123"
    * }
    */
-  filter?: RealtimeFilter;
+  filter?: RealtimeFilter<R>;
 
   /**
    * If true, only use the filter for the realtime subscription stream.
    * Default is false, meaning the filter is applied to both the realtime subscription stream and the local database.
+   *
+   * Use `useSupastashFilters` to filter the data from the supabase.
    *
    * @example
    * onlyUseFilterForRealtime: true

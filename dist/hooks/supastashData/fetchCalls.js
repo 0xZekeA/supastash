@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 import { syncCalls } from "../../store/syncCalls";
-import { tableFilters } from "../../store/tableFilters";
+import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
 import { logError } from "../../utils/logs";
 export function fetchCalls(table, options, initialized) {
-    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, onlyUseFilterForRealtime, } = options;
+    const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, onlyUseFilterForRealtime, orderBy, orderDesc, sqlFilter, } = options;
     const cancelled = useRef(false);
     useEffect(() => {
-        if (filter && useFilterWhileSyncing && !tableFilters.get(table)) {
-            tableFilters.set(table, filter);
+        if (filter && useFilterWhileSyncing && !tableFiltersUsed.has(table)) {
+            tableFilters.set(table, [filter]);
         }
         if (onPushToRemote) {
             syncCalls.set(table, {
@@ -23,13 +23,20 @@ export function fetchCalls(table, options, initialized) {
                 pull: onInsertAndUpdate,
             });
         }
-        return () => {
-            tableFilters.delete(table);
-        };
-    }, []);
+    }, [filter]);
     const fetch = async () => {
+        let filters;
+        if (sqlFilter) {
+            filters = sqlFilter;
+        }
+        else if (tableFilters.has(table)) {
+            filters = tableFilters.get(table);
+        }
+        else if (!onlyUseFilterForRealtime) {
+            filters = filter ? [filter] : undefined;
+        }
         if (!cancelled.current) {
-            await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength, onlyUseFilterForRealtime ? undefined : filter);
+            await fetchLocalData(table, shouldFetch, limit, extraMapKeys, daylength, filters, orderBy ?? "created_at", orderDesc ?? true);
         }
     };
     const trigger = () => {
@@ -48,8 +55,18 @@ export function fetchCalls(table, options, initialized) {
     const initialFetchAndSync = async () => {
         if (!shouldFetch || cancelled.current)
             return;
+        let filters;
+        if (sqlFilter) {
+            filters = sqlFilter;
+        }
+        else if (tableFilters.has(table)) {
+            filters = tableFilters.get(table);
+        }
+        else if (!onlyUseFilterForRealtime) {
+            filters = filter ? [filter] : undefined;
+        }
         try {
-            await initialFetch(table, filter, onInsertAndUpdate, onPushToRemote);
+            await initialFetch(table, filters, onInsertAndUpdate, onPushToRemote);
             await fetch();
         }
         catch (error) {

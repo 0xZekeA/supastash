@@ -8,7 +8,7 @@ import { refreshScreen } from "../../refreshScreenCalls";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { pullData } from "./pullData";
 import { pullDeletedData } from "./pullDeletedData";
-import { stringifyComplexFields } from "./stringifyFields";
+import { stringifyValue } from "./stringifyFields";
 
 let isInSync = new Map<string, boolean>();
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
@@ -19,7 +19,7 @@ const DEFAULT_DATE = "1970-01-01T00:00:00Z";
  */
 export async function updateLocalDb(
   table: string,
-  filters?: RealtimeFilter,
+  filters?: RealtimeFilter[],
   onReceiveData?: (payload: any) => Promise<void>
 ) {
   if (isInSync.get(table)) return;
@@ -98,7 +98,7 @@ export async function upsertData(
     const columns = await getTableSchema(table);
 
     const recordToSave = {
-      ...stringifyComplexFields(record),
+      ...record,
       synced_at: new Date().toISOString(),
     };
 
@@ -124,8 +124,10 @@ export async function upsertData(
     const updateParts = updateColumns.map((key) => `${key} = ?`);
     const updatePlaceholders = updateParts.join(", ");
 
-    const values = keys.map((key) => recordToSave[key]);
-    const updateValues = updateColumns.map((key) => recordToSave[key]);
+    const values = keys.map((key) => stringifyValue(recordToSave[key]));
+    const updateValues = updateColumns.map((key) =>
+      stringifyValue(recordToSave[key])
+    );
 
     if (itemExists) {
       // Update existing record
@@ -136,6 +138,7 @@ export async function upsertData(
       );
     } else {
       // Insert new record
+
       await db.runAsync(
         `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`,
         values

@@ -1,26 +1,24 @@
-# Schema Management
-
 ## 🧱 `defineLocalSchema(...)`
 
-Manually defines the schema for a local SQLite table used by Supastash.
+Manually defines the schema for a local SQLite table used by Supastash, with support for foreign keys and indexed columns.
 
 This is helpful for:
 
 - Explicitly controlling column types and constraints.
+- Defining foreign keys and SQL indexes.
 - Ensuring default values and modifiers (e.g., `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP`) are present.
 - Pre-defining tables before `useSupastashData(...)` is called.
-- Will not replace previously created tables unless it's called with the `deletePreviousSchema` argument.
+- Avoiding runtime table creation when strict structure is required.
 
 ### ⚠️ Important Notes
 
-- `useSupastashData(...)` automatically **creates local tables** based on the remote schema fetched via the [`get_table_schema`](./getting-started#3-enable-rls-support-server-side-setup) RPC.
-  But there are a few things to keep in mind:
+- `useSupastashData(...)` will automatically **create tables** using Supabase metadata via [`get_table_schema`](./getting-started#3-enable-rls-support-server-side-setup).
+  However:
 
-  - It does **not** include default values or constraints.
-  - It does **not** include modifiers like `UNIQUE`, `DEFAULT`, or `PRIMARY KEY`.
-  - It only ensures the structure exists enough to read/write data.
+  - It does **not** include default values, modifiers, or indexes.
+  - It does **not** apply constraints like `UNIQUE`, `DEFAULT`, or `FOREIGN KEY`.
 
-If your local table needs strict constraints, timestamps, or default values — **use `defineLocalSchema(...)` manually instead.**
+If your table needs any of these — **you must call `defineLocalSchema(...)` yourself**.
 
 ---
 
@@ -35,30 +33,31 @@ await defineLocalSchema(
     id: "TEXT PRIMARY KEY",
     full_name: "TEXT NOT NULL",
     email: "TEXT UNIQUE NOT NULL",
-    created_by: "TEXT",
+    user_id: "TEXT NOT NULL",
+    __indices: ["email", "user_id"],
   },
   true
-); // Pass `true` if you want to force re-creation
+);
 ```
 
 ---
 
 ### 🔧 Parameters
 
-| Name                   | Type                               | Required | Description                                                                  |
-| ---------------------- | ---------------------------------- | -------- | ---------------------------------------------------------------------------- |
-| `tableName`            | `string`                           | ✅       | The name of the table to create.                                             |
-| `schema`               | `Record<string, ColumnDefinition>` | ✅       | The column definitions (see below).                                          |
-| `deletePreviousSchema` | `boolean` (default: `false`)       | ❌       | If `true`, drops any existing table and Supastash sync state for that table. |
+| Name                   | Type                         | Required | Description                                                                  |
+| ---------------------- | ---------------------------- | -------- | ---------------------------------------------------------------------------- |
+| `tableName`            | `string`                     | ✅       | The name of the table to create.                                             |
+| `schema`               | `LocalSchemaDefinition`      | ✅       | The column definitions and optional index/foreign key metadata.              |
+| `deletePreviousSchema` | `boolean` (default: `false`) | ❌       | If `true`, drops any existing table and Supastash sync state for that table. |
 
 > ⚠️ **Avoid using `deletePreviousSchema = true` in production.**
-> This option **wipes all local data** for the table — only use it when resetting development state or during controlled migrations.
+> This will wipe local data for that table.
 
 ---
 
 ### 🧱 Required Columns
 
-Regardless of what you pass in `schema`, Supastash will **automatically** include these columns:
+Supastash automatically includes these columns for sync and soft-delete support:
 
 ```ts
 {
@@ -69,13 +68,13 @@ Regardless of what you pass in `schema`, Supastash will **automatically** includ
 }
 ```
 
-Your schema **must include** an `id` column (UUID format as `TEXT`). If omitted, the function will throw an error.
+You must include a valid `id` column (`TEXT PRIMARY KEY`) or the function will throw.
 
 ---
 
 ### 💡 Column Type Support
 
-Columns are defined using string templates based on SQL types and modifiers. Examples:
+Use standard SQLite-compatible strings:
 
 ```ts
 {
@@ -87,126 +86,56 @@ Columns are defined using string templates based on SQL types and modifiers. Exa
 }
 ```
 
-You can combine multiple modifiers like so:
+You can combine modifiers:
 
 ```ts
-"name": "TEXT NOT NULL UNIQUE"
+name: "TEXT NOT NULL UNIQUE";
 ```
+
+---
+
+### 🔑 Foreign Keys
+
+> Supastash does **not support foreign keys**.
+
+Foreign key constraints are disabled because **child records can sync before their parent records**. For example, a `soldItem` might arrive before the related `sale` during offline sync. Enforcing foreign keys would cause these inserts to fail and break sync reliability.
+
+Use `__indices` for performance, and handle relationships in Supabase or app logic.
+
+---
+
+### 📈 Indexes
+
+To define SQL indexes on specific columns:
+
+```ts
+__indices: ["email", "user_id"];
+```
+
+This will create:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+```
+
+All columns listed here must also exist in the schema, or an error will be thrown.
 
 ---
 
 ### 🧼 Resetting a Table
 
-To reset the schema (e.g., in development):
+To drop and re-create the table (e.g., during development):
 
 ```ts
 await defineLocalSchema("users", schema, true);
 ```
 
-This drops the table, clears sync metadata, and re-creates the table with the new schema.
+This drops the table and clears all associated Supastash sync metadata.
 
 ---
 
 ### 📚 Related
 
-- ✅ `useSupastashData(...)`: Automatically creates missing tables, but with no constraints or default values.
-- ❌ Does _not_ apply default constraints like `NOT NULL`, `UNIQUE`, or `DEFAULT` — use `defineLocalSchema(...)` for those.
-
----
-
-## 🔌 `getSupastashDb()`
-
-### 📄 Description
-
-Returns the active SQLite database used by Supastash for local reads, writes, and sync tracking.
-
-The connection is created only once and reused — based on the adapter you set in your config.
-
----
-
-### 🧠 How It Works
-
-1. **Retrieves your Supastash config** using `getSupastashConfig()`.
-2. **Checks for presence** of both:
-
-   - `sqliteClient`: The raw SQLite client you've passed during setup.
-   - `sqliteClientType`: A string that tells Supastash which adapter to use (`expo`, `rn-nitro`, `rn-storage`).
-
-3. If the database instance hasn't been initialized yet:
-
-   - Calls that adapter’s `openDatabaseAsync(...)` method with the configured DB name and client.
-
-4. Caches the result in a `db` variable so future calls don’t re-open the database.
-
----
-
-### ✅ Supported Client Types
-
-| Client Type    | Adapter Used           | Compatible With               |
-| -------------- | ---------------------- | ----------------------------- |
-| `"expo"`       | `SQLiteAdapterExpo`    | `expo-sqlite`                 |
-| `"rn-storage"` | `SQLiteAdapterStorage` | `react-native-sqlite-storage` |
-| `"rn-nitro"`   | `SQLiteAdapterNitro`   | `react-native-quick-sqlite`   |
-
----
-
-### 🔧 API Methods
-
-| Method                        | Description                                                                 | Returns                |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------- |
-| `runAsync(sql, params?)`      | Executes a single statement (e.g., `INSERT`, `UPDATE`, `DELETE`)            | `Promise<void>`        |
-| `getAllAsync(sql, params?)`   | Fetches **all rows** from a `SELECT` query                                  | `Promise<any[]>`       |
-| `getFirstAsync(sql, params?)` | Fetches **first row only** (or `null` if none) from a `SELECT` query        | `Promise<any \| null>` |
-| `execAsync(statements)`       | Executes multiple SQL statements separated by `;` (used in schema creation) | `Promise<void>`        |
-
-Follows the same call patterns as `expo-sqlite`, making it familiar and easy to use.
-
----
-
-### 📦 Example Usage
-
-This function is used **internally** by other Supastash functions (e.g., `defineLocalSchema`, query runners, sync processors) but can also be called manually if you need raw access to the database:
-
-```ts
-const db = await getSupastashDb();
-const users = await db.getAllAsync("SELECT * FROM users");
-```
-
----
-
-### ⚠️ Notes
-
-- If `configureSupastash(...)` hasn't been called before this, the config will be empty and this function will throw.
-- This method assumes the client and clientType are correctly configured; if not, an error will be thrown.
-- This is designed to be **adapter-agnostic**, so it supports multiple SQLite engines while exposing a unified interface.
-
----
-
-### 📋 `getAllTables(): Promise<string[] | null>`
-
-Returns a list of all user-defined tables in the local SQLite database, **excluding** internal tables used by Supastash.
-
-#### ✅ Example
-
-```ts
-const tables = await getAllTables();
-console.log(tables);
-// ["users", "orders", "transactions"]
-```
-
-#### 📌 Use Cases
-
-- Listing all tables available for syncing or inspection.
-- Dynamic tooling (e.g., admin panels, migration utilities).
-- Debugging which user tables are present in the local DB.
-
-#### 🔁 Return
-
-- `string[]` – array of table names (excluding system/internal).
-- `null` – if no user tables are found.
-
-### 🔗 What’s Next?
-
-- [Data Access docs](./data-access.md)
-- [useSupastash docs](useSupastash-hook.md)
-- [Query Builder docs](./supastash-query-builder.md)
+- ✅ `useSupastashData(...)`: Automatically creates tables, but without constraints or default values.
+- ❌ Does _not_ apply default modifiers or foreign keys — use `defineLocalSchema(...)` when you need control.

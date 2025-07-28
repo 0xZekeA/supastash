@@ -2,9 +2,12 @@ import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
 import { PayloadData } from "../../types/query.types";
 import { RealtimeFilter } from "../../types/realtimeData.types";
-import { getTableSchema } from "../getTableSchema";
 import log, { logError, logWarn } from "../logs";
-import { buildFilterForSql } from "./buildFilter";
+import {
+  buildFilters,
+  sanitizeOrderBy,
+  sanitizeTableName,
+} from "./liteHelpers";
 import { notifySubscribers } from "./snapShot";
 
 const fetchingPromises = new Map<
@@ -67,13 +70,15 @@ const timesFetched = new Map<string, number>();
  * @param limit - Optional limit for rows
  * @param extraMapKeys - Optional fields to group data by
  */
-export async function fetchLocalData<R>(
+export async function fetchLocalData<R = any>(
   table: string,
   shouldFetch: boolean = true,
   limit: number = 200,
   extraMapKeys?: (keyof R)[],
   daylength?: number,
-  filter?: RealtimeFilter
+  filter?: RealtimeFilter[],
+  orderBy?: keyof R | string,
+  orderDesc: boolean = true
 ): Promise<{
   data: PayloadData[];
   dataMap: Map<string, PayloadData>;
@@ -102,31 +107,23 @@ export async function fetchLocalData<R>(
         ? `AND datetime(created_at) >= datetime('now', '-${day} days')`
         : "";
 
-    let filterClause = "";
-    if (filter?.column) {
-      const schema = await getTableSchema(table);
-      const simplify = (column: string | undefined) =>
-        column?.trim().toLowerCase();
-      const columnExists = schema.some(
-        (column) => simplify(column) === simplify(filter.column)
-      );
-
-      if (!columnExists) {
-        logWarn(
-          `[Supastash] Filter column ${filter.column} does not exist in table ${table}`
-        );
-      }
-
-      const filterString = buildFilterForSql(filter);
-      filterClause = filterString && columnExists ? `AND ${filterString}` : "";
-    }
-
     try {
-      const db = await getSupastashDb();
-      const localData: PayloadData[] = await db.getAllAsync(
-        `SELECT * FROM ${table} WHERE deleted_at IS NULL ${filterClause} ${daylengthClause} ORDER BY created_at DESC LIMIT ?`,
-        [limit]
+      const filterClause = await buildFilters(
+        filter ?? [],
+        sanitizeTableName(table)
       );
+      const db = await getSupastashDb();
+      const safeOrderBy = sanitizeOrderBy((orderBy ?? "created_at") as string);
+
+      const query = `
+        SELECT * FROM ${sanitizeTableName(table)}
+        WHERE deleted_at IS NULL
+        ${filterClause}
+        ${daylengthClause}
+        ORDER BY ${safeOrderBy} ${orderDesc ? "DESC" : "ASC"}
+        LIMIT ?
+      `;
+      const localData: PayloadData[] = await db.getAllAsync(query, [limit]);
 
       const dataMap = new Map<string, PayloadData>();
       const data: PayloadData[] = [];
@@ -143,9 +140,18 @@ export async function fetchLocalData<R>(
         data.push(parsedItem);
         if (extraMapKeys?.length) {
           for (const key of extraMapKeys) {
+            if (key === "id") {
+              logWarn(
+                `[Supastash] Key 'id' can be accessed directly from the data map (dataMap.get(row.id))`
+              );
+              continue;
+            }
+
             if (item[key] == null) {
               logWarn(
-                `[Supastash] Item ${item.id} has no ${String(key)} field`
+                `[Supastash] Item ${item.id} has no ${String(
+                  key
+                )} field on table:${table}. Check extraMapKeys on useSupastashData`
               );
               continue;
             }

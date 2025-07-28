@@ -90,6 +90,6 @@ if (!dbReady) return null;
 
 ### 🔗 Other docs?
 
-- [Data Access docs](./data-access.md)
+- [Data Access docs](./useSupastashData.md)
 - [useSupastash docs](useSupastash-hook.md)
 - [Query Builder docs](./supastash-query-builder.md)

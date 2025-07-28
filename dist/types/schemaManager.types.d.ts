@@ -35,7 +35,11 @@ type ColumnDefinition = `${SqlPrimitive}${
   | ` ${SqlModifier} ${SqlModifier}`
   | ` ${SqlModifier} ${SqlModifier} ${SqlModifier}`}`;
 
-type LocalSchemaDefinition = Record<string, ColumnDefinition>;
+export type LocalSchemaDefinition = {
+  [key: string]: ColumnDefinition | string[];
+} & {
+  __indices?: string[];
+};
 
 export type DefineLocalSchema = (
   tableName: string,

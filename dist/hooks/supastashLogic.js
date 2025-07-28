@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { getSupastashConfig } from "../core/config";
 import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
+import { localCache } from "../store/localCache";
+import { filterTracker, tableFilters, tableFiltersUsed, } from "../store/tableFilters";
 import { logError, logWarn } from "../utils/logs";
 import { createDeletedStatusTable, createSyncStatusTable, } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
@@ -67,6 +69,10 @@ export function useSupastash(lazy = false) {
         init();
         return () => {
             initialized.current = false;
+            filterTracker.clear();
+            tableFilters.clear();
+            tableFiltersUsed.clear();
+            localCache.clear();
         };
     }, []);
     useEffect(() => {

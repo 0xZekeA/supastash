@@ -4,12 +4,12 @@ export function buildFilterString(filters) {
     }
     const { column, operator, value } = filters;
     if (value === null) {
-        return `${column}=${operator}.null`;
+        return `${String(column)}=${operator}.null`;
     }
     if (operator === "in" && Array.isArray(value)) {
-        return `${column}=in.(${value.join(",")})`;
+        return `${String(column)}=in.(${value.join(",")})`;
     }
-    return `${column}=${operator}.${value}`;
+    return `${String(column)}=${operator}.${value}`;
 }
 export function buildFilterForSql(filter) {
     if (!filter)
@@ -18,28 +18,28 @@ export function buildFilterForSql(filter) {
     switch (operator) {
         case "eq":
             return value === null
-                ? `${column} IS NULL`
-                : `${column} = ${sqlValue(value)}`;
+                ? `${String(column)} IS NULL`
+                : `${String(column)} = ${sqlValue(value)}`;
         case "neq":
             return value === null
-                ? `${column} IS NOT NULL`
-                : `${column} != ${sqlValue(value)}`;
+                ? `${String(column)} IS NOT NULL`
+                : `${String(column)} != ${sqlValue(value)}`;
         case "gt":
-            return `${column} > ${sqlValue(value)}`;
+            return `${String(column)} > ${sqlValue(value)}`;
         case "lt":
-            return `${column} < ${sqlValue(value)}`;
+            return `${String(column)} < ${sqlValue(value)}`;
         case "gte":
-            return `${column} >= ${sqlValue(value)}`;
+            return `${String(column)} >= ${sqlValue(value)}`;
         case "lte":
-            return `${column} <= ${sqlValue(value)}`;
+            return `${String(column)} <= ${sqlValue(value)}`;
         case "in":
             if (!Array.isArray(value)) {
                 throw new Error("Value must be an array for 'in' operator");
             }
             const list = value.map(sqlValue).join(", ");
-            return `${column} IN (${list})`;
+            return `${String(column)} IN (${list})`;
         case "is":
-            return `${column} IS ${sqlValue(value)}`;
+            return `${String(column)} IS ${sqlValue(value)}`;
         default:
             throw new Error(`Unsupported operator: ${operator}`);
     }

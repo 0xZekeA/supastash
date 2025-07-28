@@ -19,6 +19,9 @@ export async function clearLocalSyncLog(tableName: string) {
   await db.runAsync(`DELETE FROM ${SYNC_STATUS_TABLE} WHERE table_name = ?`, [
     tableName,
   ]);
+  await db.runAsync(`DELETE FROM ${LAST_CREATED_TABLE} WHERE table_name = ?`, [
+    tableName,
+  ]);
 }
 
 /**

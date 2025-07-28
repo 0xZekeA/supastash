@@ -1,1 +1,1 @@
-{"version":3,"file":"tableFilters.d.ts","sourceRoot":"","sources":["../../src/store/tableFilters.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,cAAc,EAAE,MAAM,6BAA6B,CAAC;AAE7D,eAAO,MAAM,YAAY,6BAAoC,CAAC"}
+{"version":3,"file":"tableFilters.d.ts","sourceRoot":"","sources":["../../src/store/tableFilters.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,cAAc,EAAE,MAAM,6BAA6B,CAAC;AAE7D,eAAO,MAAM,gBAAgB,aAAoB,CAAC;AAClD,eAAO,MAAM,aAAa,+BAAsC,CAAC;AAEjE,eAAO,MAAM,YAAY,+BAAsC,CAAC"}

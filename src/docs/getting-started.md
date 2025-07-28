@@ -130,7 +130,7 @@ return <Stack />;
 
 ## 🧪 Basic Usage
 
-### `useSupatashData` Local-First React Hook [Supastash Data Access docs](./data-access.md)
+### `useSupatashData` Local-First React Hook [Supastash Data Access docs](./useSupastashData.md)
 
 This hook fetches and subscribes to local SQLite data, keeping it synced in the background.
 
@@ -195,6 +195,6 @@ return <Text>{JSON.stringify(data)}</Text>;
 ### 🔗 What’s Next?
 
 - [configuration docs](./configuration.md)
-- [Data Access docs](./data-access.md)
+- [Data Access docs](./useSupastashData.md)
 - [useSupastash docs](useSupastash-hook.md)
 - [Query Builder docs](./supastash-query-builder.md)

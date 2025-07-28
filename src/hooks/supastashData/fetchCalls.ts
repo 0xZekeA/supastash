@@ -1,12 +1,15 @@
 import { useEffect, useRef } from "react";
 import { syncCalls } from "../../store/syncCalls";
-import { tableFilters } from "../../store/tableFilters";
-import { RealtimeOptions } from "../../types/realtimeData.types";
+import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
+import {
+  RealtimeFilter,
+  RealtimeOptions,
+} from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
 import { logError } from "../../utils/logs";
 
-export function fetchCalls<R>(
+export function fetchCalls<R = any>(
   table: string,
   options: RealtimeOptions<R>,
   initialized: React.RefObject<boolean>
@@ -21,12 +24,15 @@ export function fetchCalls<R>(
     extraMapKeys,
     daylength,
     onlyUseFilterForRealtime,
+    orderBy,
+    orderDesc,
+    sqlFilter,
   } = options;
   const cancelled = useRef(false);
 
   useEffect(() => {
-    if (filter && useFilterWhileSyncing && !tableFilters.get(table)) {
-      tableFilters.set(table, filter);
+    if (filter && useFilterWhileSyncing && !tableFiltersUsed.has(table)) {
+      tableFilters.set(table, [filter]);
     }
     if (onPushToRemote) {
       syncCalls.set(table, {
@@ -40,12 +46,18 @@ export function fetchCalls<R>(
         pull: onInsertAndUpdate,
       });
     }
-    return () => {
-      tableFilters.delete(table);
-    };
-  }, []);
+  }, [filter]);
 
   const fetch = async () => {
+    let filters: RealtimeFilter[] | undefined;
+
+    if (sqlFilter) {
+      filters = sqlFilter;
+    } else if (tableFilters.has(table)) {
+      filters = tableFilters.get(table);
+    } else if (!onlyUseFilterForRealtime) {
+      filters = filter ? [filter] : undefined;
+    }
     if (!cancelled.current) {
       await fetchLocalData(
         table,
@@ -53,7 +65,9 @@ export function fetchCalls<R>(
         limit,
         extraMapKeys,
         daylength,
-        onlyUseFilterForRealtime ? undefined : filter
+        filters,
+        orderBy ?? "created_at",
+        orderDesc ?? true
       );
     }
   };
@@ -76,8 +90,19 @@ export function fetchCalls<R>(
 
   const initialFetchAndSync = async () => {
     if (!shouldFetch || cancelled.current) return;
+
+    let filters: RealtimeFilter[] | undefined;
+
+    if (sqlFilter) {
+      filters = sqlFilter;
+    } else if (tableFilters.has(table)) {
+      filters = tableFilters.get(table);
+    } else if (!onlyUseFilterForRealtime) {
+      filters = filter ? [filter] : undefined;
+    }
+
     try {
-      await initialFetch(table, filter, onInsertAndUpdate, onPushToRemote);
+      await initialFetch(table, filters, onInsertAndUpdate, onPushToRemote);
       await fetch();
     } catch (error) {
       logError(`[Supastash] Error on initial fetch for ${table}`, error);

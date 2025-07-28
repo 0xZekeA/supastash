@@ -1,3 +1,4 @@
+import log from "../../../utils/logs";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
 import { queryDb } from "./mainQuery";
 /**
@@ -182,7 +183,7 @@ export default class SupastashFilterBuilder {
         const maxRetries = options?.remoteRetry ?? 0;
         const delay = options?.remoteRetryDelay ?? 500;
         if (options?.debug) {
-            console.debug("[Supastash] Executing query with state:", newQuery);
+            log("[Supastash] Executing query with state:", newQuery);
         }
         const attemptQuery = async () => {
             const result = await queryDb(newQuery);
@@ -197,7 +198,7 @@ export default class SupastashFilterBuilder {
                 const delayMs = delay * Math.pow(2, i - 1);
                 await new Promise((resolve) => setTimeout(resolve, delayMs));
                 if (options?.debug) {
-                    console.debug(`[Supastash] Retry ${i}/${maxRetries} after ${delayMs}ms...`);
+                    log(`[Supastash] Retry ${i}/${maxRetries} after ${delayMs}ms...`);
                 }
                 const remoteResult = await querySupabase(newQuery);
                 if (newQuery.viewRemoteResult && "remote" in result) {

@@ -15,11 +15,11 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   },
   syncEngine: {
     push: true,
-    pull: false,
+    pull: true,
     useFiltersFromStore: true,
   },
   listeners: 250,
-  debugMode: false,
+  debugMode: true,
 };
 
 let _configured = false;
@@ -74,6 +74,20 @@ export function configureSupastash<T extends SupastashSQLiteClientTypes>(
   _config = {
     ..._config,
     ...config,
+    syncEngine: {
+      ..._config.syncEngine,
+      ...config.syncEngine,
+    },
+    excludeTables: {
+      pull: config.excludeTables?.pull ?? _config.excludeTables?.pull ?? [],
+      push: config.excludeTables?.push ?? _config.excludeTables?.push ?? [],
+    },
+    pollingInterval: {
+      pull:
+        config.pollingInterval?.pull ?? _config.pollingInterval?.pull ?? 30000,
+      push:
+        config.pollingInterval?.push ?? _config.pollingInterval?.push ?? 30000,
+    },
   };
   _configured = true;
 }
