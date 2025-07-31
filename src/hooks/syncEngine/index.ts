@@ -18,8 +18,9 @@ const syncPollingInterval = getSupastashConfig().pollingInterval?.push || 30000;
  * Syncs the local data to the remote database
  */
 export async function syncAll(force: boolean = false) {
-  if (isSyncing) return;
-
+  if (isSyncing) {
+    return;
+  }
   if (!(await isOnline())) return;
 
   try {

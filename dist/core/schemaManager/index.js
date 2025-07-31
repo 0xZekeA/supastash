@@ -60,7 +60,19 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
             const clearDeleteStatusSql = `DELETE FROM supastash_deleted_status WHERE table_name = '${tableName}'`;
             const clearLastCreatedStatusSql = `DELETE FROM supastash_last_created WHERE table_name = '${tableName}'`;
-            await db.execAsync(dropSql);
+            const tryDropTable = async (attempt = 1) => {
+                try {
+                    await db.execAsync(dropSql);
+                }
+                catch (err) {
+                    if (String(err).includes("table is locked") && attempt < 5) {
+                        await new Promise((res) => setTimeout(res, attempt * 100));
+                        return tryDropTable(attempt + 1);
+                    }
+                    throw err;
+                }
+            };
+            await tryDropTable();
             await db.execAsync(clearSyncStatusSql);
             await db.execAsync(clearDeleteStatusSql);
             await db.execAsync(clearLastCreatedStatusSql);
