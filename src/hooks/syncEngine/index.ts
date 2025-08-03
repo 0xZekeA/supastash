@@ -97,7 +97,7 @@ export async function syncTable(table: string): Promise<void> {
   const config = getSupastashConfig();
   const { useFiltersFromStore = true } = config?.syncEngine || {};
   const filter = useFiltersFromStore ? tableFilters.get(table) : undefined;
-  if (!getSupastashConfig().syncEngine?.pull) {
+  if (getSupastashConfig().syncEngine?.pull) {
     await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
   }
   await pushLocalDataToRemote(table, syncCalls.get(table)?.push);
