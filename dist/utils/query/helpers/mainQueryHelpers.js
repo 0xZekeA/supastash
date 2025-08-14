@@ -1,5 +1,7 @@
 import { isOnline } from "../../../utils/connection";
 import { log, logWarn } from "../../../utils/logs";
+import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
+import { supastashEventBus } from "../../events/eventBus";
 import { generateUUIDv4 } from "../../genUUID";
 import { queryLocalDb } from "../localDbQuery";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
@@ -98,6 +100,8 @@ async function processBatch() {
                 if (!isConnected) {
                     const offlineRetries = (calledOfflineRetries.get(opKey) || 0) + 1;
                     if (offlineRetries > MAX_OFFLINE_RETRIES) {
+                        await getQueryStatusFromDb(state.table);
+                        supastashEventBus.emit("updateSyncStatus");
                         logWarn(`[Supastash] Gave up on ${opKey} after ${MAX_OFFLINE_RETRIES} offline retries`);
                         reject(new Error(`Offline retry limit exceeded for ${opKey}`));
                         break;

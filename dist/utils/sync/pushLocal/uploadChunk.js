@@ -1,7 +1,9 @@
 import { getSupastashConfig } from "../../../core/config";
+import { supastashEventBus } from "../../events/eventBus";
 import log, { logError } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { updateLocalSyncedAt } from "../../syncUpdate";
+import { setQueryStatus } from "../queryStatus";
 import { parseStringifiedFields } from "./parseFields";
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
 const CHUNK_SIZE = 500;
@@ -12,6 +14,9 @@ async function updateSyncStatus(table, rows) {
     }
 }
 function errorHandler(error, table, toUpsert, attempts) {
+    for (const row of toUpsert) {
+        setQueryStatus(row.id, table, "error");
+    }
     if (attempts === 5) {
         log(`[Supastash] Upsert attempt ${attempts} failed for table ${table} \n
      Error: ${error.message} \n
@@ -67,6 +72,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
         }
         else {
             const { synced_at, ...rest } = row;
+            setQueryStatus(rest.id, table, "pending");
             toUpsert.push(rest);
         }
     }
@@ -85,6 +91,9 @@ async function uploadChunk(table, chunk, onPushToRemote) {
                     break;
                 }
                 if (result) {
+                    for (const row of toUpsert) {
+                        setQueryStatus(row.id, table, "success");
+                    }
                     success = true;
                 }
                 else {
@@ -95,6 +104,10 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             else {
                 const { error } = await supabase.from(table).upsert(toUpsert);
                 if (!error) {
+                    for (const row of toUpsert) {
+                        setQueryStatus(row.id, table, "success");
+                    }
+                    supastashEventBus.emit("updateSyncStatus");
                     success = true;
                 }
                 else {
@@ -122,7 +135,9 @@ async function uploadChunk(table, chunk, onPushToRemote) {
  * @param unsyncedRecords - The unsynced records to upload
  */
 export async function uploadData(table, unsyncedRecords, onPushToRemote) {
-    const cleanRecords = unsyncedRecords.map(({ synced_at, deleted_at, ...rest }) => parseStringifiedFields(rest));
+    const cleanRecords = unsyncedRecords.map(({ synced_at, deleted_at, ...rest }) => {
+        return parseStringifiedFields(rest);
+    });
     for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
         const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
         await uploadChunk(table, chunk, onPushToRemote);

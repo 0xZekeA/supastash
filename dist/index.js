@@ -5,6 +5,7 @@ export { useSupastashData } from "./hooks/supastashData";
 //export { useSupastashLiteQuery } from "./hooks/supastashLiteQuery";
 export { useSupastash } from "./hooks/supastashLogic";
 export { syncAllTables, syncTable } from "./hooks/syncEngine";
+export { useSupastashSyncStatus } from "./hooks/syncStatus";
 export { supastashEventBus } from "./utils/events/eventBus";
 export { supastash } from "./utils/query/builder";
 export { dropAllTables, dropTable, wipeAllTables, wipeOldDataForAllTables, wipeOldDataForATable, wipeTable, } from "./utils/schema/wipeTables";

@@ -36,13 +36,8 @@ export async function pushLocalDataToRemote(
       refreshScreen(table);
     }
 
-    const payloadForDeletedData = deletedData?.map((item) => ({
-      id: item.id,
-      deleted_at: item.deleted_at,
-    }));
-
-    if (payloadForDeletedData && payloadForDeletedData.length > 0) {
-      await deleteData(table, payloadForDeletedData);
+    if (deletedData && deletedData.length > 0) {
+      await deleteData(table, deletedData);
     }
   } catch (error) {
     logError(

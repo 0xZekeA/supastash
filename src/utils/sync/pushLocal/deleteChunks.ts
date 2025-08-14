@@ -1,7 +1,9 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { PayloadData } from "../../../types/query.types";
+import { supastashEventBus } from "../../events/eventBus";
 import log from "../../logs";
+import { setQueryStatus } from "../queryStatus";
 import { parseStringifiedFields } from "./parseFields";
 
 const CHUNK_SIZE = 500;
@@ -22,7 +24,15 @@ async function permanentlyDeleteChunkLocally(
   }
 }
 
-function errorHandler(error: any, table: string, attempts: number) {
+function errorHandler(
+  error: any,
+  table: string,
+  attempts: number,
+  toDelete: PayloadData[]
+) {
+  for (const row of toDelete) {
+    setQueryStatus(row.id, table, "error");
+  }
   log(
     `Delete attempt ${
       attempts + 1
@@ -49,10 +59,14 @@ async function deleteChunk(table: string, chunk: PayloadData[]) {
   while (attempts < 3) {
     const { error } = await supabase.from(table).upsert(toDelete);
     if (!error) {
+      for (const row of toDelete) {
+        setQueryStatus(row.id, table, "success");
+      }
+      supastashEventBus.emit("updateSyncStatus");
       await permanentlyDeleteChunkLocally(table, toDelete);
       break;
     }
-    errorHandler(error, table, attempts);
+    errorHandler(error, table, attempts, toDelete);
 
     attempts++;
     await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
@@ -68,9 +82,10 @@ export async function deleteData(
   table: string,
   unsyncedRecords: PayloadData[]
 ) {
-  const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) =>
-    parseStringifiedFields(rest)
-  );
+  const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) => {
+    setQueryStatus(rest.id, table, "pending");
+    return parseStringifiedFields(rest);
+  });
 
   for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
     const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);

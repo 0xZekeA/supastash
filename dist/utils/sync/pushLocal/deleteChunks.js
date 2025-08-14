@@ -1,6 +1,8 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { supastashEventBus } from "../../events/eventBus";
 import log from "../../logs";
+import { setQueryStatus } from "../queryStatus";
 import { parseStringifiedFields } from "./parseFields";
 const CHUNK_SIZE = 500;
 /**
@@ -14,7 +16,10 @@ async function permanentlyDeleteChunkLocally(table, chunk) {
         await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [row.id]);
     }
 }
-function errorHandler(error, table, attempts) {
+function errorHandler(error, table, attempts, toDelete) {
+    for (const row of toDelete) {
+        setQueryStatus(row.id, table, "error");
+    }
     log(`Delete attempt ${attempts + 1} failed for a delete operation on table ${table}`, error);
 }
 /**
@@ -33,10 +38,14 @@ async function deleteChunk(table, chunk) {
     while (attempts < 3) {
         const { error } = await supabase.from(table).upsert(toDelete);
         if (!error) {
+            for (const row of toDelete) {
+                setQueryStatus(row.id, table, "success");
+            }
+            supastashEventBus.emit("updateSyncStatus");
             await permanentlyDeleteChunkLocally(table, toDelete);
             break;
         }
-        errorHandler(error, table, attempts);
+        errorHandler(error, table, attempts, toDelete);
         attempts++;
         await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
     }
@@ -47,7 +56,10 @@ async function deleteChunk(table, chunk) {
  * @param unsyncedRecords - The unsynced records to delete
  */
 export async function deleteData(table, unsyncedRecords) {
-    const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) => parseStringifiedFields(rest));
+    const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) => {
+        setQueryStatus(rest.id, table, "pending");
+        return parseStringifiedFields(rest);
+    });
     for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
         const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
         await deleteChunk(table, chunk);

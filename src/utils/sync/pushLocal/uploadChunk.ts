@@ -1,8 +1,10 @@
 import { getSupastashConfig } from "../../../core/config";
 import { PayloadData } from "../../../types/query.types";
+import { supastashEventBus } from "../../events/eventBus";
 import log, { logError } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { updateLocalSyncedAt } from "../../syncUpdate";
+import { setQueryStatus } from "../queryStatus";
 import { parseStringifiedFields } from "./parseFields";
 
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
@@ -21,6 +23,9 @@ function errorHandler(
   toUpsert: any[],
   attempts: number
 ) {
+  for (const row of toUpsert) {
+    setQueryStatus(row.id, table, "error");
+  }
   if (attempts === 5) {
     log(
       `[Supastash] Upsert attempt ${attempts} failed for table ${table} \n
@@ -101,6 +106,7 @@ async function uploadChunk(
       );
     } else {
       const { synced_at, ...rest } = row;
+      setQueryStatus(rest.id, table, "pending");
       toUpsert.push(rest);
     }
   }
@@ -125,6 +131,9 @@ async function uploadChunk(
         }
 
         if (result) {
+          for (const row of toUpsert) {
+            setQueryStatus(row.id, table, "success");
+          }
           success = true;
         } else {
           attempts++;
@@ -134,6 +143,10 @@ async function uploadChunk(
         const { error } = await supabase.from(table).upsert(toUpsert);
 
         if (!error) {
+          for (const row of toUpsert) {
+            setQueryStatus(row.id, table, "success");
+          }
+          supastashEventBus.emit("updateSyncStatus");
           success = true;
         } else {
           attempts++;
@@ -171,7 +184,9 @@ export async function uploadData(
   onPushToRemote?: (payload: any[]) => Promise<boolean>
 ) {
   const cleanRecords = unsyncedRecords.map(
-    ({ synced_at, deleted_at, ...rest }) => parseStringifiedFields(rest)
+    ({ synced_at, deleted_at, ...rest }) => {
+      return parseStringifiedFields(rest);
+    }
   );
 
   for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {

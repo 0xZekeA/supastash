@@ -15,6 +15,7 @@ export function refreshScreen(table: string): void {
   const timeout = setTimeout(() => {
     supastashEventBus.emit(`refresh:${table}`);
     supastashEventBus.emit(`supastash:refreshZustand:${table}`);
+    supastashEventBus.emit("updateSyncStatus");
     timesFetched.delete(table);
     debounceMap.delete(table);
   }, timeoutMs);

@@ -1,5 +1,7 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
+import { supastashEventBus } from "../../events/eventBus";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { getSafeValue } from "../../serializer";
 import { updateLocalSyncedAt } from "../../syncUpdate";
@@ -125,6 +127,10 @@ export async function querySupabase(state, isBatched = false) {
     }
     const result = await filterQuery;
     const db = await getSupastashDb();
+    if (result.error) {
+        await getQueryStatusFromDb(table);
+        supastashEventBus.emit("updateSyncStatus");
+    }
     if (!result.error &&
         method !== "select" &&
         type !== "remoteOnly" &&
