@@ -47,7 +47,7 @@ export function getSafeValue(value) {
             return value.map(stableStringify);
         return stableStringify(value);
     }
-    if (typeof value === "object")
+    if (typeof value === "object" && value !== null)
         return stableStringify(value);
     return value;
 }

@@ -56,7 +56,8 @@ export function getSafeValue(value: any): any {
     return stableStringify(value);
   }
 
-  if (typeof value === "object") return stableStringify(value);
+  if (typeof value === "object" && value !== null)
+    return stableStringify(value);
 
   return value;
 }
