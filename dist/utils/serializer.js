@@ -1,5 +1,3 @@
-import { NITRO_SQLITE_NULL } from "react-native-nitro-sqlite";
-import { getSupastashConfig } from "../core/config";
 export function isTrulyNullish(value) {
     return (value === null ||
         value === undefined ||
@@ -28,7 +26,6 @@ function stableStringify(obj) {
     }
     return JSON.stringify(obj);
 }
-let isNitro = null;
 /**
  * Converts a value into a stable JSON string representation.
  *
@@ -36,12 +33,6 @@ let isNitro = null;
  * @returns A stable stringified version of the input
  */
 export function getSafeValue(value) {
-    if (isNitro === null) {
-        isNitro = getSupastashConfig().sqliteClientType === "rn-nitro";
-    }
-    if (isTrulyNullish(value)) {
-        return isNitro ? NITRO_SQLITE_NULL : undefined;
-    }
     if (value instanceof Date)
         return value.toISOString();
     if (Array.isArray(value)) {

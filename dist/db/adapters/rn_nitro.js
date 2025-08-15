@@ -1,5 +1,14 @@
+import { enableSimpleNullHandling } from "react-native-nitro-sqlite";
+import { logWarn } from "../../utils/logs";
 export const SQLiteAdapterNitro = {
     async openDatabaseAsync(name, sqliteClient) {
+        //Enable simple null handling for Nitro SQLite
+        if (enableSimpleNullHandling) {
+            enableSimpleNullHandling();
+        }
+        else {
+            logWarn("[Supastash] Simple null handling is not enabled for Nitro SQLite", "Please update your react-native-nitro-sqlite version to 9.1.3 or higher");
+        }
         const db = await sqliteClient.open({ name, location: "default" });
         return {
             runAsync: async (sql, params) => {
