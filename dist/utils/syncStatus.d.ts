@@ -27,10 +27,11 @@ export declare function getLocalSyncLog(tableName: string): Promise<{
  * Sets the sync log for a given table
  * @param tableName - The name of the table to set the sync log for
  * @param lastSyncedAt - The last synced at timestamp
+ * @param lastCreatedAt - The last created at timestamp
  * @example
  * setLocalSyncLog("users", new Date().toISOString());
  */
-export declare function setLocalSyncLog(tableName: string, lastSyncedAt: string): Promise<void>;
+export declare function setLocalSyncLog(tableName: string, lastSyncedAt: string, lastCreatedAt?: string): Promise<void>;
 /**
  * Clears the delete log for a given table
  * @param tableName - The name of the table to clear the delete log for

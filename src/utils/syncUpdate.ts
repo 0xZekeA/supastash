@@ -6,15 +6,17 @@ import { logError } from "./logs";
  * @param tableName - The name of the table to update
  * @param id - The id of the row to update
  */
-export async function updateLocalSyncedAt(tableName: string, id: string) {
+export async function updateLocalSyncedAt(tableName: string, ids: string[]) {
   try {
     const db = await getSupastashDb();
     const timeStamp = new Date().toISOString();
 
-    await db.runAsync(`UPDATE ${tableName} SET synced_at = ? WHERE id = ?`, [
-      timeStamp,
-      id,
-    ]);
+    const placeholders = ids.map(() => "?").join(", ");
+
+    await db.runAsync(
+      `UPDATE ${tableName} SET synced_at = ? WHERE id IN (${placeholders})`,
+      [timeStamp, ...ids]
+    );
   } catch (error) {
     logError(error);
   }

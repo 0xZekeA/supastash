@@ -4,6 +4,7 @@ import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
 import { localCache } from "../store/localCache";
 import { filterTracker, tableFilters, tableFiltersUsed, } from "../store/tableFilters";
+import { createIdIndexes } from "../utils/createIndexes";
 import { logError, logWarn } from "../utils/logs";
 import { createDeletedStatusTable, createSyncStatusTable, } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
@@ -54,6 +55,7 @@ export function useSupastash(lazy = false) {
                 // Create supastash metadata tables
                 await createSyncStatusTable();
                 await createDeletedStatusTable();
+                await createIdIndexes();
                 // On schema init
                 if (config.onSchemaInit) {
                     await config.onSchemaInit();

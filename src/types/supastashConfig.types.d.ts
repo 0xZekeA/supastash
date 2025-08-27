@@ -54,7 +54,7 @@ interface SupastashSQLiteDatabase {
    * @param params - Optional parameters for the query
    * @returns A Promise resolving to an array
    */
-  getAllAsync(sql: string, params?: any[]): Promise<any[]>;
+  getAllAsync<T = any>(sql: string, params?: any[]): Promise<T[]>;
 
   /**
    * Executes a query and returns **only the first row** (or `null` if no rows).
@@ -63,7 +63,7 @@ interface SupastashSQLiteDatabase {
    * @param params - Optional parameters for the query
    * @returns A Promise resolving to the first matching row
    */
-  getFirstAsync(sql: string, params?: any[]): Promise<any | null>;
+  getFirstAsync<T = any>(sql: string, params?: any[]): Promise<T | null>;
 
   /**
    * Executes **multiple SQL statements** separated by semicolons.

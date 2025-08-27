@@ -50,11 +50,13 @@ export async function defineLocalSchema(
 
     const { __indices, ...columnSchema } = schema as LocalSchemaDefinition;
 
-    const indexNotInSchema = __indices?.some((i) => !columnSchema[i]);
+    const indexNotInSchema = __indices?.filter((i) => !columnSchema[i]) ?? [];
 
-    if (__indices && indexNotInSchema) {
+    if (indexNotInSchema.length > 0) {
       throw new Error(
-        `Index ${indexNotInSchema} not found in schema. Please ensure all indices are defined in the schema.`
+        `Index columns ${indexNotInSchema.join(
+          ", "
+        )} not found in schema. Please ensure all columns are defined in the schema.`
       );
     }
 

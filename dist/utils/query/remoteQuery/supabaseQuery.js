@@ -137,7 +137,7 @@ export async function querySupabase(state, isBatched = false) {
         type !== "remoteFirst") {
         if (method === "insert" && newPayload) {
             for (const item of upsertOrInsertPayload) {
-                await updateLocalSyncedAt(table, item.id);
+                await updateLocalSyncedAt(table, [item.id]);
             }
         }
         if (method === "upsert" && newPayload) {

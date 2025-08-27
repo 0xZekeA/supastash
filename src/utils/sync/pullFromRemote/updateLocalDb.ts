@@ -12,6 +12,7 @@ import { stringifyValue } from "./stringifyFields";
 
 let isInSync = new Map<string, boolean>();
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
+const BATCH_SIZE = 500;
 
 /**
  * Updates the local database with the remote changes
@@ -36,26 +37,44 @@ export async function updateLocalDb(
 
     // Delete records that are no longer in the remote data
     if (deletedData && deletedData.records.length > 0) {
-      for (const record of deletedData.records) {
-        await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [record.id]);
-      }
+      const ids = deletedData.records.map((record) => record.id).join(",");
+      const placeholders = ids
+        .split(",")
+        .map(() => "?")
+        .join(",");
+      await db.runAsync(
+        `DELETE FROM ${table} WHERE id IN (${placeholders})`,
+        deletedData.records.map((record) => record.id)
+      );
     }
 
     // Update local database with remote changes
     if (data && data.length > 0) {
-      for (const record of data) {
-        if (deletedData?.deletedDataMap.has(record.id)) continue;
-        const { doesExist, newer } = await checkIfRecordExistsAndIsNewer(
-          table,
-          record
-        );
-        if (newer) {
-          if (onReceiveData) {
-            await onReceiveData(record);
-          } else {
-            await upsertData(table, record, doesExist);
+      const run = async () => {
+        for (let i = 0; i < data.length; i++) {
+          const record = data[i];
+          if (deletedData?.deletedDataMap.has(record.id)) continue;
+          const { doesExist, newer } = await checkIfRecordExistsAndIsNewer(
+            table,
+            record
+          );
+          if (newer) {
+            if (onReceiveData) {
+              await onReceiveData(record);
+            } else {
+              await upsertData(table, record, doesExist);
+            }
+          }
+          if ((i + 1) % BATCH_SIZE === 0) {
+            await new Promise((res) => setTimeout(res, 0));
           }
         }
+      };
+
+      try {
+        await run();
+      } catch (error) {
+        throw error;
       }
     }
 
@@ -144,7 +163,7 @@ export async function upsertData(
         values
       );
     }
-    await updateLocalSyncedAt(table, record.id);
+    await updateLocalSyncedAt(table, [record.id]);
   } catch (error) {
     logError(`[Supastash] Error upserting data for ${table}`, error);
   }

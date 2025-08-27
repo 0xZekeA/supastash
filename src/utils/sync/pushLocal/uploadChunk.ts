@@ -5,6 +5,7 @@ import log, { logError } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { updateLocalSyncedAt } from "../../syncUpdate";
 import { setQueryStatus } from "../queryStatus";
+
 import { parseStringifiedFields } from "./parseFields";
 
 const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
@@ -12,9 +13,10 @@ const CHUNK_SIZE = 500;
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
 
 async function updateSyncStatus(table: string, rows: any[]) {
-  for (const row of rows) {
-    await updateLocalSyncedAt(table, row.id);
-  }
+  await updateLocalSyncedAt(
+    table,
+    rows.map((row) => row.id)
+  );
 }
 
 function errorHandler(

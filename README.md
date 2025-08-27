@@ -235,15 +235,6 @@ src/
 
 ---
 
-## 🧪 Dev & Testing
-
-```bash
-yarn test       # Run tests
-yarn dev        # Dev mode (watch)
-```
-
----
-
 ## 🔧 API Docs
 
 - [`configureSupastash()`](https://0xzekea.github.io/supastash/docs/configuration)

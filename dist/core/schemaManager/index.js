@@ -39,9 +39,9 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
         }
         const db = await getSupastashDb();
         const { __indices, ...columnSchema } = schema;
-        const indexNotInSchema = __indices?.some((i) => !columnSchema[i]);
-        if (__indices && indexNotInSchema) {
-            throw new Error(`Index ${indexNotInSchema} not found in schema. Please ensure all indices are defined in the schema.`);
+        const indexNotInSchema = __indices?.filter((i) => !columnSchema[i]) ?? [];
+        if (indexNotInSchema.length > 0) {
+            throw new Error(`Index columns ${indexNotInSchema.join(", ")} not found in schema. Please ensure all columns are defined in the schema.`);
         }
         // Ensure required columns
         const safeSchema = {
