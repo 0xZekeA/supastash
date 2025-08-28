@@ -39,6 +39,7 @@ export type LocalSchemaDefinition = {
   [key: string]: ColumnDefinition | string[];
 } & {
   __indices?: string[];
+  __constraints?: string;
 };
 
 export type DefineLocalSchema = (

@@ -48,7 +48,8 @@ export async function defineLocalSchema(
 
     const db = await getSupastashDb();
 
-    const { __indices, ...columnSchema } = schema as LocalSchemaDefinition;
+    const { __indices, __constraints, ...columnSchema } =
+      schema as LocalSchemaDefinition;
 
     const indexNotInSchema = __indices?.filter((i) => !columnSchema[i]) ?? [];
 
@@ -75,7 +76,9 @@ export async function defineLocalSchema(
     );
 
     const schemaString = schemaParts.join(", ");
-    const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString});`;
+    const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString}) ${
+      __constraints ? ` ${__constraints}` : ""
+    };`;
 
     if (deletePreviousSchema) {
       const dropSql = `DROP TABLE IF EXISTS ${tableName}`;

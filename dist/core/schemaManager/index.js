@@ -38,7 +38,7 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
             throw new Error(`'id' of type UUID column is required for table ${tableName}`);
         }
         const db = await getSupastashDb();
-        const { __indices, ...columnSchema } = schema;
+        const { __indices, __constraints, ...columnSchema } = schema;
         const indexNotInSchema = __indices?.filter((i) => !columnSchema[i]) ?? [];
         if (indexNotInSchema.length > 0) {
             throw new Error(`Index columns ${indexNotInSchema.join(", ")} not found in schema. Please ensure all columns are defined in the schema.`);
@@ -54,7 +54,7 @@ export async function defineLocalSchema(tableName, schema, deletePreviousSchema 
         // Build column definitions
         const schemaParts = Object.entries(safeSchema).map(([key, value]) => `${key} ${value}`);
         const schemaString = schemaParts.join(", ");
-        const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString});`;
+        const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString}) ${__constraints ? ` ${__constraints}` : ""};`;
         if (deletePreviousSchema) {
             const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
             const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
