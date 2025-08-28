@@ -76,9 +76,9 @@ export async function defineLocalSchema(
     );
 
     const schemaString = schemaParts.join(", ");
-    const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${schemaString}) ${
-      __constraints ? ` ${__constraints}` : ""
-    };`;
+    const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${
+      __constraints ? `${schemaString}, ${__constraints}` : schemaString
+    });`;
 
     if (deletePreviousSchema) {
       const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
