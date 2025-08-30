@@ -182,8 +182,9 @@ async function processBatch(): Promise<void> {
 
           if (currentRetries >= MAX_RETRIES) {
             logWarn(
-              `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries`
+              `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries ERROR: ${error.message}`
             );
+            logWarn("[Supastash] Full error object:", error);
 
             reject(new Error(`Max retries exceeded for ${opKey}`));
             break;
