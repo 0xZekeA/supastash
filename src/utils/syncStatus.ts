@@ -48,16 +48,24 @@ export async function clearAllLocalSyncLog() {
 export async function getLocalSyncLog(tableName: string): Promise<{
   table_name: string;
   lastSyncedAt: string;
+  lastCreatedAt: string;
 } | null> {
   const db = await getSupastashDb();
   const syncStatus = await db.getFirstAsync(
     `SELECT * FROM ${SYNC_STATUS_TABLE} WHERE table_name = ?`,
     [tableName]
   );
+  const createdStatus = await db.getFirstAsync(
+    `SELECT * FROM ${LAST_CREATED_TABLE} WHERE table_name = ?`,
+    [tableName]
+  );
   if (!syncStatus) {
     return null;
   }
-  return syncStatus;
+  return {
+    ...syncStatus,
+    lastCreatedAt: createdStatus?.last_created_at,
+  };
 }
 
 /**
@@ -74,7 +82,18 @@ export async function setLocalSyncLog(
   lastCreatedAt?: string
 ) {
   const db = await getSupastashDb();
+
   if (lastSyncedAt) {
+    const row = await db.getFirstAsync(
+      `SELECT last_synced_at FROM ${SYNC_STATUS_TABLE} WHERE table_name=? LIMIT 1`,
+      [tableName]
+    );
+    if (
+      row?.last_synced_at &&
+      new Date(lastSyncedAt) > new Date(row.last_synced_at)
+    ) {
+      lastSyncedAt = row.last_synced_at;
+    }
     await db.runAsync(
       `INSERT OR REPLACE INTO ${SYNC_STATUS_TABLE} (table_name, last_synced_at) VALUES (?, ?)`,
       [tableName, lastSyncedAt]
@@ -84,6 +103,17 @@ export async function setLocalSyncLog(
   }
 
   if (lastCreatedAt) {
+    const rowCreated = await db.getFirstAsync(
+      `SELECT last_created_at FROM ${LAST_CREATED_TABLE} WHERE table_name=? LIMIT 1`,
+      [tableName]
+    );
+
+    if (
+      rowCreated?.last_created_at &&
+      new Date(lastCreatedAt) > new Date(rowCreated.last_created_at)
+    ) {
+      lastCreatedAt = rowCreated.last_created_at;
+    }
     await db.runAsync(
       `INSERT OR REPLACE INTO ${LAST_CREATED_TABLE} (table_name, last_created_at) VALUES (?, ?)`,
       [tableName, lastCreatedAt]

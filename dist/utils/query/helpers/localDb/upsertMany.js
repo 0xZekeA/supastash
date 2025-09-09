@@ -1,15 +1,22 @@
+import { getSupastashConfig } from "../../../../core/config";
 import { getSupastashDb } from "../../../../db/dbInitializer";
 import { generateUUIDv4 } from "../../../genUUID";
 import { parseStringifiedFields as parseRow } from "../../../sync/pushLocal/parseFields";
+import { queueRemoteCall } from "../queueRemote";
 const DEFAULT_DATE = "1970-01-01T00:00:00.000Z";
 const CHECK_BATCH = 900; // param headroom under 999
-export async function upsertMany(items, opts) {
+export async function upsertMany(items, opts, state) {
     const db = await getSupastashDb();
     const { table, syncMode, nowISO, preserveTimestamp = false, yieldEvery = 500, } = opts;
     const returnRows = opts.returnRows !== false;
     const onConflictKeys = opts.onConflictKeys && opts.onConflictKeys.length
         ? opts.onConflictKeys
         : ["id"];
+    const config = getSupastashConfig();
+    const supabase = config?.supabaseClient;
+    if (!supabase) {
+        throw new Error("[Supastash] Supabase Client is required to perform this operation.");
+    }
     assertTableName(table);
     onConflictKeys.forEach(assertIdent);
     if (!Array.isArray(items) || items.length === 0)
@@ -27,6 +34,7 @@ export async function upsertMany(items, opts) {
         existingIdSet = new Set(await selectIdsInBatches(db, table, ids));
     }
     const upserted = [];
+    const remotePayload = [];
     const run = async () => {
         for (let i = 0; i < items.length; i++) {
             const input = items[i] ?? {};
@@ -73,6 +81,7 @@ export async function upsertMany(items, opts) {
                         throw new Error(`Missing onConflictKeys in payload; cannot UPDATE in '${table}'. Keys: ${onConflictKeys.join(", ")}`);
                     }
                     await db.runAsync(`UPDATE ${quote(table)} SET ${setSql} WHERE ${clause}`, [...setVals, ...keyValues]);
+                    remotePayload.push(row);
                     if (returnRows) {
                         const updated = await db.getFirstAsync(`SELECT * FROM ${quote(table)} WHERE ${clause} LIMIT 1`, keyValues);
                         if (returnRows)
@@ -91,6 +100,7 @@ export async function upsertMany(items, opts) {
                 const insertCols = Object.keys(row).filter((c) => row[c] !== undefined);
                 const placeholders = insertCols.map(() => "?").join(", ");
                 const insertVals = insertCols.map((c) => toDbValue(row[c]));
+                remotePayload.push(row);
                 await db.runAsync(`INSERT INTO ${quote(table)} (${insertCols
                     .map(quote)
                     .join(", ")}) VALUES (${placeholders})`, insertVals);
@@ -112,6 +122,8 @@ export async function upsertMany(items, opts) {
     await db.runAsync("BEGIN");
     try {
         await run();
+        const newState = { ...state, payload: remotePayload };
+        queueRemoteCall(newState);
         await db.runAsync("COMMIT");
     }
     catch (e) {
@@ -124,11 +136,21 @@ export async function upsertMany(items, opts) {
 function buildWhere(keys, row) {
     if (!keys.length)
         return { clause: null, values: [] };
-    const missing = keys.filter((k) => row[k] === undefined || row[k] === null);
-    if (missing.length)
-        return { clause: null, values: [] };
-    const parts = keys.map((k) => `${quote(k)} = ?`);
-    const vals = keys.map((k) => toDbValue(row[k]));
+    const parts = [];
+    const vals = [];
+    for (const k of keys) {
+        if (!(k in row)) {
+            return { clause: null, values: [] };
+        }
+        const v = row[k];
+        if (v === null) {
+            parts.push(`${quote(k)} IS NULL`);
+        }
+        else {
+            parts.push(`${quote(k)} = ?`);
+            vals.push(toDbValue(v));
+        }
+    }
     return { clause: parts.join(" AND "), values: vals };
 }
 function toDbValue(v) {

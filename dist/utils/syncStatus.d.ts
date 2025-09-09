@@ -22,6 +22,7 @@ export declare function clearAllLocalSyncLog(): Promise<void>;
 export declare function getLocalSyncLog(tableName: string): Promise<{
     table_name: string;
     lastSyncedAt: string;
+    lastCreatedAt: string;
 } | null>;
 /**
  * Sets the sync log for a given table

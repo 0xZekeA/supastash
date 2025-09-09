@@ -47,6 +47,6 @@ export function buildUpdate(table, payload, filters, syncMode, isSingle, preserv
 export function buildDelete(table, filters, syncMode) {
     return async () => await deleteData(table, filters, syncMode);
 }
-export function buildUpsert(table, payload, syncMode, isSingle, onConflictKeys, preserveTimestamp) {
-    return async () => await upsertData(table, payload, syncMode, isSingle, onConflictKeys, preserveTimestamp);
+export function buildUpsert(table, payload, state, syncMode, isSingle, onConflictKeys, preserveTimestamp) {
+    return async () => await upsertData(table, payload, state, syncMode, isSingle, onConflictKeys, preserveTimestamp);
 }

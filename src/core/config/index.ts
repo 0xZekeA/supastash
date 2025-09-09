@@ -1,3 +1,4 @@
+import { DEFAULT_FIELDS, DEFAULT_POLICY } from "../../constants/syncDefaults";
 import {
   SupastashConfig,
   SupastashSQLiteClientTypes,
@@ -20,6 +21,9 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   },
   listeners: 250,
   debugMode: true,
+  syncPolicy: DEFAULT_POLICY,
+  fieldEnforcement: DEFAULT_FIELDS,
+  deleteConflictedRows: false,
 };
 
 let _configured = false;
@@ -87,6 +91,24 @@ export function configureSupastash<T extends SupastashSQLiteClientTypes>(
         config.pollingInterval?.pull ?? _config.pollingInterval?.pull ?? 30000,
       push:
         config.pollingInterval?.push ?? _config.pollingInterval?.push ?? 30000,
+    },
+    syncPolicy: {
+      ...DEFAULT_POLICY,
+      ..._config.syncPolicy,
+      ...config.syncPolicy,
+      nonRetryableCodes:
+        config.syncPolicy?.nonRetryableCodes ??
+        _config.syncPolicy?.nonRetryableCodes ??
+        DEFAULT_POLICY.nonRetryableCodes,
+      retryableCodes:
+        config.syncPolicy?.retryableCodes ??
+        _config.syncPolicy?.retryableCodes ??
+        DEFAULT_POLICY.retryableCodes,
+    },
+    fieldEnforcement: {
+      ...DEFAULT_FIELDS,
+      ..._config.fieldEnforcement,
+      ...config.fieldEnforcement,
     },
   };
   _configured = true;

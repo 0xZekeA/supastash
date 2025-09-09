@@ -1,7 +1,13 @@
+import { getSupastashConfig } from "../../../../core/config";
 import { getSupastashDb } from "../../../../db/dbInitializer";
-import { SyncMode } from "../../../../types/query.types";
+import {
+  CrudMethods,
+  SupastashQuery,
+  SyncMode,
+} from "../../../../types/query.types";
 import { generateUUIDv4 } from "../../../genUUID";
 import { parseStringifiedFields as parseRow } from "../../../sync/pushLocal/parseFields";
+import { queueRemoteCall } from "../queueRemote";
 
 const DEFAULT_DATE = "1970-01-01T00:00:00.000Z";
 
@@ -19,7 +25,8 @@ const CHECK_BATCH = 900; // param headroom under 999
 
 export async function upsertMany<R = any>(
   items: R[],
-  opts: UpsertOptions<R>
+  opts: UpsertOptions<R>,
+  state: SupastashQuery<CrudMethods, boolean, R>
 ): Promise<R[] | void> {
   const db = await getSupastashDb();
   const {
@@ -34,6 +41,14 @@ export async function upsertMany<R = any>(
     opts.onConflictKeys && opts.onConflictKeys.length
       ? opts.onConflictKeys
       : ["id"];
+
+  const config = getSupastashConfig();
+  const supabase = config?.supabaseClient;
+  if (!supabase) {
+    throw new Error(
+      "[Supastash] Supabase Client is required to perform this operation."
+    );
+  }
 
   assertTableName(table);
   onConflictKeys.forEach(assertIdent);
@@ -56,6 +71,7 @@ export async function upsertMany<R = any>(
   }
 
   const upserted: R[] = [];
+  const remotePayload: R[] = [];
 
   const run = async () => {
     for (let i = 0; i < items.length; i++) {
@@ -126,6 +142,7 @@ export async function upsertMany<R = any>(
             `UPDATE ${quote(table)} SET ${setSql} WHERE ${clause}`,
             [...setVals, ...keyValues]
           );
+          remotePayload.push(row);
 
           if (returnRows) {
             const updated = await db.getFirstAsync(
@@ -145,6 +162,8 @@ export async function upsertMany<R = any>(
         const insertCols = Object.keys(row).filter((c) => row[c] !== undefined);
         const placeholders = insertCols.map(() => "?").join(", ");
         const insertVals = insertCols.map((c) => toDbValue(row[c]));
+
+        remotePayload.push(row);
 
         await db.runAsync(
           `INSERT INTO ${quote(table)} (${insertCols
@@ -180,6 +199,8 @@ export async function upsertMany<R = any>(
   await db.runAsync("BEGIN");
   try {
     await run();
+    const newState = { ...state, payload: remotePayload };
+    queueRemoteCall(newState);
     await db.runAsync("COMMIT");
   } catch (e) {
     await db.runAsync("ROLLBACK");
@@ -196,10 +217,22 @@ function buildWhere(
   row: Record<string, any>
 ): { clause: string | null; values: any[] } {
   if (!keys.length) return { clause: null, values: [] };
-  const missing = keys.filter((k) => row[k] === undefined || row[k] === null);
-  if (missing.length) return { clause: null, values: [] };
-  const parts = keys.map((k) => `${quote(k)} = ?`);
-  const vals = keys.map((k) => toDbValue(row[k]));
+
+  const parts: string[] = [];
+  const vals: any[] = [];
+
+  for (const k of keys) {
+    if (!(k in row)) {
+      return { clause: null, values: [] };
+    }
+    const v = row[k];
+    if (v === null) {
+      parts.push(`${quote(k)} IS NULL`);
+    } else {
+      parts.push(`${quote(k)} = ?`);
+      vals.push(toDbValue(v));
+    }
+  }
   return { clause: parts.join(" AND "), values: vals };
 }
 

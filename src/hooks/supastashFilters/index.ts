@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
+import {
+  filterTracker,
+  tableFilters,
+  tableFiltersUsed,
+} from "../../store/tableFilters";
 import { RealtimeFilter } from "../../types/realtimeData.types";
 import { SupastashFilter } from "../../types/supastashFilters.types";
 import { logWarn } from "../../utils/logs";
@@ -49,31 +53,53 @@ function warnInvalidFilter(filter: RealtimeFilter, table: string) {
  */
 export default function useSupastashFilters(filters: SupastashFilter) {
   useEffect(() => {
-    const addFilters = async () => {
-      for (const table in filters) {
-        const tableInDb = await checkIfTableExist(table);
-        if (!tableInDb) {
-          logWarn(`Table ${table} does not exist`);
-          continue;
+    let cancelled = false;
+
+    async function run() {
+      const incoming = Object.keys(filters ?? {});
+      // Remove stale tables
+      for (const t of Array.from(tableFilters.keys())) {
+        if (!incoming.includes(t)) {
+          tableFilters.delete(t);
+          tableFiltersUsed.delete(t);
+          filterTracker.delete(t);
         }
-        const filtersForTable = filters[table];
-        if (!filtersForTable) {
-          logWarn(`No filters for table ${table}`);
+      }
+
+      // Existence check + per-table registration
+      const existence = await Promise.all(
+        incoming.map(async (t) => [t, await checkIfTableExist(t)] as const)
+      );
+      if (cancelled) return;
+
+      for (const [table, exists] of existence) {
+        if (!exists) {
+          logWarn(`Table '${table}' does not exist; skipping filters`);
           continue;
         }
 
-        const validFilters = filtersForTable.filter((f) => {
-          const isValid = isValidFilter([f]);
-          if (!isValid) warnInvalidFilter(f, table);
-          return isValid;
-        });
-        if (validFilters.length > 0) {
-          warnOnMisMatch(table, validFilters);
-          tableFilters.set(table, validFilters);
-          tableFiltersUsed.add(table);
+        const raw = filters[table] ?? [];
+        const valid = raw.filter((f) => isValidFilter([f]));
+        if (!valid.length) {
+          tableFilters.delete(table);
+          tableFiltersUsed.delete(table);
+          filterTracker.delete(table);
+          continue;
         }
+
+        // Warn on signature change and store a cloned array
+        warnOnMisMatch(table, valid);
+        tableFilters.set(
+          table,
+          valid.map((v) => ({ ...v }))
+        );
+        tableFiltersUsed.add(table);
       }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
     };
-    void addFilters();
   }, [filters]);
 }

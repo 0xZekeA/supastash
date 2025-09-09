@@ -41,6 +41,7 @@ export async function queryLocalDb<
     filters,
     limit,
     isSingle,
+    state,
     onConflictKeys,
     type,
     preserveTimestamp

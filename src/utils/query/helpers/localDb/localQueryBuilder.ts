@@ -1,4 +1,9 @@
-import { FilterCalls, SyncMode } from "../../../../types/query.types";
+import {
+  CrudMethods,
+  FilterCalls,
+  SupastashQuery,
+  SyncMode,
+} from "../../../../types/query.types";
 import { deleteData } from "../../localDbQuery/delete";
 import { insertData } from "../../localDbQuery/insert";
 import { selectData } from "../../localDbQuery/select";
@@ -88,6 +93,7 @@ export function buildDelete<Z = any>(
 export function buildUpsert<T extends boolean, R, Z>(
   table: string,
   payload: R | R[] | null,
+  state: SupastashQuery<CrudMethods, T, R>,
   syncMode?: SyncMode,
   isSingle?: T,
   onConflictKeys?: string[],
@@ -97,6 +103,7 @@ export function buildUpsert<T extends boolean, R, Z>(
     await upsertData<T, R, Z>(
       table,
       payload,
+      state,
       syncMode,
       isSingle,
       onConflictKeys,

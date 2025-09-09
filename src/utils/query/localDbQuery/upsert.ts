@@ -1,6 +1,8 @@
 import {
+  CrudMethods,
   PayloadListResult,
   PayloadResult,
+  SupastashQuery,
   SyncMode,
 } from "../../../types/query.types";
 import { logError } from "../../logs";
@@ -18,6 +20,7 @@ const warned = new Set<string>();
 export async function upsertData<T extends boolean, R, Z>(
   table: string,
   payload: R | R[] | null,
+  state: SupastashQuery<CrudMethods, T, R>,
   syncMode?: SyncMode,
   isSingle?: T,
   onConflictKeys: string[] = ["id"],
@@ -31,13 +34,17 @@ export async function upsertData<T extends boolean, R, Z>(
   const items = Array.isArray(payload) ? payload : [payload];
 
   try {
-    const upserted = await upsertMany<R>(items, {
-      table,
-      syncMode,
-      returnRows: true,
-      onConflictKeys,
-      preserveTimestamp,
-    });
+    const upserted = await upsertMany<R>(
+      items,
+      {
+        table,
+        syncMode,
+        returnRows: true,
+        onConflictKeys,
+        preserveTimestamp,
+      },
+      state
+    );
 
     return {
       error: null,

@@ -4,41 +4,27 @@ import { PayloadData } from "../../../types/query.types";
 import { supastashEventBus } from "../../events/eventBus";
 import log from "../../logs";
 import { setQueryStatus } from "../queryStatus";
-import { parseStringifiedFields } from "./parseFields";
 
 const CHUNK_SIZE = 500;
+const SQL_CHUNK = 999;
 
 /**
  * Permanently deletes a chunk of data from the local database
  * @param table - The table to delete from
  * @param chunk - The chunk of data to delete
  */
-async function permanentlyDeleteChunkLocally(
-  table: string,
-  chunk: PayloadData[]
-) {
+async function permanentlyDeleteLocally(table: string, ids: string[]) {
   const db = await getSupastashDb();
-
-  for (const row of chunk) {
-    await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, [row.id]);
+  await db.execAsync?.("BEGIN;");
+  for (let i = 0; i < ids.length; i += SQL_CHUNK) {
+    const slice = ids.slice(i, i + SQL_CHUNK);
+    const placeholders = slice.map(() => "?").join(", ");
+    await db.runAsync(
+      `DELETE FROM ${table} WHERE id IN (${placeholders})`,
+      slice
+    );
   }
-}
-
-function errorHandler(
-  error: any,
-  table: string,
-  attempts: number,
-  toDelete: PayloadData[]
-) {
-  for (const row of toDelete) {
-    setQueryStatus(row.id, table, "error");
-  }
-  log(
-    `Delete attempt ${
-      attempts + 1
-    } failed for a delete operation on table ${table}`,
-    error
-  );
+  await db.execAsync?.("COMMIT;");
 }
 
 /**
@@ -46,31 +32,32 @@ function errorHandler(
  * @param table - The table to delete from
  * @param chunk - The chunk of data to delete
  */
-async function deleteChunk(table: string, chunk: PayloadData[]) {
-  let toDelete = chunk;
+async function deleteChunkRemote(table: string, ids: string[]) {
   const config = getSupastashConfig();
   const supabase = config.supabaseClient;
 
   if (!supabase) {
     throw new Error("No supabase client found");
   }
+  const timeStamp = new Date().toISOString();
 
   let attempts = 0;
   while (attempts < 3) {
-    const { error } = await supabase.from(table).upsert(toDelete);
-    if (!error) {
-      for (const row of toDelete) {
-        setQueryStatus(row.id, table, "success");
-      }
-      supastashEventBus.emit("updateSyncStatus");
-      await permanentlyDeleteChunkLocally(table, toDelete);
-      break;
-    }
-    errorHandler(error, table, attempts, toDelete);
-
+    const { error } = await supabase
+      .from(table)
+      .update({
+        deleted_at: timeStamp,
+        updated_at: timeStamp,
+      })
+      .in("id", ids);
+    if (!error) return;
     attempts++;
+    log(`Delete attempt ${attempts} failed for table ${table}`, error);
     await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
   }
+  throw new Error(
+    `Remote delete failed after retries for table ${table} ${ids.join(", ")}`
+  );
 }
 
 /**
@@ -82,13 +69,16 @@ export async function deleteData(
   table: string,
   unsyncedRecords: PayloadData[]
 ) {
-  const cleanRecords = unsyncedRecords.map(({ synced_at, ...rest }) => {
-    setQueryStatus(rest.id, table, "pending");
-    return parseStringifiedFields(rest);
+  const ids = unsyncedRecords.map(({ id }) => {
+    setQueryStatus(id, table, "pending");
+    return id;
   });
 
-  for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
-    const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
-    await deleteChunk(table, chunk);
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunkIds = ids.slice(i, i + CHUNK_SIZE);
+    await deleteChunkRemote(table, chunkIds);
+    for (const id of chunkIds) setQueryStatus(id, table, "success");
+    supastashEventBus.emit("updateSyncStatus");
+    await permanentlyDeleteLocally(table, chunkIds);
   }
 }

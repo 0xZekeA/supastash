@@ -34,13 +34,13 @@ export function fetchCalls<R = any>(
     if (filter && useFilterWhileSyncing && !tableFiltersUsed.has(table)) {
       tableFilters.set(table, [filter]);
     }
-    if (onPushToRemote) {
+    if (onPushToRemote && !syncCalls.get(table)?.push) {
       syncCalls.set(table, {
         ...(syncCalls.get(table) || {}),
         push: onPushToRemote,
       });
     }
-    if (onInsertAndUpdate) {
+    if (onInsertAndUpdate && !syncCalls.get(table)?.pull) {
       syncCalls.set(table, {
         ...(syncCalls.get(table) || {}),
         pull: onInsertAndUpdate,

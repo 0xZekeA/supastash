@@ -1,4 +1,4 @@
-import { FilterCalls, SyncMode } from "../../../../types/query.types";
+import { CrudMethods, FilterCalls, SupastashQuery, SyncMode } from "../../../../types/query.types";
 /**
  * Builds a select query
  *
@@ -30,5 +30,5 @@ export declare function buildUpdate<T extends boolean, R, Z>(table: string, payl
  * @returns query
  */
 export declare function buildDelete<Z = any>(table: string, filters: FilterCalls[] | null, syncMode?: SyncMode): () => Promise<import("../../../../types/query.types").SupatashDeleteResult<Z>>;
-export declare function buildUpsert<T extends boolean, R, Z>(table: string, payload: R | R[] | null, syncMode?: SyncMode, isSingle?: T, onConflictKeys?: string[], preserveTimestamp?: boolean): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
+export declare function buildUpsert<T extends boolean, R, Z>(table: string, payload: R | R[] | null, state: SupastashQuery<CrudMethods, T, R>, syncMode?: SyncMode, isSingle?: T, onConflictKeys?: string[], preserveTimestamp?: boolean): () => Promise<T extends true ? import("../../../../types/query.types").PayloadResult<Z> : import("../../../../types/query.types").PayloadListResult<Z>>;
 //# sourceMappingURL=localQueryBuilder.d.ts.map

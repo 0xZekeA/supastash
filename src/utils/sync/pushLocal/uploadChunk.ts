@@ -1,45 +1,21 @@
+import { DEFAULT_CHUNK_SIZE } from "../../../constants/syncDefaults";
 import { getSupastashConfig } from "../../../core/config";
 import { PayloadData } from "../../../types/query.types";
-import { supastashEventBus } from "../../events/eventBus";
-import log, { logError } from "../../logs";
+import { RowLike } from "../../../types/syncEngine.types";
+import { isOnline } from "../../../utils/connection";
+import { normalizeForSupabase } from "../../getSafeValues";
+import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import { updateLocalSyncedAt } from "../../syncUpdate";
 import { setQueryStatus } from "../queryStatus";
-
-import { parseStringifiedFields } from "./parseFields";
-
-const RANDOM_OLD_DATE = new Date("2000-01-01").toISOString();
-const CHUNK_SIZE = 500;
-const DEFAULT_DATE = "1970-01-01T00:00:00Z";
-
-async function updateSyncStatus(table: string, rows: any[]) {
-  await updateLocalSyncedAt(
-    table,
-    rows.map((row) => row.id)
-  );
-}
-
-function errorHandler(
-  error: any,
-  table: string,
-  toUpsert: any[],
-  attempts: number
-) {
-  for (const row of toUpsert) {
-    setQueryStatus(row.id, table, "error");
-  }
-  if (attempts === 5) {
-    log(
-      `[Supastash] Upsert attempt ${attempts} failed for table ${table} \n
-     Error: ${error.message} \n
-     To Upsert: ${toUpsert.map((row) => row.id).join(", ")} \n
-     You can write a custom 'onPushToRemote' callback to handle this error.
-     Check the "onPushToRemote" callback in the "useSupastashData" hook for table ${table}.
-     Also, callback should return a boolean, if successfully pushed to remote.
-     `
-    );
-  }
-}
+import { enforceTimestamps } from "./normalize";
+import {
+  batchUpsert,
+  fetchRemoteHeadsChunked,
+  filterRowsByUpdatedAt,
+  handleRowFailure,
+  markSynced,
+  singleUpsert,
+} from "./uploadHelpers";
 
 /**
  * Uploads a chunk of data to the remote database
@@ -63,116 +39,108 @@ async function uploadChunk(
     throw new Error(supabaseClientErr);
   }
 
+  const online = await isOnline();
+  if (!online) return;
+
   const ids: string[] = chunk.map((row) => row.id);
 
   // Fetch remote data for the current chunk
-  const {
-    data: remoteData,
-    error,
-  }: {
-    data: { id: string; updated_at: string }[] | null;
-    error: any;
-  } = await supabase.from(table).select("id, updated_at").in("id", ids);
-
-  if (error) {
-    log(`Error fetching data from table ${table}: ${error.message}`);
-    return;
-  }
-
-  // Map of remote ids and their updated_at timestamps
-  const remoteIds = new Map(remoteData?.map((row) => [row.id, row.updated_at]));
+  const remoteIds = await fetchRemoteHeadsChunked(table, ids, supabase);
 
   // Loop through the initial chunk and check if the id is in the remote data
-  const newRemoteIds = new Map(
-    ids.map((id) => [id, remoteIds.get(id) || RANDOM_OLD_DATE])
-  );
+  const toPush = filterRowsByUpdatedAt(table, chunk, remoteIds);
+  if (toPush.length === 0) return;
 
-  let toUpsert: any[] = [];
-
-  for (const row of chunk) {
-    if (!row.id) {
-      log(`Skipping ${row.id} on table ${table} because no id found`);
-      continue;
+  const preflightOK: RowLike[] = [];
+  if (config.syncPolicy?.ensureParents) {
+    for (const r of toPush) {
+      try {
+        const status = await config.syncPolicy.ensureParents(table, r);
+        if (status === "blocked") {
+          setQueryStatus(r.id, table, "error");
+          continue;
+        }
+        preflightOK.push(r);
+      } catch (e) {
+        setQueryStatus(r.id, table, "error");
+        log(`[Supastash] ensureParents failed for ${table}:${r.id}`, e);
+      }
     }
-    if (!row.updated_at) {
-      log(`Skipping ${row.id} on table ${table} because no updated_at found`);
-      continue;
-    }
+  } else {
+    preflightOK.push(...toPush);
+  }
+  if (preflightOK.length === 0) return;
 
-    // Check if the remote updated_at is more recent than the local updated_at
-    const remoteUpdatedAt = newRemoteIds.get(row.id);
-    const localUpdatedAt = new Date(row.updated_at || DEFAULT_DATE);
-    if (remoteUpdatedAt && new Date(remoteUpdatedAt) > localUpdatedAt) {
-      log(
-        `Skipping ${row.id} on table ${table} because remote updated_at is more recent`
-      );
+  const maxBatchAttempts = config.syncPolicy?.maxBatchAttempts ?? 5;
+  let attempts = 0;
+  let pending = [...preflightOK];
+
+  while (attempts < maxBatchAttempts && pending.length > 0) {
+    let batchOk = false;
+
+    if (onPushToRemote) {
+      const ok = await onPushToRemote(pending);
+      if (ok) batchOk = true;
     } else {
-      const { synced_at, ...rest } = row;
-      setQueryStatus(rest.id, table, "pending");
-      toUpsert.push(rest);
+      const { error } = await batchUpsert(table, pending, supabase);
+      if (!error) batchOk = true;
     }
+
+    if (batchOk) {
+      await markSynced(
+        table,
+        pending.map((r) => r.id)
+      );
+      return;
+    }
+
+    //Batch failed -> isolate per-row offenders
+    const keep: RowLike[] = [];
+    const syncedNow: string[] = [];
+
+    for (const row of pending) {
+      const res = onPushToRemote
+        ? await (async () => {
+            const ok = await onPushToRemote([row]);
+            return { error: ok ? null : { code: "ROW_FAILED" } };
+          })()
+        : await singleUpsert(table, row, supabase);
+
+      if (!res.error) {
+        syncedNow.push(row.id);
+        continue;
+      }
+
+      const decision = await handleRowFailure(
+        config,
+        table,
+        row,
+        res.error,
+        supabase
+      );
+
+      if (decision === "DROP" || decision === "REPLACED") {
+        continue;
+      }
+
+      keep.push(row); // retry later
+    }
+    if (syncedNow.length) await markSynced(table, syncedNow);
+    if (keep.length === 0) return;
+
+    // Backoff before next batch round (exponential, bounded by policy)
+    attempts++;
+    const schedule = config.syncPolicy?.backoffDelaysMs ?? [
+      10_000, 30_000, 120_000, 300_000, 600_000,
+    ];
+    const delay = schedule[Math.min(attempts - 1, schedule.length - 1)];
+    await new Promise((r) => setTimeout(r, delay));
+
+    pending = keep;
   }
 
-  if (toUpsert.length > 0) {
-    let attempts = 0;
-
-    while (attempts < 5 && toUpsert.length > 0) {
-      let success = false;
-      if (onPushToRemote) {
-        const result = await onPushToRemote(toUpsert);
-
-        if (typeof result !== "boolean") {
-          logError(
-            `[Supastash] Invalid return type from "onPushToRemote" callback on table ${table}.\n
-             Expected boolean but received ${typeof result}.\n
-             Skipping this chunk.
-             Check the "onPushToRemote" callback in the "useSupastashData" hook for table ${table}.
-             `
-          );
-          break;
-        }
-
-        if (result) {
-          for (const row of toUpsert) {
-            setQueryStatus(row.id, table, "success");
-          }
-          success = true;
-        } else {
-          attempts++;
-          errorHandler(error, table, toUpsert, attempts);
-        }
-      } else {
-        const { error } = await supabase.from(table).upsert(toUpsert);
-
-        if (!error) {
-          for (const row of toUpsert) {
-            setQueryStatus(row.id, table, "success");
-          }
-          supastashEventBus.emit("updateSyncStatus");
-          success = true;
-        } else {
-          attempts++;
-          errorHandler(error, table, toUpsert, attempts);
-        }
-      }
-      if (success) {
-        // Refresh screen
-        await updateSyncStatus(table, toUpsert);
-        break;
-      }
-
-      attempts++;
-      if (attempts === 5) {
-        log(
-          `[Supastash] Final failure after ${attempts} attempts for table ${table}`,
-          toUpsert.map((row) => row.id)
-        );
-        break;
-      }
-
-      await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempts)));
-    }
-  }
+  // Gave up this pass — rows left in `pending` will be retried by outer scheduler
+  for (const r of pending) setQueryStatus(r.id, table, "error");
 }
 
 /**
@@ -185,14 +153,16 @@ export async function uploadData(
   unsyncedRecords: PayloadData[],
   onPushToRemote?: (payload: any[]) => Promise<boolean>
 ) {
-  const cleanRecords = unsyncedRecords.map(
-    ({ synced_at, deleted_at, ...rest }) => {
-      return parseStringifiedFields(rest);
-    }
+  const cfg = getSupastashConfig();
+  const supabase = cfg.supabaseClient;
+  if (!supabase) throw new Error("[Supastash] Supabase client not configured");
+
+  const cleaned = unsyncedRecords.map(({ synced_at, deleted_at, ...rest }) =>
+    enforceTimestamps(normalizeForSupabase(rest))
   );
 
-  for (let i = 0; i < cleanRecords.length; i += CHUNK_SIZE) {
-    const chunk = cleanRecords.slice(i, i + CHUNK_SIZE);
+  for (let i = 0; i < cleaned.length; i += DEFAULT_CHUNK_SIZE) {
+    const chunk = cleaned.slice(i, i + DEFAULT_CHUNK_SIZE);
     await uploadChunk(table, chunk, onPushToRemote);
   }
 }

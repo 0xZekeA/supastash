@@ -1,7 +1,3 @@
-export const syncCalls = new Map<
-  string,
-  {
-    push?: (payload: any) => Promise<boolean>;
-    pull?: (payload: any) => Promise<void>;
-  }
->();
+import { SyncEntry } from "../types/syncEngine.types";
+
+export const syncCalls = new Map<string, SyncEntry>();

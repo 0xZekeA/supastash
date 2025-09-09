@@ -8,8 +8,8 @@ import { uploadData } from "./uploadChunk";
 let isInSync = new Map<string, boolean>();
 
 /**
- * Sends unsynced data to the remote database for a given table
- * @param table - The table to send the data to
+ * Sends unsynced data to the remote database for a given table.
+ * Returns true if it pushed anything (creates/updates OR deletes), else false.
  */
 export async function pushLocalDataToRemote(
   table: string,
@@ -19,31 +19,37 @@ export async function pushLocalDataToRemote(
   if (isInSync.get(table)) return;
   isInSync.set(table, true);
   try {
-    if (!(await isOnline())) return;
+    if (!(await isOnline())) return false;
     const data = await getAllUnsyncedData(table);
     const deletedData = await getAllDeletedData(table);
 
-    if (
-      (!data || data.length === 0) &&
-      (!deletedData || deletedData.length === 0)
-    ) {
-      noSync?.push(table);
-      return;
-    }
+    const hasData = !!data?.length;
+    const hasDeletes = !!deletedData?.length;
 
-    if (data && data.length > 0) {
+    if (!hasData && !hasDeletes) {
+      noSync?.push?.(table);
+      return false;
+    }
+    let didWork = false;
+
+    if (hasData) {
       await uploadData(table, data, onPushToRemote);
-      refreshScreen(table);
+      didWork = true;
     }
 
-    if (deletedData && deletedData.length > 0) {
+    if (hasDeletes) {
       await deleteData(table, deletedData);
+      didWork = true;
     }
+
+    if (didWork) refreshScreen(table);
+    return didWork;
   } catch (error) {
     logError(
       `[Supastash] Error pushing local data to remote for ${table}`,
       error
     );
+    return false;
   } finally {
     isInSync.delete(table);
   }

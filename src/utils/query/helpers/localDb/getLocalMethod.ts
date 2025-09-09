@@ -3,6 +3,7 @@ import {
   FilterCalls,
   HandlerMap,
   MethodReturnTypeMap,
+  SupastashQuery,
   SyncMode,
 } from "../../../../types/query.types";
 import {
@@ -38,6 +39,7 @@ export default function getLocalMethod<
   filters: FilterCalls[] | null,
   limit: number | null,
   isSingle: U,
+  state: SupastashQuery<T, U, R>,
   onConflictKeys?: string[],
   syncMode?: SyncMode,
   preserveTimestamp?: boolean
@@ -63,6 +65,7 @@ export default function getLocalMethod<
     upsert: buildUpsert<U, R, Z>(
       table,
       payload,
+      state,
       syncMode,
       isSingle,
       onConflictKeys,

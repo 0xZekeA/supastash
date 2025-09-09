@@ -8,7 +8,7 @@ const warned = new Set();
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export async function upsertData(table, payload, syncMode, isSingle, onConflictKeys = ["id"], preserveTimestamp) {
+export async function upsertData(table, payload, state, syncMode, isSingle, onConflictKeys = ["id"], preserveTimestamp) {
     if (!payload || !table)
         throw new Error("Table and payload are required for upsert.");
     await assertTableExists(table);
@@ -20,7 +20,7 @@ export async function upsertData(table, payload, syncMode, isSingle, onConflictK
             returnRows: true,
             onConflictKeys,
             preserveTimestamp,
-        });
+        }, state);
         return {
             error: null,
             data: isSingle ? upserted?.[0] : upserted,

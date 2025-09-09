@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
+import { filterTracker, tableFilters, tableFiltersUsed, } from "../../store/tableFilters";
 import { logWarn } from "../../utils/logs";
 import isValidFilter, { warnOnMisMatch, } from "../../utils/sync/pullFromRemote/validateFilters";
 import { checkIfTableExist } from "../../utils/tableValidator";
@@ -41,31 +41,43 @@ function warnInvalidFilter(filter, table) {
  */
 export default function useSupastashFilters(filters) {
     useEffect(() => {
-        const addFilters = async () => {
-            for (const table in filters) {
-                const tableInDb = await checkIfTableExist(table);
-                if (!tableInDb) {
-                    logWarn(`Table ${table} does not exist`);
-                    continue;
-                }
-                const filtersForTable = filters[table];
-                if (!filtersForTable) {
-                    logWarn(`No filters for table ${table}`);
-                    continue;
-                }
-                const validFilters = filtersForTable.filter((f) => {
-                    const isValid = isValidFilter([f]);
-                    if (!isValid)
-                        warnInvalidFilter(f, table);
-                    return isValid;
-                });
-                if (validFilters.length > 0) {
-                    warnOnMisMatch(table, validFilters);
-                    tableFilters.set(table, validFilters);
-                    tableFiltersUsed.add(table);
+        let cancelled = false;
+        async function run() {
+            const incoming = Object.keys(filters ?? {});
+            // Remove stale tables
+            for (const t of Array.from(tableFilters.keys())) {
+                if (!incoming.includes(t)) {
+                    tableFilters.delete(t);
+                    tableFiltersUsed.delete(t);
+                    filterTracker.delete(t);
                 }
             }
+            // Existence check + per-table registration
+            const existence = await Promise.all(incoming.map(async (t) => [t, await checkIfTableExist(t)]));
+            if (cancelled)
+                return;
+            for (const [table, exists] of existence) {
+                if (!exists) {
+                    logWarn(`Table '${table}' does not exist; skipping filters`);
+                    continue;
+                }
+                const raw = filters[table] ?? [];
+                const valid = raw.filter((f) => isValidFilter([f]));
+                if (!valid.length) {
+                    tableFilters.delete(table);
+                    tableFiltersUsed.delete(table);
+                    filterTracker.delete(table);
+                    continue;
+                }
+                // Warn on signature change and store a cloned array
+                warnOnMisMatch(table, valid);
+                tableFilters.set(table, valid.map((v) => ({ ...v })));
+                tableFiltersUsed.add(table);
+            }
+        }
+        void run();
+        return () => {
+            cancelled = true;
         };
-        void addFilters();
     }, [filters]);
 }

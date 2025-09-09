@@ -10,6 +10,7 @@ export { supastash } from "./utils/query/builder";
 export { dropAllTables, dropTable, wipeAllTables, wipeOldDataForAllTables, wipeOldDataForATable, wipeTable, } from "./utils/schema/wipeTables";
 export { getAllTables } from "./utils/sync/getAllTables";
 export { refreshAllTables, refreshTable, refreshTableWithPayload, } from "./utils/sync/refreshTables";
+export { clearSyncCalls, getAllSyncTables, getSyncCall, registerSyncCall, unregisterSyncCall, } from "./utils/sync/registration/syncCalls";
 export { clearAllLocalDeleteLog, clearAllLocalSyncLog, clearLocalDeleteLog, clearLocalSyncLog, getLocalDeleteLog, getLocalSyncLog, setLocalDeleteLog, setLocalSyncLog, } from "./utils/syncStatus";
 export type { CrudMethods } from "./types/query.types";
 export type { RealtimeOptions, SupastashDataResult, SupastashFilter, } from "./types/realtimeData.types";

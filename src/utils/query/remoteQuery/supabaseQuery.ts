@@ -7,6 +7,7 @@ import {
 } from "../../../types/query.types";
 import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
 import { supastashEventBus } from "../../events/eventBus";
+import { normalizeForSupabase } from "../../getSafeValues";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { getSafeValue } from "../../serializer";
 import { updateLocalSyncedAt } from "../../syncUpdate";
@@ -46,7 +47,7 @@ export async function querySupabase<T extends boolean, R, Z>(
   if (Array.isArray(payload) && payload.length > 0) {
     newPayload = payload.map((item: any) => {
       const { synced_at, ...rest } = item;
-      const newItem: any = { ...rest };
+      const newItem: any = normalizeForSupabase({ ...rest });
 
       if (!preserveTimestamp) {
         const userUpdatedAt = item.updated_at;
@@ -64,7 +65,7 @@ export async function querySupabase<T extends boolean, R, Z>(
     });
   } else if (payload) {
     const { synced_at, ...rest } = payload as any;
-    newPayload = { ...rest };
+    newPayload = normalizeForSupabase({ ...rest });
 
     if (!preserveTimestamp) {
       const userUpdatedAt = (payload as any).updated_at;

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { getSupastashConfig } from "../../core/config";
 import { syncCalls } from "../../store/syncCalls";
@@ -7,103 +7,215 @@ import { isOnline } from "../../utils/connection";
 import log from "../../utils/logs";
 import { updateLocalDb } from "../../utils/sync/pullFromRemote/updateLocalDb";
 import { pushLocalDataToRemote } from "../../utils/sync/pushLocal/sendUnsyncedToSupabase";
-import { pullFromRemote } from "./pullFromRemote";
-import { pushLocalData } from "./pushLocal";
+import { pullFromRemote as doPullFromRemote } from "./pullFromRemote";
+import { pushLocalData as doPushLocalData } from "./pushLocal";
+// -----------------------------
+// Module-scoped state & tunables
+// -----------------------------
 let isSyncing = false;
-let lastFullSync = 0;
-const syncPollingInterval = getSupastashConfig().pollingInterval?.push || 30000;
+let isPushing = false;
+let isPulling = false;
+let lastPullAt = 0;
+let lastPushAt = 0;
+const MIN_FOREGROUND_GAP = 5000; // ms
+// -----------------------------
+// Core orchestration
+// -----------------------------
 /**
- * Syncs the local data to the remote database
+ * Push then (optionally) pull.
+ * - Single flight across entire app via module-scoped flags.
+ * - Both directions gated on connectivity.
+ * - "force" ignores pull cadence timing.
  */
 export async function syncAll(force = false) {
-    if (isSyncing) {
+    if (isSyncing)
         return;
-    }
     if (!(await isOnline()))
         return;
+    isSyncing = true;
+    const started = Date.now();
     try {
-        isSyncing = true;
-        if (getSupastashConfig().syncEngine?.pull) {
+        const cfg = getSupastashConfig();
+        // PUSH
+        if (cfg.syncEngine?.push) {
+            await pushLocalDataSafe();
+        }
+        // PULL
+        if (cfg.syncEngine?.pull) {
+            const pullInterval = cfg.pollingInterval?.pull ?? 30000;
             const now = Date.now();
-            const shouldPull = force ||
-                now - lastFullSync >
-                    (getSupastashConfig().pollingInterval?.pull || 30000);
-            if (shouldPull) {
-                await pullFromRemote();
-                lastFullSync = now;
+            const due = force || now - lastPullAt >= pullInterval;
+            if (due) {
+                await pullFromRemoteSafe();
+                lastPullAt = now;
             }
         }
-        await pushLocalData();
     }
-    catch (error) {
-        log(`[Supastash] Error syncing: ${error}`);
+    catch (e) {
+        log("[Supastash] Error in syncAll", {
+            msg: String(e),
+            code: e?.code ?? e?.name ?? "UNKNOWN",
+        });
     }
     finally {
         isSyncing = false;
+        log(`[Supastash] syncAll finished in ${Date.now() - started}ms`);
     }
 }
+// -----------------------------
+// Directional helpers
+// -----------------------------
+async function pushLocalDataSafe() {
+    if (isPushing)
+        return;
+    if (!(await isOnline()))
+        return;
+    const cfg = getSupastashConfig();
+    if (!cfg.syncEngine?.push)
+        return;
+    isPushing = true;
+    try {
+        await doPushLocalData();
+        lastPushAt = Date.now();
+    }
+    catch (e) {
+        log("[Supastash] push error", {
+            msg: String(e),
+            code: e?.code ?? e?.name ?? "UNKNOWN",
+        });
+    }
+    finally {
+        isPushing = false;
+    }
+}
+async function pullFromRemoteSafe() {
+    if (isPulling)
+        return;
+    if (!(await isOnline()))
+        return;
+    const cfg = getSupastashConfig();
+    if (!cfg.syncEngine?.pull)
+        return;
+    isPulling = true;
+    try {
+        await doPullFromRemote();
+        lastPullAt = Date.now();
+    }
+    catch (e) {
+        log("[Supastash] pull error", {
+            msg: String(e),
+            code: e?.code ?? e?.name ?? "UNKNOWN",
+        });
+    }
+    finally {
+        isPulling = false;
+    }
+}
+// -----------------------------
+// React hook: timer & lifecycle management
+// -----------------------------
+/**
+ * Hook to start/stop the periodic sync engine.
+ * - Staggers push & pull timers.
+ * - Debounced foreground trigger.
+ * - Shares module-level single-flight guards with syncAll().
+ */
 export function useSyncEngine() {
-    const isSyncingRef = useRef(false);
-    const intervalRef = useRef(null);
-    const appStateRef = useRef(null);
+    // Timers & lifecycle
+    const intervalRefPush = useRef(null);
+    const intervalRefPull = useRef(null);
+    const appStateSubRef = useRef(null);
+    // Debounce foreground re-entry
+    const lastForeground = useRef(0);
     function startSync() {
-        if (isSyncingRef.current)
+        if (intervalRefPush.current ||
+            intervalRefPull.current ||
+            appStateSubRef.current) {
             return;
-        isSyncingRef.current = true;
-        syncAll(true);
-        const config = getSupastashConfig();
-        const syncPollingInterval = config.pollingInterval?.push ?? 30000;
-        intervalRef.current = setInterval(() => {
-            syncAll();
-        }, syncPollingInterval);
-        appStateRef.current = AppState.addEventListener("change", (state) => {
-            if (state === "active") {
-                syncAll(true);
-            }
+        }
+        // Kick a one-shot global sync on start
+        void syncAll(true);
+        const cfg = getSupastashConfig();
+        const pushEvery = cfg.pollingInterval?.push ?? 30000;
+        const pullEvery = cfg.pollingInterval?.pull ?? 30000;
+        // Push ticker
+        intervalRefPush.current = setInterval(() => {
+            void pushLocalDataSafe();
+        }, pushEvery);
+        // Pull ticker
+        intervalRefPull.current = setInterval(() => {
+            void pullFromRemoteSafe();
+        }, pullEvery + 500);
+        // Foreground trigger
+        appStateSubRef.current = AppState.addEventListener("change", (state) => {
+            if (state !== "active")
+                return;
+            const now = Date.now();
+            if (now - lastForeground.current < MIN_FOREGROUND_GAP)
+                return;
+            lastForeground.current = now;
+            void syncAll(true);
         });
     }
     function stopSync() {
-        if (intervalRef.current)
-            clearInterval(intervalRef.current);
-        appStateRef.current?.remove?.();
-        isSyncingRef.current = false;
+        if (intervalRefPush.current) {
+            clearInterval(intervalRefPush.current);
+            intervalRefPush.current = null;
+        }
+        if (intervalRefPull.current) {
+            clearInterval(intervalRefPull.current);
+            intervalRefPull.current = null;
+        }
+        appStateSubRef.current?.remove?.();
+        appStateSubRef.current = null;
     }
+    // Auto-cleanup if the hook lives in a component lifecycle
+    useEffect(() => stopSync, []);
     return { startSync, stopSync };
 }
+// -----------------------------
+// Manual triggers
+// -----------------------------
 /**
- * Manually syncs a **single** table with Supabase.
- *
- * This function:
- * - Pulls remote data into local SQLite (if a pull handler is registered)
- * - Pushes unsynced local data to Supabase
- * - Skips syncing if already in progress for this table
- * - Applies filter if `useFiltersFromStore` is enabled
- *
- * Use this for explicit sync triggers (e.g., pull-to-refresh).
- *
- * @param {string} table - The name of the table to sync.
- * @returns {Promise<void>}
+ * Manually sync a single table (pull then push for that table).
+ * - Uses table-specific handlers from syncCalls if provided.
+ * - Respects configured filters when enabled.
  */
 export async function syncTable(table) {
-    const config = getSupastashConfig();
-    const { useFiltersFromStore = true } = config?.syncEngine || {};
+    if (!(await isOnline()))
+        return;
+    const cfg = getSupastashConfig();
+    const { useFiltersFromStore = true } = cfg?.syncEngine || {};
     const filter = useFiltersFromStore ? tableFilters.get(table) : undefined;
-    if (getSupastashConfig().syncEngine?.pull) {
-        await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+    // Pull
+    if (cfg.syncEngine?.pull) {
+        try {
+            await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+        }
+        catch (e) {
+            log("[Supastash] syncTable pull error", {
+                table,
+                msg: String(e),
+                code: e?.code ?? e?.name ?? "UNKNOWN",
+            });
+        }
     }
-    await pushLocalDataToRemote(table, syncCalls.get(table)?.push);
+    // Push (use table handler if present)
+    if (cfg.syncEngine?.push) {
+        try {
+            await pushLocalDataToRemote(table, syncCalls.get(table)?.push);
+        }
+        catch (e) {
+            log("[Supastash] syncTable push error", {
+                table,
+                msg: String(e),
+                code: e?.code ?? e?.name ?? "UNKNOWN",
+            });
+        }
+    }
 }
 /**
- * Manually syncs **all registered tables** with Supabase.
- *
- * This function:
- * - Triggers a full sync of all registered tables
- * - Forces a sync outside the normal polling schedule
- * - Skips any table that is already syncing
- *
- * Useful for global refreshes (e.g., on app foreground).
- *
- * @returns {Promise<void>}
+ * Force a global sync pass now (push then pull if due).
  */
 export async function syncAllTables() {
     await syncAll(true);

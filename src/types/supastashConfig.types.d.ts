@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { SQLiteOpenOptions } from "expo-sqlite";
 import { ExpoSQLiteDatabase } from "./expoSqlite.types";
 import { RNNitroSQLiteDatabase } from "./rnNitroSqlite.types";
 import { RNStorageSQLiteDatabase } from "./rnSqliteStorage.types";
@@ -33,6 +34,10 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   listeners?: number;
   onSchemaInit?: () => Promise<void>;
   debugMode?: boolean;
+
+  syncPolicy?: SupastashSyncPolicy;
+  fieldEnforcement?: FieldEnforcement;
+  deleteConflictedRows?: boolean;
   useCustomRPCForUpserts?: boolean;
 };
 
@@ -106,4 +111,161 @@ export interface SupastashHookReturn {
   dbReady: boolean;
   startSync: () => void;
   stopSync: () => void;
+}
+
+/**
+ * Supastash Sync Policy
+ *
+ * Controls how Supastash resolves remote vs local conflicts, how long to retry
+ * transient errors, and how to handle rows blocked by missing parents (FK).
+ *
+ * ### Default behavior
+ * - **Server-wins** on conflicts: if Supabase already has a newer or conflicting row,
+ *   Supastash accepts the server copy and marks the local row as synced.
+ * - **Transient errors** are retried with exponential backoff for up to 20 minutes.
+ * - **Foreign key errors** (missing parent rows) are retried for up to 24 hours.
+ *
+ * ### Example
+ * ```ts
+ * configureSupastash({
+ *   syncPolicy: {
+ *     onNonRetryable: 'delete-local',    // hard delete rows that conflict
+ *     maxTransientMs: 10 * 60 * 1000,    // retry transient errors for 10 minutes
+ *     maxFkBlockMs: 48 * 60 * 60 * 1000, // retry FK errors for 48 hours
+ *   }
+ * })
+ * ```
+ */
+export interface SupastashSyncPolicy {
+  /**
+   * Override the set of Postgres error codes Supastash treats as non-retryable.
+   * These usually mean there is a **real conflict** on the server and retrying
+   * will never succeed.
+   *
+   * Defaults: 23505 (unique), 23502 (not null), 23514 (check), 23P01 (exclusion).
+   */
+  nonRetryableCodes?: Set<string>;
+
+  /**
+   * Override the set of Postgres error codes Supastash treats as retryable.
+   * These are transient concurrency issues (e.g., serialization, deadlocks).
+   *
+   * Defaults: 40001, 40P01, 55P03.
+   */
+  retryableCodes?: Set<string>;
+
+  /**
+   * The Postgres error code for foreign key violations.
+   * Defaults: '23503'.
+   */
+  fkCode?: string;
+
+  /**
+   * Action to take when Supastash hits a non-retryable conflict.
+   * - 'accept-server' (default): keep the server row, mark local as synced.
+   * - 'delete-local': remove the local row entirely.
+   */
+  onNonRetryable?: "accept-server" | "delete-local";
+
+  /**
+   * How long to retry transient errors (ms).
+   * Default: 20 minutes.
+   */
+  maxTransientMs?: number;
+
+  /**
+   * How long to keep retrying rows blocked by missing parents (FK errors).
+   * Default: 24 hours.
+   */
+  maxFkBlockMs?: number;
+
+  /**
+   * Backoff schedule (in ms) for retry attempts.
+   * Default: [10_000, 30_000, 120_000, 300_000, 600_000].
+   */
+  backoffDelaysMs?: number[];
+
+  /**
+   * Maximum number of attempts for a batch before falling back
+   * to per-row handling. Default: 5.
+   */
+  maxBatchAttempts?: number;
+
+  /**
+   * Optional hook: ensure that parent rows exist before pushing children.
+   * Return 'blocked' to skip this child until the parent exists.
+   */
+  ensureParents?: (table: string, row: any) => Promise<"ok" | "blocked">;
+
+  /**
+   * Optional callback fired when Supastash accepts the server row
+   * instead of retrying. Useful for analytics/telemetry.
+   */
+  onRowAcceptedServer?: (table: string, id: string) => void;
+
+  /**
+   * Optional callback fired when Supastash deletes a local row
+   * due to a non-retryable conflict.
+   */
+  onRowDroppedLocal?: (table: string, id: string) => void;
+}
+
+/**
+ * Field Enforcement
+ *
+ * Supastash **requires** `created_at` and `updated_at` timestamps on every table
+ * for reliable sync. This config makes those rules explicit and lets you adjust
+ * field names and defaults.
+ *
+ * ### Default behavior
+ * - Enforce both `created_at` and `updated_at`.
+ * - Auto-fill missing fields with `'1970-01-01T00:00:00Z'`.
+ *
+ * ### Example
+ * ```ts
+ * configureSupastash({
+ *   fieldEnforcement: {
+ *     createdAtField: 'created',
+ *     updatedAtField: 'modified',
+ *     autoFillMissing: false, // throw instead of filling
+ *   }
+ * })
+ * ```
+ */
+export interface FieldEnforcement {
+  /**
+   * Whether Supastash should enforce a `created_at` column.
+   * Default: true.
+   */
+  requireCreatedAt?: boolean;
+
+  /**
+   * Whether Supastash should enforce an `updated_at` column.
+   * Default: true.
+   */
+  requireUpdatedAt?: boolean;
+
+  /**
+   * Name of the column to use for `created_at`.
+   * Default: 'created_at'.
+   */
+  createdAtField?: string;
+
+  /**
+   * Name of the column to use for `updated_at`.
+   * Default: 'updated_at'.
+   */
+  updatedAtField?: string;
+
+  /**
+   * Whether Supastash should automatically fill in missing timestamps
+   * with a default ISO string. Default: true.
+   */
+  autoFillMissing?: boolean;
+
+  /**
+   * Default ISO string to use when auto-filling missing timestamps.
+   * Default: '1970-01-01T00:00:00Z'.
+   */
+  autoFillDefaultISO?: string;
 }

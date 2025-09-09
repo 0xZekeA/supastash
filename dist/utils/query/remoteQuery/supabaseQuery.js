@@ -2,6 +2,7 @@ import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
 import { supastashEventBus } from "../../events/eventBus";
+import { normalizeForSupabase } from "../../getSafeValues";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { getSafeValue } from "../../serializer";
 import { updateLocalSyncedAt } from "../../syncUpdate";
@@ -22,7 +23,7 @@ export async function querySupabase(state, isBatched = false) {
     if (Array.isArray(payload) && payload.length > 0) {
         newPayload = payload.map((item) => {
             const { synced_at, ...rest } = item;
-            const newItem = { ...rest };
+            const newItem = normalizeForSupabase({ ...rest });
             if (!preserveTimestamp) {
                 const userUpdatedAt = item.updated_at;
                 newItem.updated_at =
@@ -38,7 +39,7 @@ export async function querySupabase(state, isBatched = false) {
     }
     else if (payload) {
         const { synced_at, ...rest } = payload;
-        newPayload = { ...rest };
+        newPayload = normalizeForSupabase({ ...rest });
         if (!preserveTimestamp) {
             const userUpdatedAt = payload.updated_at;
             newPayload.updated_at =

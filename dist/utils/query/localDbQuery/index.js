@@ -9,7 +9,7 @@ export async function queryLocalDb(state) {
     if (!method) {
         throw new Error("Method is required for local call");
     }
-    const query = getLocalMethod(table, method, select, payload, filters, limit, isSingle, onConflictKeys, type, preserveTimestamp);
+    const query = getLocalMethod(table, method, select, payload, filters, limit, isSingle, state, onConflictKeys, type, preserveTimestamp);
     const result = await query();
     return result;
 }

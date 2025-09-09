@@ -1,4 +1,4 @@
-import { SyncMode } from "../../../../types/query.types";
+import { CrudMethods, SupastashQuery, SyncMode } from "../../../../types/query.types";
 interface UpsertOptions<R = any> {
     table: string;
     onConflictKeys?: string[];
@@ -8,6 +8,6 @@ interface UpsertOptions<R = any> {
     returnRows?: boolean;
     yieldEvery?: number;
 }
-export declare function upsertMany<R = any>(items: R[], opts: UpsertOptions<R>): Promise<R[] | void>;
+export declare function upsertMany<R = any>(items: R[], opts: UpsertOptions<R>, state: SupastashQuery<CrudMethods, boolean, R>): Promise<R[] | void>;
 export {};
 //# sourceMappingURL=upsertMany.d.ts.map

@@ -23,6 +23,13 @@ export {
   refreshTableWithPayload,
 } from "./utils/sync/refreshTables";
 export {
+  clearSyncCalls,
+  getAllSyncTables,
+  getSyncCall,
+  registerSyncCall,
+  unregisterSyncCall,
+} from "./utils/sync/registration/syncCalls";
+export {
   clearAllLocalDeleteLog,
   clearAllLocalSyncLog,
   clearLocalDeleteLog,
