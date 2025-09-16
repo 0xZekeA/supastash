@@ -1,1 +1,1 @@
-{"version":3,"file":"createSyncStatus.d.ts","sourceRoot":"","sources":["../../../src/utils/schema/createSyncStatus.ts"],"names":[],"mappings":"AAEA;;GAEG;AACH,wBAAsB,qBAAqB,kBAe1C;AAED;;GAEG;AACH,wBAAsB,wBAAwB,kBAS7C"}
+{"version":3,"file":"createSyncStatus.d.ts","sourceRoot":"","sources":["../../../src/utils/schema/createSyncStatus.ts"],"names":[],"mappings":"AAEA;;;;;GAKG;AACH,wBAAsB,wBAAwB,kBAE7C;AAED,eAAO,MAAM,sBAAsB,kaAUhC,CAAC;AAEJ,eAAO,MAAM,oBAAoB,2GAGhC,CAAC;AAEF;;;;GAIG;AACH,wBAAsB,qBAAqB,kBAK1C"}

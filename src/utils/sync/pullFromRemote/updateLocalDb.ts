@@ -5,9 +5,8 @@ import { isOnline } from "../../connection";
 import { getTableSchema } from "../../getTableSchema";
 import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
-import { updateLocalSyncedAt } from "../../syncUpdate";
+import { updateLocalSyncedAt } from "../status/syncUpdate";
 import { pullData } from "./pullData";
-import { pullDeletedData } from "./pullDeletedData";
 import { stringifyValue } from "./stringifyFields";
 
 let isInSync = new Map<string, boolean>();
@@ -30,15 +29,16 @@ export async function updateLocalDb(
     if (!(await isOnline())) return;
     const db = await getSupastashDb();
 
-    const deletedData = await pullDeletedData(table, filters);
+    const dataResult = await pullData(table, filters);
+    const data = dataResult?.data;
+    const deletedIds = dataResult?.deletedIds;
+    const deletedIdSet = new Set(deletedIds ?? []);
 
-    const data = await pullData(table, filters);
-
-    const refreshNeeded = !!deletedData?.records.length || !!data?.length;
+    const refreshNeeded = !!data?.length || !!deletedIds?.length;
 
     // Delete records that are no longer in the remote data
-    if (deletedData && deletedData.records.length > 0) {
-      const ids = deletedData.records.map((r) => r.id);
+    if (deletedIds && deletedIds.length > 0) {
+      const ids = deletedIds;
       for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
         const slice = ids.slice(i, i + DELETE_CHUNK);
         const placeholders = slice.map(() => "?").join(", ");
@@ -71,7 +71,7 @@ export async function updateLocalDb(
       for (let i = 0; i < data.length; i++) {
         const record = data[i];
         if (!record?.id) continue;
-        if (deletedData?.deletedDataMap?.has(record.id)) continue;
+        if (deletedIdSet.has(record.id)) continue;
 
         const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
         const remoteUpdated = record.updated_at ?? DEFAULT_DATE;

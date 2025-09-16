@@ -4,9 +4,8 @@ import { SupastashConfig } from "../../../types/supastashConfig.types";
 import { RowLike } from "../../../types/syncEngine.types";
 import { supastashEventBus } from "../../../utils/events/eventBus";
 import log, { logWarn } from "../../../utils/logs";
-import { setLocalSyncLog } from "../../../utils/syncStatus";
-import { updateLocalSyncedAt } from "../../../utils/syncUpdate";
 import { setQueryStatus } from "../queryStatus";
+import { updateLocalSyncedAt } from "../status/syncUpdate";
 
 const DEFAULT_REWIND_MS = 60 * 60 * 1000; // 1 hour
 const MAX_REWIND_BACKSTOP_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -24,19 +23,6 @@ export function classifyFailure(
   if (s === (p.fkCode ?? "23503")) return "FK_BLOCK";
   if (p.retryableCodes?.has?.(s)) return "RETRYABLE";
   return "UNKNOWN";
-}
-
-async function fetchRemoteHeads(
-  table: string,
-  ids: string[],
-  supabase: any
-): Promise<RowLike[]> {
-  const { data, error } = await supabase
-    .from(table)
-    .select("id, updated_at")
-    .in("id", ids);
-  if (error) throw error;
-  return data ?? [];
 }
 
 async function batchUpsert(table: string, rows: RowLike[], supabase: any) {
@@ -135,7 +121,7 @@ async function handleRowFailure(
         `Row ${row.id} on ${table} hit NON_RETRYABLE conflict → deleting local`,
         JSON.stringify(err)
       );
-      await deleteLocalRow(table, row.id, row.updated_at);
+      await deleteLocalRow(table, row.id);
       cfg.syncPolicy?.onRowDroppedLocal?.(table, row.id);
       return "DROP";
     } else {
@@ -170,7 +156,7 @@ async function handleRowFailure(
         await replaceLocalWithServer(table, server);
         return "REPLACED";
       } else if (cfg.deleteConflictedRows) {
-        await deleteLocalRow(table, row.id, row.updated_at);
+        await deleteLocalRow(table, row.id);
         cfg.syncPolicy?.onRowDroppedLocal?.(table, row.id);
         return "REPLACED";
       }
@@ -190,8 +176,8 @@ function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
 }
 
-async function deleteLocalRow(table: string, id: string, updatedAt?: string) {
-  await rewindAndDropLocal(table, id, updatedAt);
+async function deleteLocalRow(table: string, id: string) {
+  await rewindAndDropLocal(table, id);
 
   setQueryStatus(id, table, "success");
   supastashEventBus.emit("updateSyncStatus");
@@ -209,30 +195,14 @@ export {
  * Deletes local row and rewinds table watermark so normal pull will fetch server copy.
  * No server read needed.
  */
-export async function rewindAndDropLocal(
-  table: string,
-  rowId: string,
-  localUpdatedAtISO?: string, // use local timestamp if you have it
-  rewindMs: number = DEFAULT_REWIND_MS
-) {
+export async function rewindAndDropLocal(table: string, rowId: string) {
   const db = await getSupastashDb();
 
   // 1) Delete local copy
   await db.runAsync(`DELETE FROM ${quoteIdent(table)} WHERE id = ?`, [rowId]);
 
-  // 2) Pick a rewind point
-  const now = Date.now();
-  const localTs = localUpdatedAtISO ? Date.parse(localUpdatedAtISO) : now;
-  const newTimestamp = new Date(
-    Math.max(localTs - rewindMs, now - MAX_REWIND_BACKSTOP_MS)
-  ).toISOString();
-
-  // 3) Write the rewind to the table watermark
-  await setLocalSyncLog(table, newTimestamp);
-
   logWarn(
-    `[Supastash] REPLACED: dropped local ${table}:${rowId}, rewound last_synced_at → ${newTimestamp}
-    Replacement will arrive in the next sync cycle
+    `[Supastash] REPLACED: dropped local ${table}:${rowId}
     `
   );
 }

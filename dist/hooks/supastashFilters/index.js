@@ -3,9 +3,6 @@ import { filterTracker, tableFilters, tableFiltersUsed, } from "../../store/tabl
 import { logWarn } from "../../utils/logs";
 import isValidFilter, { warnOnMisMatch, } from "../../utils/sync/pullFromRemote/validateFilters";
 import { checkIfTableExist } from "../../utils/tableValidator";
-function warnInvalidFilter(filter, table) {
-    logWarn(`[Supastash] Invalid filter: ${JSON.stringify(filter)} for table ${table}`);
-}
 /**
  * useSupastashFilters
  *
@@ -39,13 +36,17 @@ function warnInvalidFilter(filter, table) {
  * @note This hook does not re-run unless the `filters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).
  */
-export default function useSupastashFilters(filters) {
+export function useSupastashFilters(filters) {
     useEffect(() => {
         let cancelled = false;
         async function run() {
-            const incoming = Object.keys(filters ?? {});
+            if (!filters)
+                return;
+            const incoming = Object.keys(filters);
+            if (!incoming.length)
+                return;
             // Remove stale tables
-            for (const t of Array.from(tableFilters.keys())) {
+            for (const t of Array.from(tableFilters.keys()) || []) {
                 if (!incoming.includes(t)) {
                     tableFilters.delete(t);
                     tableFiltersUsed.delete(t);

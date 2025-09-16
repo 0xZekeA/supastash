@@ -9,8 +9,6 @@ import { generateUUIDv4 } from "../../../genUUID";
 import { parseStringifiedFields as parseRow } from "../../../sync/pushLocal/parseFields";
 import { queueRemoteCall } from "../queueRemote";
 
-const DEFAULT_DATE = "1970-01-01T00:00:00.000Z";
-
 interface UpsertOptions<R = any> {
   table: string;
   onConflictKeys?: string[]; // default ["id"]
@@ -22,6 +20,8 @@ interface UpsertOptions<R = any> {
 }
 
 const CHECK_BATCH = 900; // param headroom under 999
+
+const remoteCalls: SyncMode[] = ["localFirst", "remoteFirst", "remoteOnly"];
 
 export async function upsertMany<R = any>(
   items: R[],
@@ -200,7 +200,9 @@ export async function upsertMany<R = any>(
   try {
     await run();
     const newState = { ...state, payload: remotePayload };
-    queueRemoteCall(newState);
+    if (remoteCalls.includes(newState.type)) {
+      queueRemoteCall(newState);
+    }
     await db.runAsync("COMMIT");
   } catch (e) {
     await db.runAsync("ROLLBACK");

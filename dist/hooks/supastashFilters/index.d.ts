@@ -32,5 +32,5 @@ import { SupastashFilter } from "../../types/supastashFilters.types";
  * @note This hook does not re-run unless the `filters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).
  */
-export default function useSupastashFilters(filters: SupastashFilter): void;
+export declare function useSupastashFilters(filters?: SupastashFilter): void;
 //# sourceMappingURL=index.d.ts.map

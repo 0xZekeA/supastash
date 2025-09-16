@@ -11,7 +11,7 @@ export type FilterOperator =
 export type RealtimeFilter<R = any> = {
   column: keyof R;
   operator: FilterOperator;
-  value: string | number | null | (string | number)[];
+  value: string | number | null | boolean | (string | number)[];
 };
 
 export type SupastashFilter<R = any> = RealtimeFilter<R>;

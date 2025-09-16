@@ -11,7 +11,6 @@ export { batchUpsert, filterRowsByUpdatedAt, handleRowFailure, markSynced, singl
  * Deletes local row and rewinds table watermark so normal pull will fetch server copy.
  * No server read needed.
  */
-export declare function rewindAndDropLocal(table: string, rowId: string, localUpdatedAtISO?: string, // use local timestamp if you have it
-rewindMs?: number): Promise<void>;
+export declare function rewindAndDropLocal(table: string, rowId: string): Promise<void>;
 export declare function fetchRemoteHeadsChunked(table: string, ids: string[], supabase: any): Promise<Map<string, string>>;
 //# sourceMappingURL=uploadHelpers.d.ts.map

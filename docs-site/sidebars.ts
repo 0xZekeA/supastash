@@ -60,7 +60,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "schema-management",
         "destructives",
-        "sync-status-manager",
+        "sync-log-utils",
         "manual-refreshes",
       ],
     },

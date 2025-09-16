@@ -1,12 +1,18 @@
-## 🔧 Local Sync & Delete Log Utilities
+# ⚠️ Deprecated — Local Sync & Delete Log Utilities
 
-These functions manage internal tracking of the last sync and delete operations for each table in your local SQLite database. Supastash uses this metadata to determine what data needs to be pulled, pushed, or cleaned up during synchronization. ⚠️ Should not be used in production.
+> **Status:** Deprecated in newer releases  
+> These helpers were early internals and are **not recommended for production**.  
+> Use the unified APIs instead: `getSyncLog`, `setSyncLog`, `clearSyncLog`.
 
 ---
 
-### 📤 `setLocalSyncLog(tableName: string, lastSyncedAt: string)`
+## Functions
 
-Sets the sync timestamp for a given table.
+### 📤 `setLocalSyncLog(tableName: string, lastSyncedAt: string, lastCreatedAt?: string)`
+
+> **Deprecated:** Use `setSyncLog`.
+
+Stores the latest sync timestamps for a table.
 
 ```ts
 await setLocalSyncLog("users", new Date().toISOString());
@@ -16,10 +22,12 @@ await setLocalSyncLog("users", new Date().toISOString());
 
 ### 📥 `getLocalSyncLog(tableName: string)`
 
-Retrieves the sync log for a given table.
+> **Deprecated:** Use `getSyncLog`.
+
+Returns the stored sync log for a table, or `null` if none exists.
 
 ```ts
-const syncLog = await getLocalSyncLog("users");
+const log = await getLocalSyncLog("users");
 /*
 {
   table_name: "users",
@@ -28,13 +36,13 @@ const syncLog = await getLocalSyncLog("users");
 */
 ```
 
-Returns `null` if the table has no recorded sync log.
-
 ---
 
 ### 🧹 `clearLocalSyncLog(tableName: string)`
 
-Deletes the sync log for a specific table.
+> **Deprecated:** Use `clearSyncLog`.
+
+Deletes the sync log for one table.
 
 ```ts
 await clearLocalSyncLog("users");
@@ -44,19 +52,23 @@ await clearLocalSyncLog("users");
 
 ### 🔄 `clearAllLocalSyncLog()`
 
-Clears all sync logs table.
+> **Deprecated:** Use `clearSyncLog` with a global/all-tables scope.
+
+Clears all stored sync logs.
 
 ```ts
 await clearAllLocalSyncLog();
 ```
 
-> ⚠️ **Warning:** This clears sync history for all tables. Use with caution (e.g., in dev resets).
+> ⚠️ This clears sync history for every table.
 
 ---
 
 ### 🗑 `setLocalDeleteLog(tableName: string, lastDeletedAt: string)`
 
-Sets the lastest deleted timestamp for a given table.
+> **Deprecated:** Use `setSyncLog` (pass `lastDeletedAt`).
+
+Stores the last delete checkpoint for a table.
 
 ```ts
 await setLocalDeleteLog("users", new Date().toISOString());
@@ -66,10 +78,12 @@ await setLocalDeleteLog("users", new Date().toISOString());
 
 ### 🔍 `getLocalDeleteLog(tableName: string)`
 
-Retrieves the delete log for a given table.
+> **Deprecated:** Use `getSyncLog`.
+
+Retrieves the stored delete timestamp for a table.
 
 ```ts
-const deleteLog = await getLocalDeleteLog("users");
+const del = await getLocalDeleteLog("users");
 /*
 {
   table_name: "users",
@@ -78,13 +92,13 @@ const deleteLog = await getLocalDeleteLog("users");
 */
 ```
 
-Returns `null` if the table has no delete checkpoint.
-
 ---
 
 ### 🧼 `clearLocalDeleteLog(tableName: string)`
 
-Deletes the delete log for a specific table.
+> **Deprecated:** Use `clearSyncLog`.
+
+Clears the delete log for one table.
 
 ```ts
 await clearLocalDeleteLog("users");
@@ -94,16 +108,43 @@ await clearLocalDeleteLog("users");
 
 ### ❌ `clearAllLocalDeleteLog()`
 
-Drops the entire delete log table.
+> **Deprecated:** Use `clearSyncLog` with a global/all-tables scope.
+
+Deletes all delete checkpoints.
 
 ```ts
 await clearAllLocalDeleteLog();
 ```
 
-> ⚠️ **Warning:** This wipes all delete history for all tables.
+> ⚠️ This wipes delete history for every table.
 
-### 🔗 What’s Next?
+---
 
-- [Data Access docs](./useSupastashData.md)
-- [useSupastash docs](useSupastash-hook.md)
-- [Query Builder docs](./supastash-query-builder.md)
+## Migration Guide
+
+| Old helper               | Replacement                       |
+| ------------------------ | --------------------------------- |
+| `setLocalSyncLog`        | `setSyncLog`                      |
+| `getLocalSyncLog`        | `getSyncLog`                      |
+| `clearLocalSyncLog`      | `clearSyncLog`                    |
+| `clearAllLocalSyncLog`   | `clearSyncLog` (global/all scope) |
+| `setLocalDeleteLog`      | `setSyncLog` (`lastDeletedAt`)    |
+| `getLocalDeleteLog`      | `getSyncLog`                      |
+| `clearLocalDeleteLog`    | `clearSyncLog`                    |
+| `clearAllLocalDeleteLog` | `clearSyncLog` (global/all scope) |
+
+---
+
+## Why Deprecated?
+
+- Unified API is simpler to reason about (one source of truth for created / updated / deleted checkpoints).
+- Fewer edge cases; consistent paging and status writes.
+- Cleaner surface for public usage.
+
+---
+
+## Related Docs
+
+- [Data Access](./useSupastashData.md)
+- [useSupastash Hook](./useSupastash-hook.md)
+- [Query Builder](./supastash-query-builder.md)

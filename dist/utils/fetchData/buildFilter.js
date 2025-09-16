@@ -48,6 +48,8 @@ function sqlValue(val) {
     if (Array.isArray(val)) {
         return val.map(sqlValue).join(", ");
     }
+    if (typeof val === "boolean")
+        return val ? "1" : "0";
     if (val === null)
         return "NULL";
     if (typeof val === "number")

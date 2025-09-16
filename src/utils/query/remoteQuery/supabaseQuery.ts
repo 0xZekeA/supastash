@@ -10,7 +10,7 @@ import { supastashEventBus } from "../../events/eventBus";
 import { normalizeForSupabase } from "../../getSafeValues";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { getSafeValue } from "../../serializer";
-import { updateLocalSyncedAt } from "../../syncUpdate";
+import { updateLocalSyncedAt } from "../../sync/status/syncUpdate";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
 import { operatorMap } from "../helpers/remoteDb/queryUtils";
 import { permanentlyDeleteData } from "../localDbQuery/delete";

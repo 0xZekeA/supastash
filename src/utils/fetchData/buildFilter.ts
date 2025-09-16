@@ -1,13 +1,7 @@
-import { FilterOperator } from "../../types/realtimeData.types";
+import { RealtimeFilter } from "../../types/realtimeData.types";
 
 export function buildFilterString<R = any>(
-  filters:
-    | {
-        column: keyof R | string;
-        operator: FilterOperator;
-        value: string | number | null | (string | number)[];
-      }
-    | undefined
+  filters: RealtimeFilter<R> | undefined
 ): string | undefined {
   if (!filters) {
     return undefined;
@@ -26,13 +20,7 @@ export function buildFilterString<R = any>(
 }
 
 export function buildFilterForSql<R = any>(
-  filter:
-    | {
-        column: keyof R | string;
-        operator: FilterOperator;
-        value: string | number | null | (string | number)[];
-      }
-    | undefined
+  filter: RealtimeFilter<R> | undefined | undefined
 ): string | undefined {
   if (!filter) return undefined;
 
@@ -68,10 +56,13 @@ export function buildFilterForSql<R = any>(
   }
 }
 
-function sqlValue(val: string | number | null | (string | number)[]): string {
+function sqlValue(
+  val: string | number | null | boolean | (string | number)[]
+): string {
   if (Array.isArray(val)) {
     return val.map(sqlValue).join(", ");
   }
+  if (typeof val === "boolean") return val ? "1" : "0";
   if (val === null) return "NULL";
   if (typeof val === "number") return val.toString();
   return `'${val.replace(/'/g, "''")}'`; // Escape single quotes

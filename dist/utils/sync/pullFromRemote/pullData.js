@@ -1,112 +1,62 @@
 import { getSupastashConfig } from "../../../core/config";
+import { getSupastashDb } from "../../../db/dbInitializer";
 import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import { getLastCreatedInfo, updateLastCreatedInfo, } from "./getLastCreatedInfo";
-import { getLastPulledInfo, updateLastPulledInfo } from "./getLastPulledInfo";
-import isValidFilter from "./validateFilters";
-const DEFAULT_MAX_PULL_ATTEMPTS = 150;
-let timesPulled = new Map();
-let lastPulled = new Map();
-const RANDOM_OLD_DATE = "2000-01-01T00:00:00Z";
+import { selectAndAddAMillisecond } from "../status/repo";
+import { setSupastashSyncStatus } from "../status/services";
+import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
 /**
  * Pulls data from the remote database for a given table
  * @param table - The table to pull data from
  * @returns The data from the table
  */
 export async function pullData(table, filters) {
-    const lastSyncedAt = await getLastPulledInfo(table);
-    const lastCreatedAt = await getLastCreatedInfo(table);
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase)
         throw new Error(`No supabase client found: ${supabaseClientErr}`);
-    let filteredLastCreatedQuery = supabase
-        .from(table)
-        .select("*")
-        .gte("created_at", lastCreatedAt || RANDOM_OLD_DATE)
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: false, nullsFirst: false });
-    let filteredLastSyncedQuery = supabase
-        .from(table)
-        .select("*")
-        .gte("updated_at", lastSyncedAt || RANDOM_OLD_DATE)
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: false, nullsFirst: false });
-    for (const filter of filters || []) {
-        if (!isValidFilter([filter])) {
-            throw new Error(`Invalid syncFilter: ${JSON.stringify(filter)} for table ${table}`);
-        }
-        filteredLastCreatedQuery = filteredLastCreatedQuery[filter.operator](filter.column, filter.value);
-        filteredLastSyncedQuery = filteredLastSyncedQuery[filter.operator](filter.column, filter.value);
-    }
-    // Fetch records where created_at >= lastCreatedAt OR updated_at >= lastSyncedAt
-    const { data: lastCreatedData, error: lastCreatedError, } = await filteredLastCreatedQuery;
-    const { data: lastSyncedData, error: lastSyncedError, } = await filteredLastSyncedQuery;
-    if (lastCreatedError || lastSyncedError) {
-        log(`[Supastash] Error fetching from ${table}:`, lastCreatedError?.message || lastSyncedError?.message);
-        return null;
-    }
-    const allRows = [...(lastCreatedData ?? []), ...(lastSyncedData ?? [])];
+    const db = await getSupastashDb();
+    const { last_created_at, last_synced_at, last_deleted_at } = await selectAndAddAMillisecond(db, table, filters);
+    const [createdRows, updatedRows, deletedRows] = await Promise.all([
+        pageThrough({
+            tsCol: "created_at",
+            since: last_created_at,
+            table,
+            filters,
+        }),
+        pageThrough({ tsCol: "updated_at", since: last_synced_at, table, filters }),
+        pageThrough({
+            tsCol: "deleted_at",
+            since: last_deleted_at,
+            includeDeleted: true,
+            select: "id, deleted_at",
+            table,
+            filters,
+        }),
+    ]);
     const merged = {};
-    for (const row of allRows) {
-        if (!row.id) {
-            logWarn(`[Supastash] Skipped row without id from "${table}":`, row);
+    for (const r of [...createdRows, ...updatedRows]) {
+        if (!r?.id) {
+            logWarn(`[Supastash] Skipped row without id from "${table}"`);
             continue;
         }
-        const id = row.id;
-        merged[id] = row;
+        merged[r.id] = r;
     }
     const data = Object.values(merged);
-    if (!data || data.length === 0) {
-        timesPulled.set(table, (timesPulled.get(table) || 0) + 1);
-        if ((timesPulled.get(table) || 0) >= DEFAULT_MAX_PULL_ATTEMPTS) {
-            const timeSinceLastPull = Date.now() - (lastPulled.get(table) || 0);
-            lastPulled.set(table, Date.now());
-            log(`[Supastash] No updates for ${table} at ${lastSyncedAt} (times pulled: ${timesPulled.get(table)}) in the last ${timeSinceLastPull}ms`);
-            timesPulled.set(table, 0);
-        }
+    if (data.length === 0) {
+        logNoUpdates(table);
         return null;
     }
+    const deletedIds = deletedRows.map((r) => r.id);
+    const createdMax = getMaxDate(createdRows, "created_at");
+    const updatedMax = getMaxDate(updatedRows, "updated_at");
+    const deletedMax = getMaxDate(deletedRows, "deleted_at");
     log(`Received ${data.length} updates for ${table}`);
-    // Update the sync status tables with the latest timestamps
-    const createdMaxDate = getMaxCreatedDate(lastCreatedData ?? []);
-    const updatedMaxDate = getMaxUpdatedDate(lastSyncedData ?? []);
-    if (updatedMaxDate) {
-        await updateLastPulledInfo(table, updatedMaxDate);
-    }
-    if (createdMaxDate) {
-        await updateLastCreatedInfo(table, createdMaxDate);
-    }
-    return data;
-}
-export function getMaxCreatedDate(data) {
-    if (!data || data.length === 0)
-        return null;
-    const createdColumn = "created_at";
-    let maxDate = RANDOM_OLD_DATE;
-    for (const item of data) {
-        const createdValue = item[createdColumn];
-        if (typeof createdValue === "string" && !isNaN(Date.parse(createdValue))) {
-            const createdTime = new Date(createdValue).getTime();
-            if (createdTime > new Date(maxDate).getTime()) {
-                maxDate = new Date(createdTime).toISOString();
-            }
-        }
-    }
-    return maxDate === RANDOM_OLD_DATE ? null : maxDate;
-}
-export function getMaxUpdatedDate(data) {
-    if (!data || data.length === 0)
-        return null;
-    const updatedColumn = "updated_at";
-    let maxDate = RANDOM_OLD_DATE;
-    for (const item of data) {
-        const updatedValue = item[updatedColumn];
-        if (typeof updatedValue === "string" && !isNaN(Date.parse(updatedValue))) {
-            const updatedTime = new Date(updatedValue).getTime();
-            if (updatedTime > new Date(maxDate).getTime()) {
-                maxDate = new Date(updatedTime).toISOString();
-            }
-        }
-    }
-    return maxDate === RANDOM_OLD_DATE ? null : maxDate;
+    await setSupastashSyncStatus(table, filters, {
+        lastCreatedAt: createdMax,
+        lastSyncedAt: updatedMax,
+        lastDeletedAt: deletedMax,
+        filterNamespace: "global",
+    });
+    log(`[Supastash] Received ${data.length} updates for ${table} (c${createdRows.length}/u${updatedRows.length}/d${deletedRows.length})`);
+    return { data, deletedIds };
 }

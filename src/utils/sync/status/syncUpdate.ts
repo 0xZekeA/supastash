@@ -1,5 +1,5 @@
-import { getSupastashDb } from "../db/dbInitializer";
-import { logError } from "./logs";
+import { getSupastashDb } from "../../../db/dbInitializer";
+import { logError } from "../../logs";
 
 /**
  * Updates synced_at from null to a timeStamp

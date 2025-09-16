@@ -4,6 +4,8 @@ A simple but **critical hook** that tells Supastash _what rows_ to sync from Sup
 
 If your app has **multiple users**, **locations**, or **shops**, you don't want to sync _everything_. You only want _what matters_ to the current user. That’s exactly what this hook handles.
 
+You can call the non hook version in functions `updateFilters`. Works the same way!
+
 ---
 
 ### 🧠 What’s This For?

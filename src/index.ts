@@ -3,6 +3,7 @@ export { defineLocalSchema } from "./core/schemaManager";
 export { getSupastashDb } from "./db/dbInitializer";
 export { useSupastashData } from "./hooks/supastashData";
 //export { useSupastashLiteQuery } from "./hooks/supastashLiteQuery";
+export { useSupastashFilters } from "./hooks/supastashFilters";
 export { useSupastash } from "./hooks/supastashLogic";
 export { syncAllTables, syncTable } from "./hooks/syncEngine";
 export { useSupastashSyncStatus } from "./hooks/syncStatus";
@@ -17,6 +18,7 @@ export {
   wipeTable,
 } from "./utils/schema/wipeTables";
 export { getAllTables } from "./utils/sync/getAllTables";
+export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
 export {
   refreshAllTables,
   refreshTable,
@@ -34,11 +36,14 @@ export {
   clearAllLocalSyncLog,
   clearLocalDeleteLog,
   clearLocalSyncLog,
+  clearSyncLog,
   getLocalDeleteLog,
-  getLocalSyncLog,
+  getSyncLog,
+  resetSyncLog,
   setLocalDeleteLog,
   setLocalSyncLog,
-} from "./utils/syncStatus";
+  setSyncLog,
+} from "./utils/sync/status/syncStatus";
 
 export type { CrudMethods } from "./types/query.types";
 export type {

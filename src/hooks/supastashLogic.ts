@@ -9,12 +9,8 @@ import {
   tableFiltersUsed,
 } from "../store/tableFilters";
 import { SupastashHookReturn } from "../types/supastashConfig.types";
-import { createIdIndexes } from "../utils/createIndexes";
 import { logError, logWarn } from "../utils/logs";
-import {
-  createDeletedStatusTable,
-  createSyncStatusTable,
-} from "../utils/schema/createSyncStatus";
+import { createSyncStatusTable } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
 
 /**
@@ -70,8 +66,6 @@ export function useSupastash(lazy: boolean = false): SupastashHookReturn {
       try {
         // Create supastash metadata tables
         await createSyncStatusTable();
-        await createDeletedStatusTable();
-        await createIdIndexes();
         // On schema init
         if (config.onSchemaInit) {
           await config.onSchemaInit();

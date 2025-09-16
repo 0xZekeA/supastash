@@ -2,7 +2,7 @@ import { getSupastashDb } from "../../db/dbInitializer";
 import { clearSchemaCache } from "../getTableSchema";
 import log from "../logs";
 import { getAllTables } from "../sync/getAllTables";
-import { clearLocalDeleteLog, clearLocalSyncLog } from "../syncStatus";
+import { clearLocalSyncLog } from "../sync/status/syncStatus";
 
 /**
  * Wipes a specific table from the local SQLite database and removes its sync metadata.
@@ -25,7 +25,6 @@ export async function wipeTable(tableName: string) {
     const db = await getSupastashDb();
     await db.runAsync(`DELETE FROM ${tableName}`);
     await clearLocalSyncLog(tableName);
-    await clearLocalDeleteLog(tableName);
 
     clearSchemaCache(tableName);
     log(`[Supastash] Wiped table "${tableName}" and cleared sync metadata.`);
@@ -55,7 +54,6 @@ export async function dropTable(tableName: string) {
     const db = await getSupastashDb();
     await db.runAsync(`DROP TABLE IF EXISTS ${tableName}`);
     await clearLocalSyncLog(tableName);
-    await clearLocalDeleteLog(tableName);
 
     clearSchemaCache(tableName);
     log(`[Supastash] Dropped table "${tableName}" and cleared sync metadata.`);
