@@ -42,7 +42,7 @@ export async function pullData(table, filters) {
         merged[r.id] = r;
     }
     const data = Object.values(merged);
-    if (data.length === 0) {
+    if (data.length === 0 && deletedRows.length === 0) {
         logNoUpdates(table);
         return null;
     }
@@ -50,13 +50,12 @@ export async function pullData(table, filters) {
     const createdMax = getMaxDate(createdRows, "created_at");
     const updatedMax = getMaxDate(updatedRows, "updated_at");
     const deletedMax = getMaxDate(deletedRows, "deleted_at");
-    log(`Received ${data.length} updates for ${table}`);
     await setSupastashSyncStatus(table, filters, {
         lastCreatedAt: createdMax,
         lastSyncedAt: updatedMax,
         lastDeletedAt: deletedMax,
         filterNamespace: "global",
     });
-    log(`[Supastash] Received ${data.length} updates for ${table} (c${createdRows.length}/u${updatedRows.length}/d${deletedRows.length})`);
+    log(`[Supastash] Received ${data.length + deletedRows.length} updates for ${table} (c${createdRows.length}/u${updatedRows.length}/d${deletedRows.length})`);
     return { data, deletedIds };
 }
