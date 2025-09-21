@@ -9,6 +9,7 @@ export { syncAllTables, syncTable } from "./hooks/syncEngine";
 export { useSupastashSyncStatus } from "./hooks/syncStatus";
 export { supastashEventBus } from "./utils/events/eventBus";
 export { supastash } from "./utils/query/builder";
+export { refreshScreen } from "./utils/refreshScreenCalls";
 export {
   dropAllTables,
   dropTable,
@@ -19,6 +20,7 @@ export {
 } from "./utils/schema/wipeTables";
 export { getAllTables } from "./utils/sync/getAllTables";
 export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
+export { upsertData } from "./utils/sync/pullFromRemote/updateLocalDb";
 export {
   refreshAllTables,
   refreshTable,

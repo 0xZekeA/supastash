@@ -97,9 +97,9 @@ export async function querySupabase(state, isBatched = false) {
             });
             break;
         case "delete":
+            console.log("delete", timeStamp);
             filterQuery = query.update({
                 deleted_at: timeStamp,
-                updated_at: timeStamp,
             });
             break;
         default:
@@ -112,6 +112,9 @@ export async function querySupabase(state, isBatched = false) {
                 const op = operatorMap(operator);
                 filterQuery = filterQuery[op](column, value);
             }
+        }
+        if (method === "delete") {
+            console.log("delete", filterQuery);
         }
         if (limit != null) {
             filterQuery = filterQuery.limit(limit);

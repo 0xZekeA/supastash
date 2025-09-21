@@ -11,53 +11,72 @@ export function isTrulyNullish(value: any): boolean {
 }
 
 /**
- * Converts a value into a stable JSON string representation.
- *
- * @param obj - The object to convert
- * @returns A stable stringified version of the input
+ * Deterministically stringify any value:
+ * - Sorts object keys for stability
+ * - Converts Date -> ISO string
+ * - Converts BigInt -> string
+ * - Replaces NaN/Infinity/undefined with null
+ * - Handles circular references
  */
-function stableStringify(obj: any): string {
-  if (Array.isArray(obj)) return JSON.stringify(obj);
-  if (typeof obj === "object" && obj !== null) {
-    return JSON.stringify(
-      Object.keys(obj)
-        .sort()
-        .reduce((acc, key) => {
-          acc[key] = obj[key];
-          return acc;
-        }, {} as Record<string, any>)
-    );
-  }
-  return JSON.stringify(obj);
+export function stableStringify(input: any): string {
+  const seen = new WeakSet();
+
+  const sanitize = (val: any): any => {
+    if (val === null) return null;
+
+    const t = typeof val;
+
+    if (t === "number") {
+      return Number.isFinite(val) ? val : null;
+    }
+
+    if (t === "bigint") return val.toString();
+    if (t === "string") return val;
+    if (t === "boolean") return val;
+    if (val instanceof Date) return val.toISOString();
+
+    if (Array.isArray(val)) {
+      return val.map((v) => sanitize(v));
+    }
+
+    if (t === "object") {
+      if (seen.has(val)) return "[Circular]";
+      seen.add(val);
+      const out: Record<string, any> = {};
+      for (const k of Object.keys(val).sort()) {
+        out[k] = sanitize(val[k]);
+      }
+      seen.delete(val);
+      return out;
+    }
+
+    // functions/symbol/undefined -> null
+    return null;
+  };
+
+  return JSON.stringify(sanitize(input));
 }
 
 /**
- * Converts a value into a stable JSON string representation.
- *
- * @param value - The value to convert
- * @returns A stable stringified version of the input
+ * Normalize a value to something SQLite can bind safely:
+ * - Dates -> ISO string
+ * - Booleans -> 1/0
+ * - Arrays/Objects -> stable JSON string
+ * - BigInt -> string
+ * - undefined/NaN/Infinity -> null
+ * - Everything else passes through
  */
 export function getSafeValue(value: any): any {
+  if (value === undefined) return null;
+  if (typeof value === "number" && !Number.isFinite(value)) return null;
+
   if (value instanceof Date) return value.toISOString();
+  if (typeof value === "bigint") return value.toString();
 
-  if (Array.isArray(value)) {
-    const allPrimitives = value.every(
-      (v) =>
-        typeof v === "string" ||
-        typeof v === "number" ||
-        typeof v === "boolean" ||
-        v === null
-    );
-    if (allPrimitives) return value;
+  if (typeof value === "boolean") return value ? 1 : 0;
 
-    const allObjects = value.every((v) => typeof v === "object" && v !== null);
-    if (allObjects) return value.map(stableStringify);
-
-    return stableStringify(value);
-  }
-
-  if (typeof value === "object" && value !== null)
-    return stableStringify(value);
+  if (Array.isArray(value)) return stableStringify(value);
+  if (value && typeof value === "object") return stableStringify(value);
 
   return value;
 }
