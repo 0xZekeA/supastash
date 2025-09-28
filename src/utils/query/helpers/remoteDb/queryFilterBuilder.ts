@@ -18,7 +18,7 @@ export function buildWhereClause(filters: FilterCalls[] | null) {
     switch (operator) {
       case "IN":
         if (!Array.isArray(value) || value.length === 0) continue;
-        const isValid = safeValue.every(
+        const isValid = value.every(
           (v: any) =>
             typeof v === "string" ||
             typeof v === "number" ||
