@@ -141,7 +141,6 @@ export async function querySupabase<T extends boolean, R, Z>(
       });
       break;
     case "delete":
-      console.log("delete", timeStamp);
       filterQuery = query.update({
         deleted_at: timeStamp,
       });
@@ -156,9 +155,6 @@ export async function querySupabase<T extends boolean, R, Z>(
         const op = operatorMap(operator);
         filterQuery = filterQuery[op](column, value);
       }
-    }
-    if (method === "delete") {
-      console.log("delete", filterQuery);
     }
 
     if (limit != null) {
