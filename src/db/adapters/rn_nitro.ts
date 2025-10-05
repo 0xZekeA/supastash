@@ -1,4 +1,3 @@
-import { enableSimpleNullHandling } from "react-native-nitro-sqlite";
 import {
   RNSqliteNitroClient,
   SupastashSQLiteAdapter,
@@ -12,8 +11,9 @@ export const SQLiteAdapterNitro: SupastashSQLiteAdapter = {
     sqliteClient: RNSqliteNitroClient
   ): Promise<SupastashSQLiteDatabase> {
     //Enable simple null handling for Nitro SQLite
-    if (enableSimpleNullHandling) {
-      enableSimpleNullHandling();
+    const nitro = require("react-native-nitro-sqlite");
+    if (nitro?.enableSimpleNullHandling) {
+      nitro.enableSimpleNullHandling();
     } else {
       logWarn(
         "[Supastash] Simple null handling is not enabled for Nitro SQLite",
