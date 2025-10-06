@@ -3,7 +3,6 @@ export const SQLiteAdapterNitro = {
     async openDatabaseAsync(name, sqliteClient) {
         //Enable simple null handling for Nitro SQLite
         const nitro = require("react-native-nitro-sqlite");
-        console.log("nitro", nitro?.enableSimpleNullHandling);
         if (nitro?.enableSimpleNullHandling) {
             nitro.enableSimpleNullHandling();
         }
