@@ -44,6 +44,17 @@
     "react-native-nitro-sqlite": ">=9.0.0 <10.0.0",
     "react-native-sqlite-storage": ">=6.0.0 <7.0.0"
   },
+  "peerDependenciesMeta": {
+    "expo-sqlite": {
+      "optional": true
+    },
+    "react-native-nitro-sqlite": {
+      "optional": true
+    },
+    "react-native-sqlite-storage": {
+      "optional": true
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/0xZekeA/supastash"
