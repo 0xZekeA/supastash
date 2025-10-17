@@ -81,6 +81,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "doc",
+      id: "useSupastashFilters",
+      label: "useSupastashFilters",
+    },
+    {
+      type: "doc",
       id: "zustand",
       label: "Zustand integration",
     },
