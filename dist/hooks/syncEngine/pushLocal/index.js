@@ -5,6 +5,7 @@ import log from "../../../utils/logs";
 import { getAllTables } from "../../../utils/sync/getAllTables";
 import { runLimitedConcurrency } from "../../../utils/sync/pullFromRemote/runLimitedConcurrency";
 import { pushLocalDataToRemote } from "../../../utils/sync/pushLocal/sendUnsyncedToSupabase";
+import { SyncInfoUpdater } from "../../../utils/sync/queryStatus";
 let emptyPassCount = 0;
 let lastEmptyPassAt = 0;
 const tablePushLock = new Map();
@@ -12,6 +13,8 @@ const tablePushLock = new Map();
  * Pushes the local data to the remote database
  */
 export async function pushLocalData() {
+    let tablesCompleted = 0;
+    let numberOfTables = 0;
     try {
         const tables = await getAllTables();
         if (!tables) {
@@ -22,8 +25,21 @@ export async function pushLocalData() {
             return;
         const excludeTables = getSupastashConfig()?.excludeTables?.push || [];
         const tablesToPush = tables.filter((table) => !excludeTables?.includes(table));
+        numberOfTables = tablesToPush.length;
+        SyncInfoUpdater.setInProgress({
+            action: "start",
+            type: "push",
+        });
+        SyncInfoUpdater.setNumberOfTables({
+            amount: numberOfTables,
+            type: "push",
+        });
         const results = [];
         const jobs = tablesToPush.map((table) => async () => {
+            SyncInfoUpdater.setCurrentTable({
+                table,
+                type: "push",
+            });
             if (tablePushLock.get(table)) {
                 results.push({ table, hadWork: false });
                 return;
@@ -31,15 +47,34 @@ export async function pushLocalData() {
             tablePushLock.set(table, true);
             try {
                 const onPush = syncCalls.get(table)?.push;
+                SyncInfoUpdater.markLogStart({
+                    type: "push",
+                    table,
+                });
                 const hadWork = await pushLocalDataToRemote(table, onPush);
                 results.push({ table, hadWork: !!hadWork });
+                SyncInfoUpdater.markLogSuccess({
+                    type: "push",
+                    table,
+                });
             }
             catch (e) {
                 const msg = e?.code ?? e?.name ?? String(e);
+                SyncInfoUpdater.markLogError({
+                    type: "push",
+                    table,
+                    lastError: e,
+                    errorCount: 1,
+                });
                 results.push({ table, hadWork: false, error: msg });
                 log(`[Supastash] Push table failed: ${table} — ${msg}`);
             }
             finally {
+                tablesCompleted++;
+                SyncInfoUpdater.setTablesCompleted({
+                    amount: tablesCompleted,
+                    type: "push",
+                });
                 tablePushLock.set(table, false);
             }
         });
@@ -62,5 +97,8 @@ export async function pushLocalData() {
     }
     catch (error) {
         log(`[Supastash] Error pushing local data to remote database: ${error}`);
+    }
+    finally {
+        SyncInfoUpdater.reset({ type: "push" });
     }
 }

@@ -1,3 +1,4 @@
+import { SyncInfo, SyncLogEntry } from "../types/syncEngine.types";
 /**
  * A map tracking sync status for each row in each table.
  *
@@ -21,4 +22,6 @@
  * - Value = sync status of that row
  */
 export declare const syncStatusMap: Map<string, Map<string, "error" | "pending" | "success">>;
+export declare const syncInfo: SyncInfo;
+export declare const DEFAULT_SYNC_LOG_ENTRY: SyncLogEntry;
 //# sourceMappingURL=syncStatus.d.ts.map

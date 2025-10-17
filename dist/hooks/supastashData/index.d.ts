@@ -59,7 +59,8 @@ import { RealtimeOptions, SupastashDataResult } from "../../types/realtimeData.t
  *   dataMap: Map of records by ID,
  *   groupedBy: Optional maps grouped by field,
  *   trigger: Manually trigger sync,
- *   cancel: Cancel pending fetch or sync
+ *   cancel: Cancel pending fetch or
+ *   isFetching: Whether the data is being fetched
  * }
  */
 export declare function useSupastashData<R = any>(table: string, options?: RealtimeOptions): SupastashDataResult<R>;

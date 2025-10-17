@@ -75,7 +75,8 @@ const tableSubscriptions = new Map<string, boolean>();
  *   dataMap: Map of records by ID,
  *   groupedBy: Optional maps grouped by field,
  *   trigger: Manually trigger sync,
- *   cancel: Cancel pending fetch or sync
+ *   cancel: Cancel pending fetch or
+ *   isFetching: Whether the data is being fetched
  * }
  */
 export function useSupastashData<R = any>(
@@ -107,11 +108,8 @@ export function useSupastashData<R = any>(
 
   const queueHandler = useEventQueues<R>(table, options, flushIntervalMs);
 
-  const { triggerRefresh, trigger, cancel, initialFetchAndSync } = fetchCalls(
-    table,
-    options,
-    hasTriggeredRef
-  );
+  const { triggerRefresh, trigger, cancel, initialFetchAndSync, isFetching } =
+    fetchCalls(table, options, hasTriggeredRef);
   const subKey = useMemo(
     () => `${table}:${buildFilterString(filter)}`,
     [table, filter]
@@ -172,7 +170,8 @@ export function useSupastashData<R = any>(
       trigger,
       cancel,
       groupedBy,
+      isFetching,
     }),
-    [data]
+    [data, isFetching]
   );
 }

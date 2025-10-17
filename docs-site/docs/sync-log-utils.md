@@ -125,6 +125,6 @@ If no filters are provided, all rows for the table are removed.
 
 ## Related
 
-- [Realtime Filters](./realtime-filters.md)
-- [Pulling & pushing data](./sync-flow.md)
-- [Error handling](./error-handling.md)
+- [useSupastashFilters](./useSupastashSyncStatus.md)
+- [useSupastashFilters](./useSupastashFilters.md)
+- [Pulling & pushing data](./sync-flows.md)

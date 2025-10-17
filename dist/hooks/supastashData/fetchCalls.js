@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { syncCalls } from "../../store/syncCalls";
 import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
@@ -7,6 +7,7 @@ import { logError } from "../../utils/logs";
 export function fetchCalls(table, options, initialized) {
     const { shouldFetch = true, limit, filter, onPushToRemote, onInsertAndUpdate, useFilterWhileSyncing = true, extraMapKeys, daylength, onlyUseFilterForRealtime, orderBy, orderDesc, sqlFilter, } = options;
     const cancelled = useRef(false);
+    const [isFetching, setIsFetching] = useState(false);
     useEffect(() => {
         if (filter && useFilterWhileSyncing && !tableFiltersUsed.has(table)) {
             tableFilters.set(table, [filter]);
@@ -66,11 +67,15 @@ export function fetchCalls(table, options, initialized) {
             filters = filter ? [filter] : undefined;
         }
         try {
+            setIsFetching(true);
             await initialFetch(table, filters, onInsertAndUpdate, onPushToRemote);
             await fetch();
         }
         catch (error) {
             logError(`[Supastash] Error on initial fetch for ${table}`, error);
+        }
+        finally {
+            setIsFetching(false);
         }
     };
     return {
@@ -78,5 +83,6 @@ export function fetchCalls(table, options, initialized) {
         trigger,
         cancel,
         initialFetchAndSync,
+        isFetching,
     };
 }

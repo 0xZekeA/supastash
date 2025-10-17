@@ -69,7 +69,8 @@ const tableSubscriptions = new Map();
  *   dataMap: Map of records by ID,
  *   groupedBy: Optional maps grouped by field,
  *   trigger: Manually trigger sync,
- *   cancel: Cancel pending fetch or sync
+ *   cancel: Cancel pending fetch or
+ *   isFetching: Whether the data is being fetched
  * }
  */
 export function useSupastashData(table, options = {}) {
@@ -78,7 +79,7 @@ export function useSupastashData(table, options = {}) {
     const unsub = useRef(null);
     const { dataMap, data, groupedBy, } = useDataState(table);
     const queueHandler = useEventQueues(table, options, flushIntervalMs);
-    const { triggerRefresh, trigger, cancel, initialFetchAndSync } = fetchCalls(table, options, hasTriggeredRef);
+    const { triggerRefresh, trigger, cancel, initialFetchAndSync, isFetching } = fetchCalls(table, options, hasTriggeredRef);
     const subKey = useMemo(() => `${table}:${buildFilterString(filter)}`, [table, filter]);
     const isAnyNullish = useMemo(() => {
         if (!options.sqlFilter)
@@ -124,5 +125,6 @@ export function useSupastashData(table, options = {}) {
         trigger,
         cancel,
         groupedBy,
-    }), [data]);
+        isFetching,
+    }), [data, isFetching]);
 }

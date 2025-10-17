@@ -76,6 +76,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "doc",
+      id: "useSupastashSyncStatus",
+      label: "useSupastashSyncStatus",
+    },
+    {
+      type: "doc",
       id: "zustand",
       label: "Zustand integration",
     },

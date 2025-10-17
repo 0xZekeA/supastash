@@ -4,7 +4,7 @@ import { isOnline } from "../../../utils/connection";
 import { normalizeForSupabase } from "../../getSafeValues";
 import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import { setQueryStatus } from "../queryStatus";
+import { setQueryStatus, SyncInfoUpdater } from "../queryStatus";
 import { enforceTimestamps } from "./normalize";
 import { batchUpsert, fetchRemoteHeadsChunked, filterRowsByUpdatedAt, handleRowFailure, markSynced, singleUpsert, } from "./uploadHelpers";
 /**
@@ -26,6 +26,8 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     const online = await isOnline();
     if (!online)
         return;
+    let errorCount = 0;
+    let lastError = null;
     const ids = chunk.map((row) => row.id);
     // Fetch remote data for the current chunk
     const remoteIds = await fetchRemoteHeadsChunked(table, ids, supabase);
@@ -88,6 +90,8 @@ async function uploadChunk(table, chunk, onPushToRemote) {
                 syncedNow.push(row.id);
                 continue;
             }
+            errorCount++;
+            lastError = res.error;
             const decision = await handleRowFailure(config, table, row, res.error, supabase);
             if (decision === "DROP" || decision === "REPLACED") {
                 continue;
@@ -106,6 +110,15 @@ async function uploadChunk(table, chunk, onPushToRemote) {
         const delay = schedule[Math.min(attempts - 1, schedule.length - 1)];
         await new Promise((r) => setTimeout(r, delay));
         pending = keep;
+    }
+    if (pending.length > 0) {
+        SyncInfoUpdater.markLogError({
+            type: "push",
+            table,
+            lastError: lastError ?? new Error("Unknown error"),
+            errorCount: errorCount ?? 0,
+            rowsFailed: pending.length,
+        });
     }
     // Gave up this pass — rows left in `pending` will be retried by outer scheduler
     for (const r of pending)

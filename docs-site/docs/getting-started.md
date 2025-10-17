@@ -37,7 +37,7 @@ npm install expo-sqlite
 # For bare React Native (better performance)
 npm install react-native-nitro-sqlite
 
-# Classic RN SQLite adapter
+# Classic RN SQLite adapter (still in beta)
 npm install react-native-sqlite-storage
 ```
 
@@ -74,7 +74,7 @@ configureSupastash({
   debugMode: true,
   syncEngine: {
     push: true,
-    pull: false, // Enable if you're using RLS and filters
+    pull: false, // Enable if you're using RLS or useSupastashFilters
   },
   excludeTables: {
     push: ["daily_reminders"],
@@ -101,6 +101,7 @@ export default function App() {
 ## 🛡️ Server-Side Setup (for Filtered Pulls)
 
 To enable safe, filtered data pulling from Supabase, run this SQL function:
+✅ **This is Required**
 
 ```sql
 create or replace function get_table_schema(table_name text)
@@ -115,8 +116,7 @@ $$ language sql;
 grant execute on function get_table_schema(text) to anon, authenticated;
 ```
 
-✅ Required if using **Row Level Security (RLS)**
-⚠️ Make sure all sync-related timestamps (`created_at`, `updated_at`, `deleted_at`) use `timestamptz` — not plain `timestamp`.
+⚠️ Make sure all sync-related timestamps (`created_at`, `updated_at`, `deleted_at`) use `timestamptz` — not plain `timestamp` to avoid timezone drift, inconsistent sync ordering, and data mismatches across devices. .
 
 ---
 
@@ -140,7 +140,9 @@ If you're using Zustand for state management, you can **automatically sync your 
 Whenever a table like `orders` is updated (via sync or local change), Supastash emits:
 
 ```ts
-supastashEventBus.on("supastash:refreshZustand:orders", hydrateOrders);
+supastashEventBus.on("supastash:refreshZustand:orders", () => {
+  // Your hydrate call
+});
 ```
 
 This allows you to call your Zustand store's `hydrateOrders()` method to fetch the latest local data.
@@ -153,7 +155,7 @@ This allows you to call your Zustand store's `hydrateOrders()` method to fetch t
 
 ## 📡 Data Fetching Options
 
-Supastash gives you **two main hooks** for fetching and syncing local data:
+Supastash gives you [`useSupastashData`](useSupastashData.md) for fetching and syncing local data:
 
 ---
 
@@ -168,7 +170,7 @@ const { data, dataMap, groupedBy } = useSupastashData("orders", {
 
 - Syncs with Supabase in **realtime**
 - Uses **global cache**
-- Automatically keeps state updated across screens
+- Automatically keeps state synced
 - Best for dashboards, shared state, live data
 
 ---
@@ -242,6 +244,7 @@ configureSupastash({
 ## ✅ Next Steps
 
 - [useSupastashData Docs](./useSupastashData.md)
+- [Zustand integration](./zustand.md)
 - [useSupastashFilters Docs](./useSupastashFilters.md)
 - [Query Builder](./supastash-query-builder.md)
 - [Advanced Schema Setup](./schema-management.md)
@@ -249,4 +252,3 @@ configureSupastash({
 ---
 
 That’s it — you're now ready to build **offline-first**, **scalable**, and **Supabase-powered** apps using Supastash.
-Whether you're going full realtime or keeping it lite, **you’re in control**.

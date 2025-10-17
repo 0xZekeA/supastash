@@ -4,6 +4,8 @@ import { PayloadData } from "../../../types/query.types";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
 import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
+import { SyncInfoUpdater } from "../queryStatus";
+import { computeFilterKey } from "../status/filterKey";
 import { selectAndAddAMillisecond } from "../status/repo";
 import { setSupastashSyncStatus } from "../status/services";
 import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
@@ -20,6 +22,19 @@ export async function pullData(
   const supabase = getSupastashConfig().supabaseClient;
   if (!supabase)
     throw new Error(`No supabase client found: ${supabaseClientErr}`);
+
+  SyncInfoUpdater.setLastSyncLog({
+    key: "filterJson",
+    value: filters ?? [],
+    type: "pull",
+    table,
+  });
+  SyncInfoUpdater.setLastSyncLog({
+    key: "filterKey",
+    value: (await computeFilterKey(filters, "global")) ?? "",
+    type: "pull",
+    table,
+  });
 
   const db = await getSupastashDb();
   const { last_created_at, last_synced_at, last_deleted_at } =

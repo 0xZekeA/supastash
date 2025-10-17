@@ -6,7 +6,7 @@ import { isOnline } from "../../../utils/connection";
 import { normalizeForSupabase } from "../../getSafeValues";
 import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import { setQueryStatus } from "../queryStatus";
+import { setQueryStatus, SyncInfoUpdater } from "../queryStatus";
 import { enforceTimestamps } from "./normalize";
 import {
   batchUpsert,
@@ -41,6 +41,8 @@ async function uploadChunk(
 
   const online = await isOnline();
   if (!online) return;
+  let errorCount = 0;
+  let lastError: Error | null = null;
 
   const ids: string[] = chunk.map((row) => row.id);
 
@@ -110,6 +112,8 @@ async function uploadChunk(
         syncedNow.push(row.id);
         continue;
       }
+      errorCount++;
+      lastError = res.error;
 
       const decision = await handleRowFailure(
         config,
@@ -137,6 +141,16 @@ async function uploadChunk(
     await new Promise((r) => setTimeout(r, delay));
 
     pending = keep;
+  }
+
+  if (pending.length > 0) {
+    SyncInfoUpdater.markLogError({
+      type: "push",
+      table,
+      lastError: lastError ?? new Error("Unknown error"),
+      errorCount: errorCount ?? 0,
+      rowsFailed: pending.length,
+    });
   }
 
   // Gave up this pass — rows left in `pending` will be retried by outer scheduler

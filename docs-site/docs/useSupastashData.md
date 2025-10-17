@@ -195,6 +195,7 @@ Return `true` on success — Supastash will retry otherwise.
 ## 🔗 What’s Next
 
 - [Configuration Guide](./configuration.md)
+- [Zustand Integration](./zustand.md)
 - [Query Builder Docs](./supastash-query-builder.md)
 - [Hook Reference](./useSupastash-hook.md)
 

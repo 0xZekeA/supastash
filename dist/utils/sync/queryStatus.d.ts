@@ -1,3 +1,4 @@
+import { SyncInfo, SyncLogEntry } from "../../types/syncEngine.types";
 /**
  * Sets the sync status of a query (row) in a specific table.
  * Automatically removes the entry if the status is 'success'.
@@ -37,4 +38,59 @@ export declare function getTableStatus(table: string): {
  *          "synced" if all tables are fully synced
  */
 export declare function getSupastashStatus(): "error" | "pending" | "synced";
+declare function snapshot(): SyncInfo;
+export declare const SyncInfoUpdater: {
+    setInProgress: ({ action, type, }: {
+        action: "start" | "stop";
+        type: "pull" | "push";
+    }) => void;
+    setTablesCompleted: ({ amount, type, }: {
+        amount: number;
+        type: "pull" | "push";
+    }) => void;
+    setNumberOfTables: ({ amount, type, }: {
+        amount: number;
+        type: "pull" | "push";
+    }) => void;
+    setCurrentTable: ({ table, type, }: {
+        table: string;
+        type: "pull" | "push";
+    }) => void;
+    setLastSyncLog: ({ key, value, type, table, }: {
+        key: keyof SyncLogEntry;
+        value: SyncLogEntry[keyof SyncLogEntry];
+        type: "pull" | "push";
+        table: string;
+    }) => void;
+    setUnsyncedDataCount: ({ amount, type, table, }: {
+        amount: number;
+        type: "pull" | "push";
+        table: string;
+    }) => void;
+    setUnsyncedDeletedCount: ({ amount, type, table, }: {
+        amount: number;
+        type: "pull" | "push";
+        table: string;
+    }) => void;
+    markLogStart: ({ type, table }: {
+        type: "pull" | "push";
+        table: string;
+    }) => void;
+    markLogSuccess: ({ type, table, }: {
+        type: "pull" | "push";
+        table: string;
+    }) => void;
+    markLogError: ({ type, table, lastError, errorCount, rowsFailed, }: {
+        type: "pull" | "push";
+        table: string;
+        lastError: Error;
+        errorCount: number;
+        rowsFailed?: number;
+    }) => void;
+    reset: ({ type }: {
+        type: "pull" | "push";
+    }) => void;
+    getSnapshot: typeof snapshot;
+};
+export {};
 //# sourceMappingURL=queryStatus.d.ts.map

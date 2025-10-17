@@ -1,6 +1,6 @@
 import { isOnline } from "../../connection";
-import { logError } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
+import { SyncInfoUpdater } from "../queryStatus";
 import { deleteData } from "./deleteChunks";
 import { getAllDeletedData, getAllUnsyncedData } from "./getAllUnsyncedData";
 import { uploadData } from "./uploadChunk";
@@ -22,6 +22,17 @@ export async function pushLocalDataToRemote(
     if (!(await isOnline())) return false;
     const data = await getAllUnsyncedData(table);
     const deletedData = await getAllDeletedData(table);
+
+    SyncInfoUpdater.setUnsyncedDataCount({
+      amount: data?.length ?? 0,
+      type: "push",
+      table,
+    });
+    SyncInfoUpdater.setUnsyncedDeletedCount({
+      amount: deletedData?.length ?? 0,
+      type: "push",
+      table,
+    });
 
     const hasData = !!data?.length;
     const hasDeletes = !!deletedData?.length;
@@ -45,11 +56,7 @@ export async function pushLocalDataToRemote(
     if (didWork) refreshScreen(table);
     return didWork;
   } catch (error) {
-    logError(
-      `[Supastash] Error pushing local data to remote for ${table}`,
-      error
-    );
-    return false;
+    throw error;
   } finally {
     isInSync.delete(table);
   }

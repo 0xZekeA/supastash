@@ -4,5 +4,6 @@ export declare function fetchCalls<R = any>(table: string, options: RealtimeOpti
     trigger: () => void;
     cancel: () => void;
     initialFetchAndSync: () => Promise<void>;
+    isFetching: boolean;
 };
 //# sourceMappingURL=fetchCalls.d.ts.map

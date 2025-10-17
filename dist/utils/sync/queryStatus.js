@@ -1,5 +1,6 @@
 import { getSupastashDb } from "../../db/dbInitializer";
-import { syncStatusMap } from "../../store/syncStatus";
+import { DEFAULT_SYNC_LOG_ENTRY, syncInfo, syncStatusMap, } from "../../store/syncStatus";
+import { supastashEventBus } from "../events/eventBus";
 /**
  * Sets the sync status of a query (row) in a specific table.
  * Automatically removes the entry if the status is 'success'.
@@ -91,3 +92,148 @@ export function getSupastashStatus() {
     }
     return "synced";
 }
+let storeSyncInfo = structuredClone(syncInfo);
+function snapshot() {
+    return structuredClone(storeSyncInfo);
+}
+function emit() {
+    supastashEventBus.emit("updateSyncInfo", snapshot());
+}
+export const SyncInfoUpdater = {
+    setInProgress: ({ action, type, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].inProgress = action === "start";
+        storeSyncInfo = next;
+        emit();
+    },
+    setTablesCompleted: ({ amount, type, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].tablesCompleted = amount;
+        storeSyncInfo = next;
+        emit();
+    },
+    setNumberOfTables: ({ amount, type, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].numberOfTables = amount;
+        storeSyncInfo = next;
+        emit();
+    },
+    setCurrentTable: ({ table, type, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].currentTable = {
+            name: table,
+            unsyncedDataCount: 0,
+            unsyncedDeletedCount: 0,
+        };
+        storeSyncInfo = next;
+        emit();
+    },
+    setLastSyncLog: ({ key, value, type, table, }) => {
+        const next = structuredClone(storeSyncInfo);
+        const arr = next[type].lastSyncLog;
+        const row = arr.find((l) => l.table === table);
+        if (!row) {
+            arr.push({
+                ...DEFAULT_SYNC_LOG_ENTRY,
+                table,
+                [key]: value,
+            });
+        }
+        else {
+            row[key] = value;
+        }
+        storeSyncInfo = next;
+        emit();
+    },
+    setUnsyncedDataCount: ({ amount, type, table, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].currentTable.unsyncedDataCount = amount;
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "unsyncedDataCount",
+            value: amount,
+        });
+        storeSyncInfo = next;
+        emit();
+    },
+    setUnsyncedDeletedCount: ({ amount, type, table, }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type].currentTable.unsyncedDeletedCount = amount;
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "unsyncedDeletedCount",
+            value: amount,
+        });
+        storeSyncInfo = next;
+        emit();
+    },
+    // convenience helpers (optional)
+    markLogStart: ({ type, table }) => SyncInfoUpdater.setLastSyncLog({
+        type,
+        table,
+        key: "startTime",
+        value: Date.now(),
+    }),
+    markLogSuccess: ({ type, table, }) => {
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "success",
+            value: true,
+        });
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "endTime",
+            value: Date.now(),
+        });
+    },
+    markLogError: ({ type, table, lastError, errorCount, rowsFailed = 0, }) => {
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "success",
+            value: false,
+        });
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "lastError",
+            value: lastError,
+        });
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "errorCount",
+            value: errorCount,
+        });
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "endTime",
+            value: Date.now(),
+        });
+        SyncInfoUpdater.setLastSyncLog({
+            type,
+            table,
+            key: "rowsFailed",
+            value: rowsFailed ?? 0,
+        });
+    },
+    reset: ({ type }) => {
+        const next = structuredClone(storeSyncInfo);
+        next[type] = {
+            ...next[type],
+            inProgress: false,
+            numberOfTables: 0,
+            tablesCompleted: 0,
+            currentTable: { name: "", unsyncedDataCount: 0, unsyncedDeletedCount: 0 },
+            lastSyncedAt: Date.now(),
+        };
+        storeSyncInfo = next;
+        emit();
+    },
+    getSnapshot: snapshot,
+};

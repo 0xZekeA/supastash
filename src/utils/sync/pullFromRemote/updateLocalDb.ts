@@ -5,6 +5,7 @@ import { isOnline } from "../../connection";
 import { getTableSchema } from "../../getTableSchema";
 import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
+import { SyncInfoUpdater } from "../queryStatus";
 import { updateLocalSyncedAt } from "../status/syncUpdate";
 import { pullData } from "./pullData";
 import { stringifyValue } from "./stringifyFields";
@@ -33,6 +34,17 @@ export async function updateLocalDb(
     const data = dataResult?.data;
     const deletedIds = dataResult?.deletedIds;
     const deletedIdSet = new Set(deletedIds ?? []);
+
+    SyncInfoUpdater.setUnsyncedDataCount({
+      amount: data?.length ?? 0,
+      type: "pull",
+      table,
+    });
+    SyncInfoUpdater.setUnsyncedDeletedCount({
+      amount: deletedIds?.length ?? 0,
+      type: "pull",
+      table,
+    });
 
     const refreshNeeded = !!data?.length || !!deletedIds?.length;
 
@@ -95,6 +107,7 @@ export async function updateLocalDb(
     if (refreshNeeded) refreshScreen(table);
   } catch (error) {
     logError(`[Supastash] Error updating local db for ${table}`, error);
+    throw error;
   } finally {
     isInSync.delete(table);
   }

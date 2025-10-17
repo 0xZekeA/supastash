@@ -1,1 +1,1 @@
-{"version":3,"file":"syncStatus.d.ts","sourceRoot":"","sources":["../../src/store/syncStatus.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;GAqBG;AACH,eAAO,MAAM,aAAa,2DAGvB,CAAC"}
+{"version":3,"file":"syncStatus.d.ts","sourceRoot":"","sources":["../../src/store/syncStatus.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,YAAY,EAAE,MAAM,2BAA2B,CAAC;AAEnE;;;;;;;;;;;;;;;;;;;;;GAqBG;AACH,eAAO,MAAM,aAAa,2DAGvB,CAAC;AAEJ,eAAO,MAAM,QAAQ,EAAE,QAyBtB,CAAC;AAEF,eAAO,MAAM,sBAAsB,EAAE,YAapC,CAAC"}

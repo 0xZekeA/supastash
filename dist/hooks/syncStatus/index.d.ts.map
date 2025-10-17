@@ -1,1 +1,1 @@
-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../src/hooks/syncStatus/index.ts"],"names":[],"mappings":"AAIA;;;;;;;;;;;;;;;GAeG;AACH,wBAAgB,sBAAsB,mCAiBrC"}
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../src/hooks/syncStatus/index.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,QAAQ,EAAE,MAAM,8BAA8B,CAAC;AAOxD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAmCG;AACH,wBAAgB,sBAAsB,CAAC,aAAa,SAAK;;;EAqCxD"}

@@ -235,13 +235,43 @@ export interface RealtimeOptions<R = any> {
 }
 
 export type SupastashDataResult<R = any> = {
+  /**
+   * Array of records.
+   * @example
+   * data: [user1, user2],
+   */
   data: Array<R>;
+  /**
+   * Map of records by ID.
+   * @example
+   * dataMap: new Map([[1, user1], [2, user2]]),
+   */
   dataMap: Map<string, R>;
+  /**
+   * Trigger the fetch or sync.
+   */
   trigger: () => void;
+  /**
+   * Cancel the pending fetch or sync.
+   */
   cancel: () => void;
+  /**
+   * Optional maps grouped by field.
+   * @example
+   * groupedBy: {
+   *   userId: new Map([[1, [user1, user2]]]),
+   *   groupId: new Map([[1, [group1, group2]]]),
+   * }
+   */
   groupedBy?: {
     [K in keyof R]: Map<R[K], Array<R>>;
   };
+  /**
+   * Whether the data is being fetched.
+   * @example
+   * isFetching: true
+   */
+  isFetching: boolean;
 };
 
 export type SupastashDataHook<R = any> = (

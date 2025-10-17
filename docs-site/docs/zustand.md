@@ -82,11 +82,11 @@ export function useHydrateStores() {
 
 ### 🧪 How to Use `useHydrateStores`
 
-Call this hook **once** at the root of your app (or in a top-level layout/screen) to enable auto-hydration:
+You can call it anywhere—in your app layout, a specific navigator, or even an individual.
 
 ```ts
 export default function AppLayout() {
-  useHydrateStores(); // 👈 enables all auto-hydration events
+  useHydrateStores();
 
   return (
     <NavigationContainer>

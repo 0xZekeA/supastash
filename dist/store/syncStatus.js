@@ -21,3 +21,43 @@
  * - Value = sync status of that row
  */
 export const syncStatusMap = new Map();
+export const syncInfo = {
+    pull: {
+        inProgress: false,
+        numberOfTables: 0,
+        tablesCompleted: 0,
+        currentTable: {
+            name: "",
+            unsyncedDataCount: 0,
+            unsyncedDeletedCount: 0,
+        },
+        lastSyncedAt: 0,
+        lastSyncLog: [],
+    },
+    push: {
+        inProgress: false,
+        numberOfTables: 0,
+        tablesCompleted: 0,
+        currentTable: {
+            name: "",
+            unsyncedDataCount: 0,
+            unsyncedDeletedCount: 0,
+        },
+        lastSyncedAt: 0,
+        lastSyncLog: [],
+    },
+};
+export const DEFAULT_SYNC_LOG_ENTRY = {
+    table: "",
+    filterKey: "",
+    filterJson: [],
+    action: "push",
+    success: true,
+    errorCount: 0,
+    unsyncedDataCount: 0,
+    unsyncedDeletedCount: 0,
+    rowsFailed: 0,
+    lastError: null,
+    startTime: 0,
+    endTime: 0,
+};

@@ -8,7 +8,10 @@
 
 ---
 
-## 📚 [Full Docs](https://0xzekea.github.io/supastash/)
+## 📚 Documentation
+
+→ [Full Docs](https://0xzekea.github.io/supastash/)  
+→ [Getting Started Guide](./docs/getting-started.md)
 
 ---
 
@@ -21,7 +24,7 @@
 
   - `expo-sqlite`
   - `react-native-nitro-sqlite`
-  - `react-native-sqlite-storage`
+  - `react-native-sqlite-storage` (beta)
 
 - 🧠 Built-in:
 
@@ -59,7 +62,7 @@ npm install expo-sqlite
 # Bare RN with better speed
 npm install react-native-nitro-sqlite
 
-# Classic RN SQLite
+# Classic RN SQLite (beta)
 npm install react-native-sqlite-storage
 ```
 
@@ -134,12 +137,13 @@ Use this in a hook like `useHydrateStores()` to stay in sync without polling.
 
 ---
 
-### 🔁 `useSupastashData` (Global, Realtime)
+### 🔁 `useSupastashData` (with Realtime)
 
 ```ts
 const { data, groupedBy } = useSupastashData("orders", {
   filter: { column: "user_id", operator: "eq", value: userId },
   extraMapKeys: ["status"],
+  realtime: true, // Default: true
 });
 ```
 
@@ -169,7 +173,7 @@ useSupastashFilters({
 - Your Supabase tables must have:
 
   - A primary key `id` (string or UUID)
-  - `timestamptz` columns for `created_at`, `updated_at`, and optionally `deleted_at`
+  - `timestamptz` columns for `created_at`, `updated_at`, and `deleted_at`
 
 - Run this SQL in Supabase to allow schema reflection:
 
@@ -204,7 +208,7 @@ const { data: orders } = useSupatashData("orders", {
 
 - Tracks rows using `updated_at`, `deleted_at`, and `created_at`
 - Batches changes in background and retries failed ones
-- Keeps **local database as the source of truth**
+- Local cache backed by Supabase
 - Runs pull/push jobs efficiently using staged task pipelines
 
 ---
