@@ -227,18 +227,6 @@ await supastash
 
 ---
 
-## 🗂 Recommended Project Structure
-
-```
-src/
-  ├─ core/         # Supastash config, Supabase client
-  ├─ hooks/        # useSupatashData, useSupastashFilters etc.
-  ├─ types/        # Zod schemas, DB types
-  ├─ utils/        # Local helpers
-```
-
----
-
 ## 🔧 API Docs
 
 - [`configureSupastash()`](https://0xzekea.github.io/supastash/docs/configuration)

@@ -1,3 +1,5 @@
+import { SupastashSQLiteDatabase } from "src/types/supastashConfig.types";
+import { resetSupastashSyncStatus } from "src/utils/sync/status/services";
 import { getSupastashDb } from "../../db/dbInitializer";
 import { LocalSchemaDefinition } from "../../types/schemaManager.types";
 import { clearSchemaCache } from "../../utils/getTableSchema";
@@ -10,6 +12,12 @@ import log, { logError } from "../../utils/logs";
  * Intended for offline-first apps using Supastash. Ensures consistency in structure and indexing while
  * allowing runtime control of schema migration through `deletePreviousSchema`.
  *
+ * It will also create the following indexes:
+ * - synced_at
+ * - deleted_at
+ * - created_at
+ * - updated_at
+ * if they do not exist in the schema and if columns exist in the table.
  * ---
  *
  * @param tableName - The name of the local SQLite table.
@@ -82,13 +90,11 @@ export async function defineLocalSchema(
 
     if (deletePreviousSchema) {
       const dropSql = `DROP TABLE IF EXISTS ${tableName}`;
-      const clearSyncStatusSql = `DELETE FROM supastash_sync_status WHERE table_name = '${tableName}'`;
-      const clearDeleteStatusSql = `DELETE FROM supastash_deleted_status WHERE table_name = '${tableName}'`;
-      const clearLastCreatedStatusSql = `DELETE FROM supastash_last_created WHERE table_name = '${tableName}'`;
 
       const tryDropTable = async (attempt = 1) => {
         try {
           await db.execAsync(dropSql);
+          await resetSupastashSyncStatus(tableName, undefined, "all");
         } catch (err) {
           if (String(err).includes("table is locked") && attempt < 5) {
             await new Promise((res) => setTimeout(res, attempt * 100));
@@ -100,25 +106,79 @@ export async function defineLocalSchema(
 
       await tryDropTable();
 
-      await db.execAsync(clearSyncStatusSql);
-      await db.execAsync(clearDeleteStatusSql);
-      await db.execAsync(clearLastCreatedStatusSql);
-
       clearSchemaCache(tableName);
       log(`[Supastash] Dropped table ${tableName}`);
     }
 
     await db.execAsync(sql);
 
+    const standardIndexes = [
+      "synced_at",
+      "deleted_at",
+      "created_at",
+      "updated_at",
+    ];
+
     // Generate and create index SQL
     if (__indices?.length) {
       for (const col of __indices) {
+        if (standardIndexes.includes(col)) {
+          continue;
+        }
         const indexName = `idx_${tableName}_${col}`;
         const indexSql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${tableName}(${col});`;
         await db.execAsync(indexSql);
       }
     }
+    await createStandardIndexes(db, tableName, standardIndexes);
   } catch (error) {
     logError(`[Supastash] Error defining schema for table ${tableName}`, error);
   }
+}
+
+async function createStandardIndexes(
+  db: SupastashSQLiteDatabase,
+  table: string,
+  columns: string[]
+) {
+  const pragmaRows = await db.getAllAsync(`PRAGMA table_info(${table});`);
+  const existingCols = Array.isArray(pragmaRows)
+    ? pragmaRows.map((r: any) => r.name)
+    : [];
+
+  await db.execAsync("BEGIN");
+  try {
+    for (const col of columns) {
+      if (existingCols.includes(col)) {
+        const hasSameIndex = await hasSingleColumnIndex(db, table, col);
+        if (!hasSameIndex) {
+          await db.execAsync(
+            `CREATE INDEX IF NOT EXISTS idx_${table}_${col} ON ${table}(${col});`
+          );
+        }
+      }
+    }
+    await db.execAsync("COMMIT");
+  } catch (error) {
+    await db.execAsync("ROLLBACK");
+    logError(`[Supastash] Error creating standard indexes for ${table}`, error);
+  }
+}
+
+async function hasSingleColumnIndex(
+  db: SupastashSQLiteDatabase,
+  table: string,
+  col: string
+) {
+  const idxList = await db.getAllAsync(`PRAGMA index_list(${table});`);
+  if (!Array.isArray(idxList)) return false;
+
+  for (const idx of idxList) {
+    const idxName = idx.name;
+    const info = await db.getAllAsync(`PRAGMA index_info(${idxName});`);
+    if (!Array.isArray(info)) continue;
+    // Single-column index exactly on `col`
+    if (info.length === 1 && info[0]?.name === col) return true;
+  }
+  return false;
 }
