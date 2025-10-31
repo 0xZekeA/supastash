@@ -1,6 +1,6 @@
 import { PostgrestError, PostgrestSingleResponse } from "@supabase/supabase-js";
 
-type SupabaseResult<T> = PostgrestSingleResponse<T>;
+export type SupabaseResult<T> = PostgrestSingleResponse<T>;
 export type PayloadData = any;
 
 export type SupabaseQueryReturn<U extends boolean, Z> = U extends true

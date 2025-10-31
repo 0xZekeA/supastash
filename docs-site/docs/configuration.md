@@ -49,7 +49,6 @@ configureSupastash({
 - **Conflict behavior flag**: `deleteConflictedRows` (off by default). When `true`, non‑retryable conflicts delete local rows.
 - **Policy plumbing**: `DEFAULT_POLICY` and user policy merge; `nonRetryableCodes`/`retryableCodes` are **replaced** if provided (not unioned).
 - **Field enforcement block** with sensible defaults and auto‑fill options.
-- **Optional** `useCustomRPCForUpserts` flag for teams using RPC-based upserts.
 
 ---
 
@@ -63,15 +62,16 @@ Initializes Supastash. Must be called once.
 
 #### Core options
 
-| Option             | Type                                           | Default          | Notes                                                                                       |
-| ------------------ | ---------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------- |
-| `dbName`           | `string`                                       | `"supastash_db"` | Name of local SQLite DB.                                                                    |
-| `supabaseClient`   | `SupabaseClient \| null`                       | **required**     | A configured Supabase client.                                                               |
-| `sqliteClient`     | adapter for chosen engine                      | **required**     | Shape depends on `sqliteClientType` (see below).                                            |
-| `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro" \| null` | **required**     | Selects SQLite engine.                                                                      |
-| `onSchemaInit`     | `() => Promise<void>`                          | `undefined`      | Optional hook to define local schema with `defineLocalSchema`. Runs once after DB creation. |
-| `debugMode`        | `boolean`                                      | `true`           | Verbose logs for sync/DB.                                                                   |
-| `listeners`        | `number`                                       | `250`            | Max Realtime listeners.                                                                     |
+| Option             | Type                                           | Default          | Notes                                                                                                                         |
+| ------------------ | ---------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `dbName`           | `string`                                       | `"supastash_db"` | Name of local SQLite DB.                                                                                                      |
+| `supabaseClient`   | `SupabaseClient \| null`                       | **required**     | A configured Supabase client.                                                                                                 |
+| `sqliteClient`     | adapter for chosen engine                      | **required**     | Shape depends on `sqliteClientType` (see below).                                                                              |
+| `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro" \| null` | **required**     | Selects SQLite engine.                                                                                                        |
+| `onSchemaInit`     | `() => Promise<void>`                          | `undefined`      | Optional hook to define local schema with `defineLocalSchema`. Runs once after DB creation.                                   |
+| `debugMode`        | `boolean`                                      | `true`           | Verbose logs for sync/DB.                                                                                                     |
+| `listeners`        | `number`                                       | `250`            | Max Realtime listeners.                                                                                                       |
+| `pushRPCPath`      | `string`                                       | `undefined`      | Path to your custom batch-sync RPC for push operations ([see docs link](./sync-calls.md#-pushrpcpath-custom-batch-sync-rpc)). |
 
 #### Sync switches & intervals
 
@@ -202,21 +202,6 @@ configureSupastash({
 });
 ```
 
-Server Postgres unique indexes:
-
-```sql
-create extension if not exists unaccent;
-
-create unique index items_name_shop_uq on items (
-  shop_id,
-  lower(regexp_replace(unaccent(name), '\\s+', ' ', 'g'))
-) where deleted_at is null;
-
-create unique index items_barcode_shop_uq on items (
-  shop_id, barcode
-) where deleted_at is null and barcode is not null;
-```
-
 ### Delete conflicted rows automatically
 
 ```ts
@@ -258,7 +243,12 @@ A: No. If you supply `nonRetryableCodes`/`retryableCodes`, they **replace** the 
 A: In the current code, yes (`syncEngine.pull = true`). If you want extra safety, set it to `false` and rely on [useSupastashFilters.ts](./useSupastashFilters.md) for filtered pulls or enable only after RLS is tight.
 
 **Q: Can I push via a custom RPC?**  
-A: Yes—toggle `useCustomRPCForUpserts: true` and implement your RPC path in your sync layer.
+Yes — you can push via a custom RPC.
+A: Set the pushRPCPath option in your Supastash config to the name of your RPC function. Supastash will then call this instead of the default .upsert() during push syncs, allowing you to batch inserts/updates and handle RLS safely.
+📘 See detailed setup here: pushRPCPath ([Custom Batch Sync RPC](./sync-calls.md#-pushrpcpath-custom-batch-sync-rpc)).
+
+B: Register a custom push function for a specific table. Push must return true/false.
+📘 See detailed setup [here](./sync-calls.md).
 
 ---
 

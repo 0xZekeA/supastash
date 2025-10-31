@@ -6,7 +6,7 @@ import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { setQueryStatus, SyncInfoUpdater } from "../queryStatus";
 import { enforceTimestamps } from "./normalize";
-import { batchUpsert, fetchRemoteHeadsChunked, filterRowsByUpdatedAt, handleRowFailure, markSynced, singleUpsert, } from "./uploadHelpers";
+import { backoff, batchUpsert, fetchRemoteHeadsChunked, filterRowsByUpdatedAt, handleRowFailure, markSynced, rpcUpsert, rpcUpsertSingle, singleUpsert, } from "./uploadHelpers";
 /**
  * Uploads a chunk of data to the remote database
  *
@@ -28,11 +28,21 @@ async function uploadChunk(table, chunk, onPushToRemote) {
         return;
     let errorCount = 0;
     let lastError = null;
+    let pending = [];
+    const hasRPCPath = !!config.pushRPCPath;
     const ids = chunk.map((row) => row.id);
-    // Fetch remote data for the current chunk
-    const remoteIds = await fetchRemoteHeadsChunked(table, ids, supabase);
-    // Loop through the initial chunk and check if the id is in the remote data
-    const toPush = filterRowsByUpdatedAt(table, chunk, remoteIds);
+    const toPush = [];
+    // If we have a RPC path, we can push the whole chunk. Server validates freshness.
+    if (hasRPCPath) {
+        toPush.push(...chunk);
+    }
+    else {
+        // Fetch remote data for the current chunk
+        const remoteIds = await fetchRemoteHeadsChunked(table, ids, supabase);
+        // Loop through the initial chunk and check if the id is in the remote data
+        const filtered = filterRowsByUpdatedAt(table, chunk, remoteIds);
+        toPush.push(...filtered);
+    }
     if (toPush.length === 0)
         return;
     const preflightOK = [];
@@ -57,15 +67,32 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     }
     if (preflightOK.length === 0)
         return;
+    pending.push(...preflightOK);
     const maxBatchAttempts = config.syncPolicy?.maxBatchAttempts ?? 5;
     let attempts = 0;
-    let pending = [...preflightOK];
     while (attempts < maxBatchAttempts && pending.length > 0) {
         let batchOk = false;
+        // RPC return values
+        let completed = [];
+        let existsMap = new Map();
         if (onPushToRemote) {
             const ok = await onPushToRemote(pending);
             if (ok)
                 batchOk = true;
+        }
+        else if (hasRPCPath) {
+            const res = await rpcUpsert({ table, rows: pending, supabase });
+            completed = res.data.completed;
+            pending = [...res.data.skipped];
+            existsMap = res.data.existsMap;
+            batchOk = res.error == null && pending.length === 0;
+            // If there was an RPC error, we need to retry the main function
+            if (res.error) {
+                attempts++;
+                await backoff(attempts);
+                pending = [...preflightOK];
+                continue;
+            }
         }
         else {
             const { error } = await batchUpsert(table, pending, supabase);
@@ -76,16 +103,24 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             await markSynced(table, pending.map((r) => r.id));
             return;
         }
+        if (completed.length > 0) {
+            await markSynced(table, completed.map((r) => r.id));
+        }
         //Batch failed -> isolate per-row offenders
         const keep = [];
         const syncedNow = [];
         for (const row of pending) {
-            const res = onPushToRemote
-                ? await (async () => {
-                    const ok = await onPushToRemote([row]);
-                    return { error: ok ? null : { code: "ROW_FAILED" } };
-                })()
-                : await singleUpsert(table, row, supabase);
+            let res = null;
+            if (onPushToRemote) {
+                const ok = await onPushToRemote([row]);
+                res = { error: ok ? null : { code: "ROW_FAILED" } };
+            }
+            else if (hasRPCPath) {
+                res = await rpcUpsertSingle({ table, row, supabase, existsMap });
+            }
+            else {
+                res = await singleUpsert(table, row, supabase);
+            }
             if (!res.error) {
                 syncedNow.push(row.id);
                 continue;
@@ -104,11 +139,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             return;
         // Backoff before next batch round (exponential, bounded by policy)
         attempts++;
-        const schedule = config.syncPolicy?.backoffDelaysMs ?? [
-            10000, 30000, 120000, 300000, 600000,
-        ];
-        const delay = schedule[Math.min(attempts - 1, schedule.length - 1)];
-        await new Promise((r) => setTimeout(r, delay));
+        await backoff(attempts);
         pending = keep;
     }
     if (pending.length > 0) {

@@ -24,6 +24,7 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   syncPolicy: DEFAULT_POLICY,
   fieldEnforcement: DEFAULT_FIELDS,
   deleteConflictedRows: false,
+  pushRPCPath: undefined,
 };
 
 let _configured = false;

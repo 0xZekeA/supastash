@@ -6,6 +6,12 @@ import { LocalSchemaDefinition } from "../../types/schemaManager.types";
  * Intended for offline-first apps using Supastash. Ensures consistency in structure and indexing while
  * allowing runtime control of schema migration through `deletePreviousSchema`.
  *
+ * It will also create the following indexes:
+ * - synced_at
+ * - deleted_at
+ * - created_at
+ * - updated_at
+ * if they do not exist in the schema and if columns exist in the table.
  * ---
  *
  * @param tableName - The name of the local SQLite table.

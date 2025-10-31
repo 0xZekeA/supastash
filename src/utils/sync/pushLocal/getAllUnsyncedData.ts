@@ -31,7 +31,8 @@ async function getRemoteKeys(table: string): Promise<string[] | null> {
     });
     if (error) {
       log(
-        `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}`
+        `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}
+        You can find more information in the Supastash docs: https://0xzekea.github.io/supastash/docs/getting-started#%EF%B8%8F-server-side-setup-for-filtered-pulls`
       );
       numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
       return null;

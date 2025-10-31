@@ -99,6 +99,11 @@ const sidebars: SidebarsConfig = {
       id: "sync-flows",
       label: "Sync Flows",
     },
+    {
+      type: "doc",
+      id: "sync-calls",
+      label: "Custom Sync Calls",
+    },
   ],
 };
 export default sidebars;

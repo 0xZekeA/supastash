@@ -4,11 +4,9 @@ import { SupastashConfig } from "../../../types/supastashConfig.types";
 import { RowLike } from "../../../types/syncEngine.types";
 import { supastashEventBus } from "../../../utils/events/eventBus";
 import log, { logWarn } from "../../../utils/logs";
+import { upsertData } from "../pullFromRemote/updateLocalDb";
 import { setQueryStatus } from "../queryStatus";
 import { updateLocalSyncedAt } from "../status/syncUpdate";
-
-const DEFAULT_REWIND_MS = 60 * 60 * 1000; // 1 hour
-const MAX_REWIND_BACKSTOP_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function classifyFailure(
   cfg: SupastashConfig<any>,
@@ -33,6 +31,15 @@ async function singleUpsert(table: string, row: RowLike, supabase: any) {
   return await supabase.from(table).upsert(row).select("id").maybeSingle();
 }
 
+async function backoff(attempts: number) {
+  const config = getSupastashConfig();
+  const schedule = config.syncPolicy?.backoffDelaysMs ?? [
+    10_000, 30_000, 120_000, 300_000, 600_000,
+  ];
+  const delay = schedule[Math.min(attempts - 1, schedule.length - 1)];
+  await new Promise((r) => setTimeout(r, delay));
+}
+
 async function fetchServerRowById(table: string, id: string, supabase: any) {
   const { data } = await supabase
     .from(table)
@@ -40,6 +47,96 @@ async function fetchServerRowById(table: string, id: string, supabase: any) {
     .eq("id", id)
     .maybeSingle();
   return data ?? null;
+}
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ * RPC Upsert
+ * ────────────────────────────────────────────────────────────────────────── */
+function setPending(table: string, rows: RowLike[]) {
+  for (const row of rows) {
+    setQueryStatus(row.id, table, "pending");
+  }
+}
+async function rpcUpsert({
+  table,
+  rows,
+  supabase,
+}: {
+  table: string;
+  rows: RowLike[];
+  supabase: any;
+}) {
+  const cfg = getSupastashConfig();
+  if (!cfg.pushRPCPath) {
+    throw new Error(
+      "pushRPCPath is not configured. Please configure it in the Supastash config. You can find more information in the Supastash docs: https://0xzekea.github.io/supastash/docs/sync-calls#%EF%B8%8F-pushrpcpath-custom-batch-sync-rpc"
+    );
+  }
+  setPending(table, rows);
+  const columns = Object.keys(rows[0]);
+  const { data, error } = await supabase.rpc(cfg.pushRPCPath, {
+    target_table: table,
+    payload: rows,
+    columns,
+  });
+
+  const mappedRows = new Map<string, RowLike>();
+  for (const row of rows) {
+    mappedRows.set(row.id, row);
+  }
+
+  const skipped: RowLike[] = [];
+  const completed: RowLike[] = [];
+  const existsMap = new Map<string, boolean>();
+  for (const row of data ?? []) {
+    if (row.action === "skipped") {
+      if (row.reason === "stale_remote") {
+        void acceptServerAndStopRetrying(table, row.id);
+        continue;
+      }
+      const localRow = mappedRows.get(row.id);
+      if (localRow) {
+        skipped.push(localRow);
+        existsMap.set(localRow.id, !!row.record_exists);
+      }
+    } else {
+      completed.push(row);
+    }
+  }
+
+  return {
+    data: {
+      completed,
+      skipped,
+      existsMap,
+    },
+    error: error ?? null,
+  };
+}
+
+async function rpcUpsertSingle({
+  table,
+  row,
+  supabase,
+  existsMap,
+}: {
+  table: string;
+  row: RowLike;
+  supabase: any;
+  existsMap: Map<string, boolean>;
+}) {
+  const rowExist = existsMap.get(row.id) ?? false;
+  const { data, error } = rowExist
+    ? await supabase
+        .from(table)
+        .update(row)
+        .eq("id", row.id)
+        .select("id")
+        .maybeSingle()
+    : await supabase.from(table).insert(row).select("id").maybeSingle();
+
+  if (error) return { data: null, error };
+  return { data, error: null };
 }
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -121,15 +218,14 @@ async function handleRowFailure(
         `Row ${row.id} on ${table} hit NON_RETRYABLE conflict → deleting local`,
         JSON.stringify(err)
       );
-      await deleteLocalRow(table, row.id);
-      cfg.syncPolicy?.onRowDroppedLocal?.(table, row.id);
+      await deleteLocalRow(table, row.id, supabase);
       return "DROP";
     } else {
       logWarn(
         `Row ${row.id} on ${table} hit NON_RETRYABLE conflict → accepting server`,
         JSON.stringify(err)
       );
-      await acceptServerAndStopRetrying(table, row.id);
+      await deleteLocalRow(table, row.id, supabase);
       cfg.syncPolicy?.onRowAcceptedServer?.(table, row.id);
       return "DROP";
     }
@@ -151,15 +247,8 @@ async function handleRowFailure(
       JSON.stringify(err)
     );
     if (klass === "HTTP") {
-      const server = await fetchServerRowById(table, row.id, supabase);
-      if (server) {
-        await replaceLocalWithServer(table, server);
-        return "REPLACED";
-      } else if (cfg.deleteConflictedRows) {
-        await deleteLocalRow(table, row.id);
-        cfg.syncPolicy?.onRowDroppedLocal?.(table, row.id);
-        return "REPLACED";
-      }
+      await deleteLocalRow(table, row.id, supabase);
+      return "REPLACED";
     }
     setQueryStatus(row.id, table, "error");
     return "KEEP";
@@ -176,18 +265,21 @@ function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
 }
 
-async function deleteLocalRow(table: string, id: string) {
-  await rewindAndDropLocal(table, id);
+async function deleteLocalRow(table: string, id: string, supabase: any) {
+  await rewindAndDropLocal(table, id, supabase);
 
   setQueryStatus(id, table, "success");
   supastashEventBus.emit("updateSyncStatus");
 }
 
 export {
+  backoff,
   batchUpsert,
   filterRowsByUpdatedAt,
   handleRowFailure,
   markSynced,
+  rpcUpsert,
+  rpcUpsertSingle,
   singleUpsert,
 };
 
@@ -195,33 +287,31 @@ export {
  * Deletes local row and rewinds table watermark so normal pull will fetch server copy.
  * No server read needed.
  */
-export async function rewindAndDropLocal(table: string, rowId: string) {
-  const db = await getSupastashDb();
+export async function rewindAndDropLocal(
+  table: string,
+  rowId: string,
+  supabase: any
+) {
+  const server = await fetchServerRowById(table, rowId, supabase);
+  if (server) {
+    await replaceLocalWithServer(table, server);
+  } else {
+    const db = await getSupastashDb();
 
-  // 1) Delete local copy
-  await db.runAsync(`DELETE FROM ${quoteIdent(table)} WHERE id = ?`, [rowId]);
+    // 1) Delete local copy
+    await db.runAsync(`DELETE FROM ${quoteIdent(table)} WHERE id = ?`, [rowId]);
+    const cfg = getSupastashConfig();
+    cfg.syncPolicy?.onRowDroppedLocal?.(table, rowId);
 
-  logWarn(
-    `[Supastash] REPLACED: dropped local ${table}:${rowId}
-    `
-  );
+    logWarn(
+      `[Supastash] REPLACED: dropped local ${table}:${rowId}
+      `
+    );
+  }
 }
 
 async function replaceLocalWithServer(table: string, serverRow: RowLike) {
-  const db = await getSupastashDb();
-  const cols = Object.keys(serverRow);
-  const placeholders = cols.map(() => "?").join(", ");
-  const updates = cols
-    .filter((c) => c !== "id")
-    .map((c) => `${c}=excluded.${c}`)
-    .join(", ");
-  await db.runAsync(
-    `INSERT INTO ${quoteIdent(table)} (${cols.join(
-      ","
-    )}) VALUES (${placeholders})
-     ON CONFLICT(id) DO UPDATE SET ${updates};`,
-    cols.map((c) => serverRow[c] ?? null)
-  );
+  await upsertData(table, serverRow);
   await updateLocalSyncedAt(table, [serverRow.id]);
   setQueryStatus(serverRow.id, table, "success");
   supastashEventBus.emit("updateSyncStatus");

@@ -1,9 +1,9 @@
-import { SupastashSQLiteDatabase } from "src/types/supastashConfig.types";
-import { resetSupastashSyncStatus } from "src/utils/sync/status/services";
 import { getSupastashDb } from "../../db/dbInitializer";
 import { LocalSchemaDefinition } from "../../types/schemaManager.types";
+import { SupastashSQLiteDatabase } from "../../types/supastashConfig.types";
 import { clearSchemaCache } from "../../utils/getTableSchema";
 import log, { logError } from "../../utils/logs";
+import { resetSupastashSyncStatus } from "../../utils/sync/status/services";
 
 /**
  * 🧱 defineLocalSchema

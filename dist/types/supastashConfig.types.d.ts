@@ -38,7 +38,39 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   syncPolicy?: SupastashSyncPolicy;
   fieldEnforcement?: FieldEnforcement;
   deleteConflictedRows?: boolean;
-  useCustomRPCForUpserts?: boolean;
+  /**
+   * The path to the RPC function to use for upserts.
+   * If not provided, Supastash will use the default upsert logic.
+   *
+   * The RPC function should be defined as follows:
+   * @example
+   * await supabase.rpc('push_rpc_path', {
+   *   target_table: 'users',
+   *   payload: [{ id: '1', name: 'John Doe' }],
+   *   columns: ['id', 'name'],
+   * });
+   *
+   * ⚠️ Important:
+   * Your RPC must verify data freshness before updating.
+   * Always ensure local.updated_at > remote.updated_at before performing an update to prevent overwriting newer server data.
+   *
+   * ⚠️ Return Structure:
+   * Your RPC must return an array of objects with the following shape:
+   *
+   * {
+   *   id: string;             // UUID of the row
+   *   action: "updated" | "inserted" | "skipped";
+   *   reason?: string | null; // Optional reason, e.g. "stale_remote", "conflict_or_unauthorized"
+   *   record_exists: boolean;        // Whether the row already exists remotely
+   * }
+   *
+   * Supastash uses this structure to reconcile local states and decide whether to retry, re-insert, or refresh each row.
+   * It's advisable to use the recommended structure from the docs: https://0xzekea.github.io/supastash/docs/sync-calls#%EF%B8%8F-pushrpcpath-custom-batch-sync-rpc
+   *
+   * @example
+   * Supastash docs: https://0xzekea.github.io/supastash/docs/sync-calls#%EF%B8%8F-pushrpcpath-custom-batch-sync-rpc
+   */
+  pushRPCPath?: string;
 };
 
 interface SupastashSQLiteDatabase {
