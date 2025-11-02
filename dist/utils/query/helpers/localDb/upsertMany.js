@@ -119,17 +119,14 @@ export async function upsertMany(items, opts, state) {
             }
         }
     };
-    await db.runAsync("BEGIN");
     try {
         await run();
         const newState = { ...state, payload: remotePayload };
         if (remoteCalls.includes(newState.type)) {
             queueRemoteCall(newState);
         }
-        await db.runAsync("COMMIT");
     }
     catch (e) {
-        await db.runAsync("ROLLBACK");
         throw e;
     }
     return returnRows ? upserted : undefined;

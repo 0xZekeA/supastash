@@ -146,7 +146,6 @@ async function createStandardIndexes(
     ? pragmaRows.map((r: any) => r.name)
     : [];
 
-  await db.execAsync("BEGIN");
   try {
     for (const col of columns) {
       if (existingCols.includes(col)) {
@@ -158,9 +157,7 @@ async function createStandardIndexes(
         }
       }
     }
-    await db.execAsync("COMMIT");
   } catch (error) {
-    await db.execAsync("ROLLBACK");
     logError(`[Supastash] Error creating standard indexes for ${table}`, error);
   }
 }

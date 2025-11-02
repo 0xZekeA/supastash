@@ -62,13 +62,10 @@ export async function insertMany(payload, opts) {
                 await microYield();
         }
     };
-    await db.runAsync("BEGIN");
     try {
         await run();
-        await db.runAsync("COMMIT");
     }
     catch (e) {
-        await db.runAsync("ROLLBACK");
         throw e;
     }
     // 4) Optionally fetch inserted rows (batched) and return in input order

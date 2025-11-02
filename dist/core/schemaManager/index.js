@@ -110,7 +110,6 @@ async function createStandardIndexes(db, table, columns) {
     const existingCols = Array.isArray(pragmaRows)
         ? pragmaRows.map((r) => r.name)
         : [];
-    await db.execAsync("BEGIN");
     try {
         for (const col of columns) {
             if (existingCols.includes(col)) {
@@ -120,10 +119,8 @@ async function createStandardIndexes(db, table, columns) {
                 }
             }
         }
-        await db.execAsync("COMMIT");
     }
     catch (error) {
-        await db.execAsync("ROLLBACK");
         logError(`[Supastash] Error creating standard indexes for ${table}`, error);
     }
 }

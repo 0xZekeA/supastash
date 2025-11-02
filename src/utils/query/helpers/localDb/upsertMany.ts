@@ -196,16 +196,13 @@ export async function upsertMany<R = any>(
     }
   };
 
-  await db.runAsync("BEGIN");
   try {
     await run();
     const newState = { ...state, payload: remotePayload };
     if (remoteCalls.includes(newState.type)) {
       queueRemoteCall(newState);
     }
-    await db.runAsync("COMMIT");
   } catch (e) {
-    await db.runAsync("ROLLBACK");
     throw e;
   }
 

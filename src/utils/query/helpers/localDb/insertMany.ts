@@ -97,12 +97,9 @@ export async function insertMany<R = any>(
     }
   };
 
-  await db.runAsync("BEGIN");
   try {
     await run();
-    await db.runAsync("COMMIT");
   } catch (e) {
-    await db.runAsync("ROLLBACK");
     throw e;
   }
 
