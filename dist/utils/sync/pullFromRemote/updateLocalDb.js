@@ -90,7 +90,7 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             refreshScreen(table);
     }
     catch (error) {
-        logError(`[Supastash] Error updating local db for ${table}`, error);
+        logWarn(`[Supastash] Error updating local db for ${table}`, error);
         throw error;
     }
     finally {

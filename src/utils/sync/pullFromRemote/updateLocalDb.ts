@@ -106,7 +106,7 @@ export async function updateLocalDb(
 
     if (refreshNeeded) refreshScreen(table);
   } catch (error) {
-    logError(`[Supastash] Error updating local db for ${table}`, error);
+    logWarn(`[Supastash] Error updating local db for ${table}`, error);
     throw error;
   } finally {
     isInSync.delete(table);

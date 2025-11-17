@@ -12,13 +12,25 @@ import { querySupabase } from "../remoteQuery/supabaseQuery";
 let batchQueue: BatchedCall<any, any, any>[] = [];
 let isProcessing = false;
 let batchTimer: NodeJS.Timeout | number | null = null;
+
 const BATCH_DELAY = 10;
+const MAX_RETRIES = 3;
+const MAX_OFFLINE_RETRIES = 5;
 
 const retryCount = new Map<string, number>();
 const calledOfflineRetries = new Map<string, number>();
 const successfulCalls = new Set<string>();
-const MAX_RETRIES = 3;
-const MAX_OFFLINE_RETRIES = 5;
+
+const seenFailureLog = new Set<string>();
+
+function isDuplicateKeyError(error: any): boolean {
+  return (
+    !!error &&
+    ((error.code && error.code === "23505") ||
+      (typeof error.message === "string" &&
+        error.message.toLowerCase().includes("duplicate key")))
+  );
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -78,17 +90,21 @@ async function processBatch(): Promise<void> {
 
         if (!isConnected) {
           const offlineRetries = (calledOfflineRetries.get(opKey) || 0) + 1;
+          calledOfflineRetries.set(opKey, offlineRetries);
+
           if (offlineRetries > MAX_OFFLINE_RETRIES) {
+            if (!seenFailureLog.has(opKey)) {
+              seenFailureLog.add(opKey);
+              log(
+                `[Supastash] Offline — persisted locally, will retry later: ${opKey}`
+              );
+            }
             await getQueryStatusFromDb(state.table);
             supastashEventBus.emit("updateSyncStatus");
-            logWarn(
-              `[Supastash] Gave up on ${opKey} after ${MAX_OFFLINE_RETRIES} offline retries`
-            );
             reject(new Error(`Offline retry limit exceeded for ${opKey}`));
-
             break;
           }
-          calledOfflineRetries.set(opKey, offlineRetries);
+
           await delay(1000);
           continue;
         }
@@ -109,12 +125,28 @@ async function processBatch(): Promise<void> {
           const currentRetries = retryCount.get(opKey) ?? 0;
           retryCount.set(opKey, currentRetries + 1);
 
-          if (currentRetries >= MAX_RETRIES) {
-            logWarn(
-              `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries ERROR: ${error.message} will retry on next sync`
-            );
-            logWarn("[Supastash] Full error object:", JSON.stringify(error));
+          if (isDuplicateKeyError(error)) {
+            if (!seenFailureLog.has(opKey)) {
+              seenFailureLog.add(opKey);
+              logWarn(
+                `[Supastash] Duplicate key on ${state.table} (op=${
+                  state.method
+                }) — seems already synced; will retry on next full sync: id=${
+                  state.id ?? "-"
+                }`
+              );
+            }
+            reject(new Error(`Duplicate key (23505) for ${opKey}`));
+            break;
+          }
 
+          if (currentRetries >= MAX_RETRIES) {
+            if (!seenFailureLog.has(opKey)) {
+              seenFailureLog.add(opKey);
+              logWarn(
+                `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries — will retry on next sync`
+              );
+            }
             reject(new Error(`Max retries exceeded for ${opKey}`));
             break;
           }
@@ -122,8 +154,16 @@ async function processBatch(): Promise<void> {
           await delay(1000 * (currentRetries + 1));
         }
       }
-    } catch (error) {
-      reject(error);
+    } catch (err) {
+      if (!seenFailureLog.has(opKey)) {
+        seenFailureLog.add(opKey);
+        logWarn(
+          `[Supastash] Unexpected error processing ${opKey} — ${String(
+            (err as Error).message ?? err
+          )}`
+        );
+      }
+      reject(err);
     }
   }
 

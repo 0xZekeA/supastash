@@ -4,6 +4,7 @@ import { tableSchemaData } from "../../../store/tableSchemaData";
 import { PayloadData } from "../../../types/query.types";
 import { getTableSchema } from "../../../utils/getTableSchema";
 import log from "../../../utils/logs";
+import { isNetworkError, isOnline } from "../../connection";
 import { supabaseClientErr } from "../../supabaseClientErr";
 
 const numberOfErrors = new Map<string, number>();
@@ -26,16 +27,22 @@ async function getRemoteKeys(table: string): Promise<string[] | null> {
   }
 
   if (!tableSchemaData.has(table)) {
+    const isConnected = await isOnline();
+    if (!isConnected) {
+      return null;
+    }
     const { data, error } = await supabase.rpc("get_table_schema", {
       table_name: table,
     });
     if (error) {
-      log(
-        `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}
+      if (!isNetworkError(error)) {
+        log(
+          `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}
         You can find more information in the Supastash docs: https://0xzekea.github.io/supastash/docs/getting-started#%EF%B8%8F-server-side-setup-for-filtered-pulls`
-      );
-      numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
-      return null;
+        );
+        numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
+        return null;
+      }
     }
     tableSchemaData.set(table, data);
   }

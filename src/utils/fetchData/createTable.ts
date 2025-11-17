@@ -3,6 +3,7 @@ import { getSupastashDb } from "../../db/dbInitializer";
 import { tableSchemaData } from "../../store/tableSchemaData";
 import { PayloadData } from "../../types/query.types";
 import { TableSchema } from "../../types/realtimeData.types";
+import { isNetworkError, isOnline } from "../connection";
 import log from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 import { checkIfTableExist } from "../tableValidator";
@@ -23,14 +24,20 @@ async function getTableSchema(table: string): Promise<TableSchema[] | null> {
   if (errorCount.get(table) && (errorCount.get(table) || 0) > 3) {
     return null;
   }
+  const isConnected = await isOnline();
+  if (!isConnected) {
+    return null;
+  }
   const { data, error } = await supabase.rpc("get_table_schema", {
     table_name: table,
   });
 
   if (error) {
-    log(
-      `[Supastash] Error getting table schema for table ${table}: ${error.message}`
-    );
+    if (!isNetworkError(error)) {
+      log(
+        `[Supastash] Error getting table schema for table ${table}: ${error.message}`
+      );
+    }
     errorCount.set(table, (errorCount.get(table) || 0) + 1);
     return null;
   }
