@@ -134,7 +134,7 @@ export function useSupastashData<R = any>(
       unsub.current = AppState.addEventListener("change", (state: string) => {
         if (state === "active") {
           if (!isAnyNullish) {
-            initialFetchAndSync();
+            void initialFetchAndSync();
           }
         }
       });

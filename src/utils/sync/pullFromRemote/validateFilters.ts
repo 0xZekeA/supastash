@@ -74,14 +74,18 @@ function isValidFilter<R = any>(filters: RealtimeFilter<R>[]): boolean {
 
 export default isValidFilter;
 
+const tablesWarned = new Set<string>();
+const debounceWarnTime = 2_000;
+let debounceWarnTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function warnOnMisMatch<R = any>(
   table: string,
   filters: RealtimeFilter<R>[]
 ) {
   const existingFilters = filterTracker.get(table);
+  let hasMismatch = false;
 
   if (existingFilters) {
-    const changes: string[] = [];
     const maxLength = Math.max(existingFilters.length, filters.length);
 
     for (let i = 0; i < maxLength; i++) {
@@ -89,29 +93,39 @@ export function warnOnMisMatch<R = any>(
       const newFilter = filters[i];
 
       if (!oldFilter || !newFilter) {
-        changes.push(`  • Filter ${i + 1} was added or removed entirely.`);
-        continue;
+        hasMismatch = true;
+        break;
       }
 
-      const { column: oldCol, operator: oldOp } = oldFilter;
-      const { column: newCol, operator: newOp } = newFilter;
-
-      if (oldCol !== newCol || oldOp !== newOp) {
-        changes.push(
-          `  • Filter ${i + 1} changed:\n` +
-            `    → Column: '${String(oldCol)}' → '${String(newCol)}'\n` +
-            `    → Operator: '${oldOp}' → '${newOp}'`
-        );
+      if (
+        oldFilter.column !== newFilter.column ||
+        oldFilter.operator !== newFilter.operator
+      ) {
+        hasMismatch = true;
+        break;
       }
     }
+  }
 
-    if (changes.length > 0) {
-      logWarn(`[Supastash] Filter signature mismatch for table '${table}'.`);
+  if (hasMismatch) {
+    tablesWarned.add(table);
+
+    if (debounceWarnTimeout) {
+      clearTimeout(debounceWarnTimeout);
+    }
+
+    debounceWarnTimeout = setTimeout(() => {
       logWarn(
-        `[Supastash] The filter structure (column/operator) has changed — this may lead to inconsistent sync behavior.`
+        `[Supastash] Conflicting filters detected for table(s): ${Array.from(
+          tablesWarned
+        ).join(
+          ", "
+        )}. The same table is being synced with different filters across multiple calls. This can cause incomplete or inconsistent local data. Ensure each table is registered with a single, consistent filter.`
       );
-      logWarn(`[Supastash] Differences:\n${changes.join("\n")}`);
-    }
+
+      tablesWarned.clear();
+      debounceWarnTimeout = null;
+    }, debounceWarnTime);
   }
 
   filterTracker.set(table, filters);

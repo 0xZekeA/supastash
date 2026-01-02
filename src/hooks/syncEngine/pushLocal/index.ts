@@ -79,6 +79,7 @@ export async function pushLocalData() {
         log(`[Supastash] Push table failed: ${table} — ${msg}`);
       } finally {
         tablesCompleted++;
+
         SyncInfoUpdater.setTablesCompleted({
           amount: tablesCompleted,
           type: "push",

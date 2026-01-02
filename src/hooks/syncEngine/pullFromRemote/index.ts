@@ -64,6 +64,7 @@ export async function pullFromRemote() {
         );
       } finally {
         tablesCompleted++;
+
         SyncInfoUpdater.setTablesCompleted({
           amount: tablesCompleted,
           type: "pull",
