@@ -10,6 +10,8 @@ export type SupastashSQLiteClientTypes =
   | "rn-nitro"
   | null;
 
+export type SupastashMode = "live" | "ghost";
+
 export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   dbName: string;
   supabaseClient: SupabaseClient<any, "public", any> | null;
@@ -71,6 +73,31 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
    * Supastash docs: https://0xzekea.github.io/supastash/docs/sync-calls#%EF%B8%8F-pushrpcpath-custom-batch-sync-rpc
    */
   pushRPCPath?: string;
+  /**
+   * Controls how Supastash operates at runtime.
+   *
+   * - "live":
+   *   Supastash runs in normal production mode.
+   *   Local changes are synchronized with the remote server,
+   *   including pull, push, realtime subscriptions, and background retries.
+   *
+   * - "ghost":
+   *   Supastash runs in isolated, local-only mode.
+   *   All network activity is completely disabled:
+   *   - no server sync (pull or push)
+   *   - no realtime subscriptions
+   *   - no background jobs or retry loops
+   *   - no Supabase client initialization
+   *
+   *   Data is stored in a separate local database using the same schema
+   *   and business logic, but is never synchronized or persisted remotely.
+   *
+   * This mode is intended for demo, training, testing, or sandbox environments
+   * where data isolation and zero network access are required.
+   *
+   * Default: "live".
+   */
+  supastashMode?: SupastashMode;
 };
 
 interface SupastashSQLiteDatabase {
@@ -110,6 +137,17 @@ interface SupastashSQLiteDatabase {
    * @returns A Promise that resolves when all statements are executed
    */
   execAsync(statements: string): Promise<void>;
+
+  /**
+   * Closes the underlying SQLite connection.
+   *
+   * ⚠️ Internal / advanced use only.
+   * This is primarily used by Supastash during re-initialization
+   * (user switch, shop switch, mode change).
+   *
+   * Do NOT call this in production app code.
+   */
+  closeAsync(): Promise<void>;
 }
 
 export interface SupastashSQLiteAdapter {

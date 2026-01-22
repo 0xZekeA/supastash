@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { isOnline } from "../../connection";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { SyncInfoUpdater } from "../queryStatus";
@@ -18,6 +19,8 @@ export async function pushLocalDataToRemote(
 ) {
   if (isInSync.get(table)) return;
   isInSync.set(table, true);
+  const cfg = getSupastashConfig();
+  if (cfg.supastashMode === "ghost") return false;
   try {
     if (!(await isOnline())) return false;
     const data = await getAllUnsyncedData(table);

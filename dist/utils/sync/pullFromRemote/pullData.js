@@ -5,7 +5,6 @@ import { supabaseClientErr } from "../../supabaseClientErr";
 import { SyncInfoUpdater } from "../queryStatus";
 import { computeFilterKey } from "../status/filterKey";
 import { selectAndAddAMillisecond } from "../status/repo";
-import { setSupastashSyncStatus } from "../status/services";
 import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
 /**
  * Pulls data from the remote database for a given table
@@ -61,15 +60,11 @@ export async function pullData(table, filters) {
         return null;
     }
     const deletedIds = deletedRows.map((r) => r.id);
-    const createdMax = getMaxDate(createdRows, "created_at");
-    const updatedMax = getMaxDate(updatedRows, "updated_at");
-    const deletedMax = getMaxDate(deletedRows, "deleted_at");
-    await setSupastashSyncStatus(table, filters, {
-        lastCreatedAt: createdMax,
-        lastSyncedAt: updatedMax,
-        lastDeletedAt: deletedMax,
-        filterNamespace: "global",
-    });
+    const timestamps = {
+        createdMax: getMaxDate(createdRows, "created_at"),
+        updatedMax: getMaxDate(updatedRows, "updated_at"),
+        deletedMax: getMaxDate(deletedRows, "deleted_at"),
+    };
     log(`[Supastash] Received ${data.length + deletedRows.length} updates for ${table} (c${createdRows.length}/u${updatedRows.length}/d${deletedRows.length})`);
-    return { data, deletedIds };
+    return { data, deletedIds, timestamps };
 }

@@ -44,6 +44,10 @@ export const SQLiteAdapterNitro: SupastashSQLiteAdapter = {
         const result = await db.executeAsync(sql, params ?? []);
         return result.rows?._array?.[0] ?? null;
       },
+
+      closeAsync: async () => {
+        await db.close?.();
+      },
     };
   },
 };

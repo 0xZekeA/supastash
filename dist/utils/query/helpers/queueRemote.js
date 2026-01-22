@@ -98,9 +98,9 @@ async function processBatch() {
                     if (currentRetries >= MAX_RETRIES) {
                         if (!seenFailureLog.has(opKey)) {
                             seenFailureLog.add(opKey);
-                            logWarn(`[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries — will retry on next sync`);
+                            logWarn(`[Supastash] Gave up on ${state.table} with ${state.method} after ${MAX_RETRIES} retries — will retry on next sync \nError message: ${error.message}`);
                         }
-                        reject(new Error(`Max retries exceeded for ${opKey}`));
+                        reject(new Error(`Max retries exceeded for ${error.message} on ${state.table} with ${state.method}`));
                         break;
                     }
                     await delay(1000 * (currentRetries + 1));
@@ -112,7 +112,6 @@ async function processBatch() {
                 seenFailureLog.add(opKey);
                 logWarn(`[Supastash] Unexpected error processing ${opKey} — ${String(err.message ?? err)}`);
             }
-            reject(err);
         }
     }
     isProcessing = false;

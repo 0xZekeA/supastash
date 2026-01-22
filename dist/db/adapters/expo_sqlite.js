@@ -16,6 +16,9 @@ export const SQLiteAdapterExpo = {
                 const result = await db.getFirstAsync(sql, params ?? []);
                 return result ?? null;
             },
+            closeAsync: async () => {
+                await db.closeAsync?.();
+            },
         };
     },
 };

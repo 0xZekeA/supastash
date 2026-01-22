@@ -51,6 +51,7 @@ type TransactionCallback = (transaction: Transaction) => void;
 type TransactionErrorCallback = (error: SQLError) => void;
 
 export interface RNStorageSQLiteDatabase {
+  close(): Promise<void>;
   transaction(scope: (tx: Transaction) => void): Promise<Transaction>;
   transaction(
     scope: (tx: Transaction) => void,

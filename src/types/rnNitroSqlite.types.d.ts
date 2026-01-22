@@ -2,6 +2,7 @@ export interface RNNitroSQLiteDatabase {
   transaction(fn: (tx: Transaction) => Promise<void> | void): Promise<void>;
   execute: ExecuteQuery;
   executeAsync: ExecuteAsyncQuery;
+  close(): Promise<void>;
 }
 
 enum ColumnType {

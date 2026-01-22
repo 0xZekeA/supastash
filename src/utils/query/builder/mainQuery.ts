@@ -1,9 +1,11 @@
+import { getSupastashConfig } from "../../../core/config";
 import {
   CrudMethods,
   MethodReturnTypeMap,
   SupabaseQueryReturn,
   SupastashQuery,
   SupastashQueryResult,
+  SyncMode,
 } from "../../../types/query.types";
 import { logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
@@ -38,9 +40,13 @@ export async function queryDb<
     validatePayloadForSingleInsert(method, isSingle, state.payload, table);
     const updatedPayload: R | R[] | null | undefined =
       method === "insert" ? assignInsertIds(state.payload) : state.payload;
+    const cfg = getSupastashConfig();
+    const syncMode =
+      cfg.supastashMode === "ghost" ? "localOnly" : (state.type as SyncMode);
     const updatedState = {
       ...state,
       payload: updatedPayload,
+      type: syncMode,
     } as SupastashQuery<T, U, R>;
 
     const {

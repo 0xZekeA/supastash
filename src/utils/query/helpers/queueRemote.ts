@@ -144,10 +144,14 @@ async function processBatch(): Promise<void> {
             if (!seenFailureLog.has(opKey)) {
               seenFailureLog.add(opKey);
               logWarn(
-                `[Supastash] Gave up on ${opKey} after ${MAX_RETRIES} retries — will retry on next sync`
+                `[Supastash] Gave up on ${state.table} with ${state.method} after ${MAX_RETRIES} retries — will retry on next sync \nError message: ${error.message}`
               );
             }
-            reject(new Error(`Max retries exceeded for ${opKey}`));
+            reject(
+              new Error(
+                `Max retries exceeded for ${error.message} on ${state.table} with ${state.method}`
+              )
+            );
             break;
           }
 
@@ -163,7 +167,6 @@ async function processBatch(): Promise<void> {
           )}`
         );
       }
-      reject(err);
     }
   }
 

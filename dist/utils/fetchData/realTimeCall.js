@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSupastashConfig } from "../../core/config";
+import { supastashEventBus } from "../events/eventBus";
 import { logError } from "../logs";
 import { supabaseClientErr } from "../supabaseClientErr";
 import { buildFilterString } from "./buildFilter";
@@ -8,6 +9,7 @@ const useRealtimeData = (table, queueHandler, options, initialized, realtime) =>
     const { lazy, shouldFetch } = options;
     const filterString = useMemo(() => buildFilterString(options.filter), [options.filter]);
     const subKey = useMemo(() => `${table}:${filterString ?? ""}`, [table, filterString]);
+    const [version, setVersion] = useState(0);
     useEffect(() => {
         if (!realtime || (options.lazy && !initialized) || !shouldFetch) {
             return;
@@ -29,12 +31,34 @@ const useRealtimeData = (table, queueHandler, options, initialized, realtime) =>
             queueHandler(payload.eventType, payload.new);
         })
             .subscribe();
-        return () => {
+        const restartRealtime = () => {
+            setVersion((prev) => prev + 1);
+        };
+        const unsubscribeRealtime = () => {
             hasRegistered.delete(subKey);
             if (subscription) {
                 supabase.removeChannel(subscription);
             }
         };
-    }, [table, lazy, initialized, realtime, shouldFetch, subKey, filterString]);
+        supastashEventBus.on("restartRealtime", restartRealtime);
+        supastashEventBus.on("unsubscribeRealtime", unsubscribeRealtime);
+        return () => {
+            hasRegistered.delete(subKey);
+            if (subscription) {
+                supabase.removeChannel(subscription);
+            }
+            supastashEventBus.off("restartRealtime", restartRealtime);
+            supastashEventBus.off("unsubscribeRealtime", unsubscribeRealtime);
+        };
+    }, [
+        table,
+        lazy,
+        initialized,
+        realtime,
+        shouldFetch,
+        subKey,
+        filterString,
+        version,
+    ]);
 };
 export default useRealtimeData;

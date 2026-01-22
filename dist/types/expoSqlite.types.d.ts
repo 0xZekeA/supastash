@@ -27,6 +27,7 @@ export interface ExpoSQLiteDatabase {
   ): Promise<T[]>;
 
   execAsync(statement: string): Promise<void>;
+  closeAsync(): Promise<void>;
 }
 
 export type SQLiteBindValue = string | number | null | boolean | Uint8Array;

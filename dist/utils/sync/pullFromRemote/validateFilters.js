@@ -86,7 +86,10 @@ export function warnOnMisMatch(table, filters) {
             clearTimeout(debounceWarnTimeout);
         }
         debounceWarnTimeout = setTimeout(() => {
-            logWarn(`[Supastash] Conflicting filters detected for table(s): ${Array.from(tablesWarned).join(", ")}. The same table is being synced with different filters across multiple calls. This can cause incomplete or inconsistent local data. Ensure each table is registered with a single, consistent filter.`);
+            logWarn(`[Supastash] Conflicting filters detected for table(s): ${Array.from(tablesWarned).join(", ")}. 
+          Multiple sync calls registered different filters for the same table. 
+          The last registered filter will be used, overriding previous ones. 
+          Ensure each table is registered with a single, consistent filter to avoid unintended data scope.`);
             tablesWarned.clear();
             debounceWarnTimeout = null;
         }, debounceWarnTime);

@@ -17,6 +17,9 @@ export const SQLiteAdapterStorage = {
                 const result = await db.executeSql(sql, params ?? []);
                 return result[0].rows.item(0) ?? null;
             },
+            closeAsync: async () => {
+                await db.close?.();
+            },
         };
     },
 };

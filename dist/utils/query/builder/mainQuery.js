@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { assignInsertIds, getCommonError, runSyncStrategy, validatePayloadForSingleInsert, } from "../helpers/mainQueryHelpers";
@@ -14,9 +15,12 @@ export async function queryDb(state) {
         const { method, isSingle, viewRemoteResult, table, type } = state;
         validatePayloadForSingleInsert(method, isSingle, state.payload, table);
         const updatedPayload = method === "insert" ? assignInsertIds(state.payload) : state.payload;
+        const cfg = getSupastashConfig();
+        const syncMode = cfg.supastashMode === "ghost" ? "localOnly" : state.type;
         const updatedState = {
             ...state,
             payload: updatedPayload,
+            type: syncMode,
         };
         const { localResult, remoteResult, } = await runSyncStrategy(updatedState);
         localData = localResult?.data;

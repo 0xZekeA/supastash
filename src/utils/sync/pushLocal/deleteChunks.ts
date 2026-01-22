@@ -15,7 +15,7 @@ const SQL_CHUNK = 999;
  */
 async function permanentlyDeleteLocally(table: string, ids: string[]) {
   const db = await getSupastashDb();
-  await db.execAsync?.("BEGIN;");
+
   for (let i = 0; i < ids.length; i += SQL_CHUNK) {
     const slice = ids.slice(i, i + SQL_CHUNK);
     const placeholders = slice.map(() => "?").join(", ");
@@ -24,7 +24,6 @@ async function permanentlyDeleteLocally(table: string, ids: string[]) {
       slice
     );
   }
-  await db.execAsync?.("COMMIT;");
 }
 
 /**

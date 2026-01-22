@@ -104,6 +104,11 @@ const sidebars: SidebarsConfig = {
       id: "sync-calls",
       label: "Custom Sync Calls",
     },
+    {
+      type: "doc",
+      id: "supastash-runtime-modes",
+      label: "Runtime Modes (New)",
+    },
   ],
 };
 export default sidebars;

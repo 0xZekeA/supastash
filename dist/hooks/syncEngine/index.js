@@ -32,10 +32,13 @@ export async function syncAll(force = false) {
         return;
     if (!(await isOnline()))
         return;
+    // If in ghost mode, don't sync
+    const cfg = getSupastashConfig();
+    if (cfg.supastashMode === "ghost")
+        return;
     isSyncing = true;
     const started = Date.now();
     try {
-        const cfg = getSupastashConfig();
         // PUSH
         if (cfg.syncEngine?.push) {
             await pushLocalDataSafe();
@@ -73,6 +76,9 @@ async function pushLocalDataSafe() {
     const cfg = getSupastashConfig();
     if (!cfg.syncEngine?.push)
         return;
+    // If in ghost mode, don't push
+    if (cfg.supastashMode === "ghost")
+        return;
     isPushing = true;
     try {
         await doPushLocalData();
@@ -93,7 +99,10 @@ async function pullFromRemoteSafe() {
         return;
     if (!(await isOnline()))
         return;
+    // If in ghost mode, don't pull
     const cfg = getSupastashConfig();
+    if (cfg.supastashMode === "ghost")
+        return;
     if (!cfg.syncEngine?.pull)
         return;
     isPulling = true;

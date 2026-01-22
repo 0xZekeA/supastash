@@ -7,7 +7,6 @@ import { supabaseClientErr } from "../../supabaseClientErr";
 import { SyncInfoUpdater } from "../queryStatus";
 import { computeFilterKey } from "../status/filterKey";
 import { selectAndAddAMillisecond } from "../status/repo";
-import { setSupastashSyncStatus } from "../status/services";
 import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
 
 /**
@@ -18,7 +17,15 @@ import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
 export async function pullData(
   table: string,
   filters?: RealtimeFilter[]
-): Promise<{ data: PayloadData[]; deletedIds: string[] } | null> {
+): Promise<{
+  data: PayloadData[];
+  deletedIds: string[];
+  timestamps: {
+    createdMax: string | null;
+    updatedMax: string | null;
+    deletedMax: string | null;
+  };
+} | null> {
   const supabase = getSupastashConfig().supabaseClient;
   if (!supabase)
     throw new Error(`No supabase client found: ${supabaseClientErr}`);
@@ -74,16 +81,12 @@ export async function pullData(
 
   const deletedIds = deletedRows.map((r) => r.id);
 
-  const createdMax = getMaxDate(createdRows, "created_at");
-  const updatedMax = getMaxDate(updatedRows, "updated_at");
-  const deletedMax = getMaxDate(deletedRows, "deleted_at");
+  const timestamps = {
+    createdMax: getMaxDate(createdRows, "created_at"),
 
-  await setSupastashSyncStatus(table, filters, {
-    lastCreatedAt: createdMax,
-    lastSyncedAt: updatedMax,
-    lastDeletedAt: deletedMax,
-    filterNamespace: "global",
-  });
+    updatedMax: getMaxDate(updatedRows, "updated_at"),
+    deletedMax: getMaxDate(deletedRows, "deleted_at"),
+  };
 
   log(
     `[Supastash] Received ${
@@ -92,5 +95,5 @@ export async function pullData(
       deletedRows.length
     })`
   );
-  return { data, deletedIds };
+  return { data, deletedIds, timestamps };
 }

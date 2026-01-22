@@ -6,6 +6,7 @@ import { getTableSchema } from "../../getTableSchema";
 import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { SyncInfoUpdater } from "../queryStatus";
+import { setSupastashSyncStatus } from "../status/services";
 import { updateLocalSyncedAt } from "../status/syncUpdate";
 import { pullData } from "./pullData";
 import { stringifyValue } from "./stringifyFields";
@@ -26,12 +27,15 @@ export async function updateLocalDb(
 ) {
   if (isInSync.get(table)) return;
   isInSync.set(table, true);
+  const cfg = getSupastashConfig();
+  if (cfg.supastashMode === "ghost") return;
   try {
     if (!(await isOnline())) return;
     const db = await getSupastashDb();
 
     const dataResult = await pullData(table, filters);
     const data = dataResult?.data;
+    const timestamps = dataResult?.timestamps;
     const deletedIds = dataResult?.deletedIds;
     const deletedIdSet = new Set(deletedIds ?? []);
 
@@ -104,6 +108,15 @@ export async function updateLocalDb(
       }
     }
 
+    if (timestamps) {
+      await setSupastashSyncStatus(table, filters, {
+        lastCreatedAt: timestamps.createdMax,
+        lastSyncedAt: timestamps.updatedMax,
+        lastDeletedAt: timestamps.deletedMax,
+        filterNamespace: "global",
+      });
+    }
+
     if (refreshNeeded) refreshScreen(table);
   } catch (error) {
     logWarn(`[Supastash] Error updating local db for ${table}`, error);
@@ -128,6 +141,8 @@ export async function upsertData(
 ) {
   if (!record?.id) return;
   let itemExists = !!doesExist;
+  const cfg = getSupastashConfig();
+  if (cfg.supastashMode === "ghost") return;
 
   if (doesExist === undefined) {
     const { doesExist: exists } = await checkIfRecordExistsAndIsNewer(

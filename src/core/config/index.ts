@@ -25,6 +25,7 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   fieldEnforcement: DEFAULT_FIELDS,
   deleteConflictedRows: false,
   pushRPCPath: undefined,
+  supastashMode: "live",
 };
 
 let _configured = false;
@@ -71,6 +72,11 @@ let _configured = false;
  * @param config.excludeTables - Tables to exclude from sync (default: `{ pull: [], push: [] }`)
  * @param config.pollingInterval - Polling interval for sync (default: `{ pull: 30000, push: 30000 }`)
  * @param config.syncEngine - Control pull/push sync behavior (`push: true`, `pull: false` by default, `useFiltersFromStore: true` by default)
+ * @param config.syncPolicy - Control how Supastash resolves remote vs local conflicts, how long to retry transient errors, and how to handle rows blocked by missing parents (FK)
+ * @param config.supastashMode - Controls how Supastash operates at runtime.
+ *   - "live": Supastash runs in normal production mode.
+ *   - "ghost": Supastash runs in isolated, local-only mode.
+ * Default: "live".
  */
 
 export function configureSupastash<T extends SupastashSQLiteClientTypes>(

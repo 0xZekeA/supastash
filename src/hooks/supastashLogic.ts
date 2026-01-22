@@ -9,6 +9,7 @@ import {
   tableFiltersUsed,
 } from "../store/tableFilters";
 import { SupastashHookReturn } from "../types/supastashConfig.types";
+import { supastashEventBus } from "../utils/events/eventBus";
 import { logError, logWarn } from "../utils/logs";
 import { createSyncStatusTable } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
@@ -89,16 +90,24 @@ export function useSupastash(lazy: boolean = false): SupastashHookReturn {
 
   useEffect(() => {
     if (lazy) return;
-    if (dbReady) {
-      try {
-        startSync();
-      } catch (error) {
-        logWarn(`[Supastash] Error starting sync: ${error}`);
+    const start = () => {
+      if (dbReady) {
+        try {
+          startSync();
+        } catch (error) {
+          logWarn(`[Supastash] Error starting sync: ${error}`);
+        }
       }
-    }
+    };
+    start();
+
+    supastashEventBus.on("stopSupastashSync", stopSync);
+    supastashEventBus.on("startSupastashSync", start);
 
     return () => {
       stopSync();
+      supastashEventBus.off("stopSupastashSync", stopSync);
+      supastashEventBus.off("startSupastashSync", start);
     };
   }, [dbReady]);
 

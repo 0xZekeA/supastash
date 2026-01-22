@@ -4,6 +4,7 @@ import { supastashDbErrorMsg } from "../db/dbErrorMsg";
 import { useSyncEngine } from "../hooks/syncEngine";
 import { localCache } from "../store/localCache";
 import { filterTracker, tableFilters, tableFiltersUsed, } from "../store/tableFilters";
+import { supastashEventBus } from "../utils/events/eventBus";
 import { logError, logWarn } from "../utils/logs";
 import { createSyncStatusTable } from "../utils/schema/createSyncStatus";
 import { supabaseClientErr } from "../utils/supabaseClientErr";
@@ -77,16 +78,23 @@ export function useSupastash(lazy = false) {
     useEffect(() => {
         if (lazy)
             return;
-        if (dbReady) {
-            try {
-                startSync();
+        const start = () => {
+            if (dbReady) {
+                try {
+                    startSync();
+                }
+                catch (error) {
+                    logWarn(`[Supastash] Error starting sync: ${error}`);
+                }
             }
-            catch (error) {
-                logWarn(`[Supastash] Error starting sync: ${error}`);
-            }
-        }
+        };
+        start();
+        supastashEventBus.on("stopSupastashSync", stopSync);
+        supastashEventBus.on("startSupastashSync", start);
         return () => {
             stopSync();
+            supastashEventBus.off("stopSupastashSync", stopSync);
+            supastashEventBus.off("startSupastashSync", start);
         };
     }, [dbReady]);
     return { dbReady, stopSync, startSync };

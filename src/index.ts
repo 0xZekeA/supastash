@@ -18,6 +18,10 @@ export {
   wipeOldDataForATable,
   wipeTable,
 } from "./utils/schema/wipeTables";
+export {
+  getSupastashRuntimeMode,
+  reinitializeSupastash,
+} from "./utils/supastashMode";
 export { getAllTables } from "./utils/sync/getAllTables";
 export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
 export { upsertData } from "./utils/sync/pullFromRemote/updateLocalDb";

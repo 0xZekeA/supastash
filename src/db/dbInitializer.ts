@@ -6,39 +6,62 @@ import { SQLiteAdapterStorage } from "./adapters/rn_sqlite_storage";
 import { supastashDbErrorMsg } from "./dbErrorMsg";
 
 let db: SupastashSQLiteDatabase | null = null;
+let dbInitPromise: Promise<SupastashSQLiteDatabase> | null = null;
 
 /**
  * Gets the supastash database
  * @returns The supastash database
  */
 export async function getSupastashDb(): Promise<SupastashSQLiteDatabase> {
-  const config = getSupastashConfig();
-  if (!config.sqliteClient || !config.sqliteClientType) {
-    throw new Error(supastashDbErrorMsg);
-  }
+  if (db) return db;
 
-  const { sqliteClient: client, sqliteClientType: clientType } = config;
+  if (dbInitPromise) return dbInitPromise;
 
-  if (!db) {
+  dbInitPromise = (async () => {
+    const config = getSupastashConfig();
+    if (!config.sqliteClient || !config.sqliteClientType) {
+      throw new Error(supastashDbErrorMsg);
+    }
+
+    const {
+      sqliteClient: client,
+      sqliteClientType: clientType,
+      supastashMode,
+    } = config;
+
+    const resolveDbName =
+      supastashMode === "ghost" ? `${config.dbName}_ghost` : config.dbName;
+
     switch (clientType) {
       case "expo":
-        db = await SQLiteAdapterExpo.openDatabaseAsync(config.dbName, client);
+        db = await SQLiteAdapterExpo.openDatabaseAsync(resolveDbName, client);
         break;
       case "rn-storage":
         db = await SQLiteAdapterStorage.openDatabaseAsync(
-          config.dbName,
+          resolveDbName,
           client
         );
         break;
       case "rn-nitro":
-        db = await SQLiteAdapterNitro.openDatabaseAsync(config.dbName, client);
+        db = await SQLiteAdapterNitro.openDatabaseAsync(resolveDbName, client);
         break;
       default:
         throw new Error(`Unsupported SQLite client type: ${clientType}`);
     }
 
     await db.runAsync("PRAGMA foreign_keys = OFF;");
-  }
 
-  return db!;
+    return db;
+  })();
+
+  return dbInitPromise;
+}
+
+export async function closeSupastashDb() {
+  if (db) {
+    const prevDb = db;
+    db = null;
+    dbInitPromise = null;
+    await prevDb.closeAsync?.();
+  }
 }

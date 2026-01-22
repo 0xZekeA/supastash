@@ -5,6 +5,7 @@ import { getTableSchema } from "../../getTableSchema";
 import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { SyncInfoUpdater } from "../queryStatus";
+import { setSupastashSyncStatus } from "../status/services";
 import { updateLocalSyncedAt } from "../status/syncUpdate";
 import { pullData } from "./pullData";
 import { stringifyValue } from "./stringifyFields";
@@ -20,12 +21,16 @@ export async function updateLocalDb(table, filters, onReceiveData) {
     if (isInSync.get(table))
         return;
     isInSync.set(table, true);
+    const cfg = getSupastashConfig();
+    if (cfg.supastashMode === "ghost")
+        return;
     try {
         if (!(await isOnline()))
             return;
         const db = await getSupastashDb();
         const dataResult = await pullData(table, filters);
         const data = dataResult?.data;
+        const timestamps = dataResult?.timestamps;
         const deletedIds = dataResult?.deletedIds;
         const deletedIdSet = new Set(deletedIds ?? []);
         SyncInfoUpdater.setUnsyncedDataCount({
@@ -86,6 +91,14 @@ export async function updateLocalDb(table, filters, onReceiveData) {
                 }
             }
         }
+        if (timestamps) {
+            await setSupastashSyncStatus(table, filters, {
+                lastCreatedAt: timestamps.createdMax,
+                lastSyncedAt: timestamps.updatedMax,
+                lastDeletedAt: timestamps.deletedMax,
+                filterNamespace: "global",
+            });
+        }
         if (refreshNeeded)
             refreshScreen(table);
     }
@@ -108,6 +121,9 @@ export async function upsertData(table, record, doesExist) {
     if (!record?.id)
         return;
     let itemExists = !!doesExist;
+    const cfg = getSupastashConfig();
+    if (cfg.supastashMode === "ghost")
+        return;
     if (doesExist === undefined) {
         const { doesExist: exists } = await checkIfRecordExistsAndIsNewer(table, record);
         itemExists = exists;
