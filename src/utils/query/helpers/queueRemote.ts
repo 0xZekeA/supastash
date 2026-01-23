@@ -101,7 +101,7 @@ async function processBatch(): Promise<void> {
             }
             await getQueryStatusFromDb(state.table);
             supastashEventBus.emit("updateSyncStatus");
-            reject(new Error(`Offline retry limit exceeded for ${opKey}`));
+            resolve(false);
             break;
           }
 
@@ -136,7 +136,7 @@ async function processBatch(): Promise<void> {
                 }`
               );
             }
-            reject(new Error(`Duplicate key (23505) for ${opKey}`));
+            resolve(true);
             break;
           }
 
@@ -147,11 +147,7 @@ async function processBatch(): Promise<void> {
                 `[Supastash] Gave up on ${state.table} with ${state.method} after ${MAX_RETRIES} retries — will retry on next sync \nError message: ${error.message}`
               );
             }
-            reject(
-              new Error(
-                `Max retries exceeded for ${error.message} on ${state.table} with ${state.method}`
-              )
-            );
+            resolve(false);
             break;
           }
 
