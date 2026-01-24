@@ -42,11 +42,17 @@ export async function pageThrough(base: {
     let q = supabase
       .from(table)
       .select(select)
-      .gte(base.tsCol, cursorTs)
       .order(base.tsCol, { ascending: true })
       .order("id", { ascending: true })
       .limit(PAGE_SIZE);
 
+    if (cursorId) {
+      q = q.or(
+        `${base.tsCol}.gt.${cursorTs},and(${base.tsCol}.eq.${cursorTs},id.gt.${cursorId})`
+      );
+    } else {
+      q = q.gte(base.tsCol, cursorTs);
+    }
     if (!base.includeDeleted) q = (q as any).is("deleted_at", null);
     if (filters) {
       q = applyFilters(q, filters, table);
@@ -56,19 +62,7 @@ export async function pageThrough(base: {
     if (error) throw error;
     if (!data || data.length === 0) break;
 
-    const page =
-      results.length === 0
-        ? data.filter(
-            (r: any) =>
-              !(
-                r[base.tsCol] === cursorTs &&
-                typeof r.id === "string" &&
-                r.id === cursorId
-              )
-          )
-        : data;
-
-    results.push(...page);
+    results.push(...data);
 
     if (data.length < PAGE_SIZE) break;
 
