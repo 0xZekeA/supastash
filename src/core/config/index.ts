@@ -20,6 +20,7 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
     useFiltersFromStore: true,
   },
   listeners: 250,
+  supabaseBatchSize: 100,
   debugMode: true,
   syncPolicy: DEFAULT_POLICY,
   fieldEnforcement: DEFAULT_FIELDS,

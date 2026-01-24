@@ -70,7 +70,7 @@ Initializes Supastash. Must be called once.
 | `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro" \| null` | **required**     | Selects SQLite engine.                                                                                                        |
 | `onSchemaInit`     | `() => Promise<void>`                          | `undefined`      | Optional hook to define local schema with `defineLocalSchema`. Runs once after DB creation.                                   |
 | `debugMode`        | `boolean`                                      | `true`           | Verbose logs for sync/DB.                                                                                                     |
-| `listeners`        | `number`                                       | `250`            | Max Realtime listeners.                                                                                                       |
+| `listeners`        | `number`                                       | `250`            | Max event listeners.                                                                                                          |
 | `pushRPCPath`      | `string`                                       | `undefined`      | Path to your custom batch-sync RPC for push operations ([see docs link](./sync-calls.md#-pushrpcpath-custom-batch-sync-rpc)). |
 
 #### Sync switches & intervals
@@ -82,6 +82,7 @@ Initializes Supastash. Must be called once.
 | `syncEngine.useFiltersFromStore` | `boolean` | `true`  | Applies filters captured by hooks to background pulls.                                                                                                             |
 | `pollingInterval.pull`           | `number`  | `30000` | ms between pull polls.                                                                                                                                             |
 | `pollingInterval.push`           | `number`  | `30000` | ms between push polls.                                                                                                                                             |
+| `supabaseBatchSize`              | `number`  | `100`   | Maximum number of rows sent per Supabase write request (insert/upsert). Large payloads are automatically chunked.                                                  |
 
 > **Recommendation**: If your RLS isn’t airtight, set `syncEngine.pull = false` globally and rely on per‑screen filtered pulls via [`useSupastashFilters.ts`](./useSupastashFilters.md).
 

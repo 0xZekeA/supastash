@@ -13,8 +13,23 @@ export type SupastashSQLiteClientTypes =
 export type SupastashMode = "live" | "ghost";
 
 export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
+  // --------------------------------------------------
+  // Core Database & Client Configuration
+  // --------------------------------------------------
+
+  /**
+   * Name of the local SQLite database.
+   */
   dbName: string;
+
+  /**
+   * Supabase client instance.
+   */
   supabaseClient: SupabaseClient<any, "public", any> | null;
+
+  /**
+   * SQLite client adapter.
+   */
   sqliteClient: T extends "expo"
     ? ExpoSQLiteClient
     : T extends "rn-storage"
@@ -22,23 +37,111 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
     : T extends "rn-nitro"
     ? RNSqliteNitroClient
     : null;
+
+  /**
+   * Type of SQLite client.
+   */
   sqliteClientType: T;
-  excludeTables?: { pull?: string[]; push?: string[] };
+
+  // --------------------------------------------------
+  // Supabase Write Batching
+  // --------------------------------------------------
+
+  /**
+   * Maximum number of rows sent per Supabase write request.
+   * Large payloads are automatically split into sequential batches.
+   * Default: 100.
+   */
+  supabaseBatchSize?: number;
+
+  // --------------------------------------------------
+  // Table Inclusion / Exclusion Rules
+  // --------------------------------------------------
+
+  /**
+   * Control which tables are included in pull and push sync operations.
+   */
+  excludeTables?: {
+    pull?: string[];
+    push?: string[];
+  };
+
+  // --------------------------------------------------
+  // Sync Polling Intervals
+  // --------------------------------------------------
+
+  /**
+   * Background sync polling intervals (in milliseconds).
+   */
   pollingInterval?: {
     pull?: number;
     push?: number;
   };
+
+  // --------------------------------------------------
+  // Sync Engine Toggles & Behavior
+  // --------------------------------------------------
+
+  /**
+   * High-level switches controlling sync behavior.
+   */
   syncEngine?: {
     push?: boolean;
     pull?: boolean;
     useFiltersFromStore?: boolean;
   };
+
+  // --------------------------------------------------
+  // Supabase Realtime Configuration
+  // --------------------------------------------------
+
+  /**
+   * Maximum number of active event listeners.
+   */
   listeners?: number;
+
+  // --------------------------------------------------
+  // Schema Initialization Hook
+  // --------------------------------------------------
+
+  /**
+   * Called once after local database initialization.
+   * Intended for defineLocalSchema calls.
+   */
   onSchemaInit?: () => Promise<void>;
+
+  // --------------------------------------------------
+  // Debugging & Diagnostics
+  // --------------------------------------------------
+
+  /**
+   * Enables verbose logging for sync and database operations.
+   */
   debugMode?: boolean;
 
+  // --------------------------------------------------
+  // Conflict Resolution & Retry Policy
+  // --------------------------------------------------
+
+  /**
+   * Defines how Supastash classifies and handles sync conflicts.
+   */
   syncPolicy?: SupastashSyncPolicy;
+
+  // --------------------------------------------------
+  // Field Validation & Auto-Fill Enforcement
+  // --------------------------------------------------
+
   fieldEnforcement?: FieldEnforcement;
+
+  // --------------------------------------------------
+  // Conflict Cleanup Behavior
+  // --------------------------------------------------
+
+  /**
+   * When true, local rows involved in non-retryable conflicts
+   * will be deleted instead of retained.
+   */
   deleteConflictedRows?: boolean;
   /**
    * The path to the RPC function to use for upserts.

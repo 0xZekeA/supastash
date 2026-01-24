@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import {
   BatchedCall,
   CrudMethods,
@@ -69,6 +70,35 @@ function scheduleBatch(): void {
   }, BATCH_DELAY);
 }
 
+async function executeSupabaseCall(state: SupastashQuery<any, any, any>) {
+  const config = getSupastashConfig();
+  const payload = state.payload;
+
+  if (!Array.isArray(payload)) {
+    return querySupabase(state, true);
+  }
+
+  const batchSize = config.supabaseBatchSize ?? 100;
+
+  for (let i = 0; i < payload.length; i += batchSize) {
+    const chunk = payload.slice(i, i + batchSize);
+
+    const result = await querySupabase(
+      {
+        ...state,
+        payload: chunk,
+      },
+      true
+    );
+
+    if (result.error) {
+      return result;
+    }
+  }
+
+  return { error: null };
+}
+
 async function processBatch(): Promise<void> {
   if (isProcessing || batchQueue.length === 0) return;
 
@@ -111,7 +141,7 @@ async function processBatch(): Promise<void> {
 
         calledOfflineRetries.delete(opKey);
 
-        const { error } = await querySupabase({ ...state }, true);
+        const { error } = await executeSupabaseCall(state);
 
         if (!error) {
           successfulCalls.add(opKey);

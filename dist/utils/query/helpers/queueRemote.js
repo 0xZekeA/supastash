@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { isOnline } from "../../../utils/connection";
 import { log, logWarn } from "../../../utils/logs";
 import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
@@ -44,6 +45,25 @@ function scheduleBatch() {
         batchTimer = null;
     }, BATCH_DELAY);
 }
+async function executeSupabaseCall(state) {
+    const config = getSupastashConfig();
+    const payload = state.payload;
+    if (!Array.isArray(payload)) {
+        return querySupabase(state, true);
+    }
+    const batchSize = config.supabaseBatchSize ?? 100;
+    for (let i = 0; i < payload.length; i += batchSize) {
+        const chunk = payload.slice(i, i + batchSize);
+        const result = await querySupabase({
+            ...state,
+            payload: chunk,
+        }, true);
+        if (result.error) {
+            return result;
+        }
+    }
+    return { error: null };
+}
 async function processBatch() {
     if (isProcessing || batchQueue.length === 0)
         return;
@@ -76,7 +96,7 @@ async function processBatch() {
                     continue;
                 }
                 calledOfflineRetries.delete(opKey);
-                const { error } = await querySupabase({ ...state }, true);
+                const { error } = await executeSupabaseCall(state);
                 if (!error) {
                     successfulCalls.add(opKey);
                     retryCount.delete(opKey);
