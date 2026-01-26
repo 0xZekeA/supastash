@@ -11,7 +11,7 @@ import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
  * @param table - The table to pull data from
  * @returns The data from the table
  */
-export async function pullData(table, filters) {
+export async function pullData({ table, filters, batchId, }) {
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase)
         throw new Error(`No supabase client found: ${supabaseClientErr}`);
@@ -35,8 +35,15 @@ export async function pullData(table, filters) {
             since: last_created_at,
             table,
             filters,
+            batchId,
         }),
-        pageThrough({ tsCol: "updated_at", since: last_synced_at, table, filters }),
+        pageThrough({
+            tsCol: "updated_at",
+            since: last_synced_at,
+            table,
+            filters,
+            batchId,
+        }),
         pageThrough({
             tsCol: "deleted_at",
             since: last_deleted_at,
@@ -44,6 +51,7 @@ export async function pullData(table, filters) {
             select: "id, deleted_at",
             table,
             filters,
+            batchId,
         }),
     ]);
     const merged = {};

@@ -119,3 +119,16 @@ export type SyncInfo = {
   /** Sync information for push operations (local → server) */
   push: SyncInfoItem;
 };
+
+export type ReceivedDataCompleted = {
+  completed: boolean;
+  lastTimestamp: string;
+  lastId: string;
+};
+export type ReceivedDataCompletedMap = {
+  [key: string]: {
+    created_at: ReceivedDataCompleted;
+    updated_at: ReceivedDataCompleted;
+    deleted_at: ReceivedDataCompleted;
+  };
+};

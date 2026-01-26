@@ -24,6 +24,11 @@ function isValidFilter(filters) {
         }
         switch (operator) {
             case "is":
+                if (typeof value === "boolean") {
+                    // normalize
+                    filter.value = value ? "true" : "false";
+                    break;
+                }
                 if (!(value === null ||
                     value === "null" ||
                     value === "true" ||

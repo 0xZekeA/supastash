@@ -18,11 +18,11 @@ export async function pushLocalDataToRemote(
   noSync?: string[]
 ) {
   if (isInSync.get(table)) return;
-  isInSync.set(table, true);
   const cfg = getSupastashConfig();
   if (cfg.supastashMode === "ghost") return false;
+  if (!(await isOnline())) return false;
+  isInSync.set(table, true);
   try {
-    if (!(await isOnline())) return false;
     const data = await getAllUnsyncedData(table);
     const deletedData = await getAllDeletedData(table);
 

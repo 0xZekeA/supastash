@@ -6,6 +6,7 @@ export { useSupastashFilters } from "./hooks/supastashFilters";
 export { useSupastash } from "./hooks/supastashLogic";
 export { syncAllTables, syncTable } from "./hooks/syncEngine";
 export { useSupastashSyncStatus } from "./hooks/syncStatus";
+export { closeSyncGate, isSyncGateClosed, openSyncGate, } from "./store/syncStatus";
 export { supastashEventBus } from "./utils/events/eventBus";
 export { supastash } from "./utils/query/builder";
 export { refreshScreen } from "./utils/refreshScreenCalls";
@@ -13,7 +14,7 @@ export { dropAllTables, dropTable, wipeAllTables, wipeOldDataForAllTables, wipeO
 export { getSupastashRuntimeMode, reinitializeSupastash, } from "./utils/supastashMode";
 export { getAllTables } from "./utils/sync/getAllTables";
 export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
-export { upsertData } from "./utils/sync/pullFromRemote/updateLocalDb";
+export { updateLocalDb, upsertData, } from "./utils/sync/pullFromRemote/updateLocalDb";
 export { refreshAllTables, refreshTable, refreshTableWithPayload, } from "./utils/sync/refreshTables";
 export { clearSyncCalls, getAllSyncTables, getSyncCall, registerSyncCall, unregisterSyncCall, } from "./utils/sync/registration/syncCalls";
 export { clearAllLocalDeleteLog, clearAllLocalSyncLog, clearLocalDeleteLog, clearLocalSyncLog, clearSyncLog, getLocalDeleteLog, getSyncLog, resetSyncLog, setLocalDeleteLog, setLocalSyncLog, setSyncLog, } from "./utils/sync/status/syncStatus";

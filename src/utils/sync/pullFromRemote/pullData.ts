@@ -14,10 +14,15 @@ import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
  * @param table - The table to pull data from
  * @returns The data from the table
  */
-export async function pullData(
-  table: string,
-  filters?: RealtimeFilter[]
-): Promise<{
+export async function pullData({
+  table,
+  filters,
+  batchId,
+}: {
+  table: string;
+  filters?: RealtimeFilter[];
+  batchId: string;
+}): Promise<{
   data: PayloadData[];
   deletedIds: string[];
   timestamps: {
@@ -53,8 +58,15 @@ export async function pullData(
       since: last_created_at,
       table,
       filters,
+      batchId,
     }),
-    pageThrough({ tsCol: "updated_at", since: last_synced_at, table, filters }),
+    pageThrough({
+      tsCol: "updated_at",
+      since: last_synced_at,
+      table,
+      filters,
+      batchId,
+    }),
     pageThrough({
       tsCol: "deleted_at",
       since: last_deleted_at,
@@ -62,9 +74,9 @@ export async function pullData(
       select: "id, deleted_at",
       table,
       filters,
+      batchId,
     }),
   ]);
-
   const merged: Record<string, PayloadData> = {};
   for (const r of [...createdRows, ...updatedRows]) {
     if (!r?.id) {

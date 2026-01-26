@@ -1,12 +1,18 @@
 import { getSupastashConfig } from "../../../core/config";
+import {
+  RECEIVED_DATA_COMPLETED_MAP,
+  RECEIVED_DATA_THRESHOLD,
+} from "../../../store/syncStatus";
 import { PayloadData } from "../../../types/query.types";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { ReceivedDataCompleted } from "../../../types/syncEngine.types";
 import log from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import isValidFilter from "./validateFilters";
 
 const RANDOM_OLD_DATE = "2000-01-01T00:00:00Z";
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = RECEIVED_DATA_THRESHOLD;
+const MAX_PAGE_SIZE = 2000;
 const timesPulled = new Map<string, number>();
 const lastPulled = new Map<string, number>();
 const DEFAULT_MAX_PULL_ATTEMPTS = 150;
@@ -28,14 +34,22 @@ export async function pageThrough(base: {
   select?: string;
   filters?: RealtimeFilter[];
   includeDeleted?: boolean;
+  batchId: string;
 }) {
   const supabase = getSupastashConfig().supabaseClient;
   if (!supabase)
     throw new Error(`No supabase client found: ${supabaseClientErr}`);
 
   const results: PayloadData[] = [];
-  let cursorTs = base.since || RANDOM_OLD_DATE;
-  let cursorId = "";
+  const lastWork = getReceivedDataCompleted({
+    batchId: base.batchId,
+    col: base.tsCol,
+  });
+  if (lastWork.completed) return results;
+  let cursorTs = lastWork.lastTimestamp || base.since || RANDOM_OLD_DATE;
+  let cursorId = lastWork.lastId || "";
+
+  let lastDataSize = 0;
   const { table, filters = [], select = "*" } = base;
 
   while (true) {
@@ -64,11 +78,37 @@ export async function pageThrough(base: {
 
     results.push(...data);
 
-    if (data.length < PAGE_SIZE) break;
+    if (data.length < PAGE_SIZE) {
+      setReceivedDataCompleted({
+        batchId: base.batchId,
+        col: base.tsCol,
+        completed: {
+          completed: true,
+          lastTimestamp: cursorTs,
+          lastId: cursorId,
+        },
+      });
+      break;
+    }
 
     const last = data[data.length - 1]! as any;
     cursorTs = last[base.tsCol];
     cursorId = last.id;
+    lastDataSize += data.length;
+
+    setReceivedDataCompleted({
+      batchId: base.batchId,
+      col: base.tsCol,
+      completed: {
+        completed: false,
+        lastTimestamp: cursorTs,
+        lastId: cursorId,
+      },
+    });
+    if (lastDataSize >= MAX_PAGE_SIZE) {
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 0));
   }
   return results;
 }
@@ -102,4 +142,37 @@ export function logNoUpdates(table: string) {
     );
     timesPulled.set(table, 0);
   }
+}
+
+export function getReceivedDataCompleted({
+  batchId,
+  col,
+}: {
+  batchId: string;
+  col: "created_at" | "updated_at" | "deleted_at";
+}): ReceivedDataCompleted {
+  if (!batchId || !RECEIVED_DATA_COMPLETED_MAP[batchId]) {
+    throw new Error(`Batch ${batchId} not found`);
+  }
+  const completed = RECEIVED_DATA_COMPLETED_MAP[batchId][col] ?? false;
+  return completed;
+}
+
+export function setReceivedDataCompleted({
+  batchId,
+  col,
+  completed,
+}: {
+  batchId: string;
+  col: "created_at" | "updated_at" | "deleted_at";
+  completed: ReceivedDataCompleted;
+}) {
+  if (!batchId || !RECEIVED_DATA_COMPLETED_MAP[batchId]) {
+    throw new Error(`Batch ${batchId} not found`);
+  }
+  RECEIVED_DATA_COMPLETED_MAP[batchId][col] = completed;
+}
+
+export function deleteReceivedDataCompleted(batchId: string) {
+  delete RECEIVED_DATA_COMPLETED_MAP[batchId];
 }

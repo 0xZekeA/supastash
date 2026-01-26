@@ -1,4 +1,9 @@
-import { SyncInfo, SyncLogEntry } from "../types/syncEngine.types";
+import {
+  ReceivedDataCompleted,
+  ReceivedDataCompletedMap,
+  SyncInfo,
+  SyncLogEntry,
+} from "../types/syncEngine.types";
 
 /**
  * A map tracking sync status for each row in each table.
@@ -68,3 +73,41 @@ export const DEFAULT_SYNC_LOG_ENTRY: SyncLogEntry = {
   startTime: 0,
   endTime: 0,
 };
+
+export const RECEIVED_DATA_THRESHOLD = 1000;
+export const RECEIVED_DATA_COMPLETED_MAP: ReceivedDataCompletedMap = {};
+export const DEFAULT_RECEIVED_DATA_COMPLETED: ReceivedDataCompleted = {
+  completed: false,
+  lastTimestamp: "",
+  lastId: "",
+};
+
+/**
+ * Global Sync Gate
+ * ----------------
+ * Acts as a hard stop for all sync operations across the app.
+ */
+let syncGateClosed = false;
+
+/**
+ * Closes the global sync gate.
+ * Prevents all sync operations from running.
+ */
+export function closeSyncGate(): void {
+  syncGateClosed = true;
+}
+
+/**
+ * Opens the global sync gate.
+ * Allows sync operations to run.
+ */
+export function openSyncGate(): void {
+  syncGateClosed = false;
+}
+
+/**
+ * Returns whether the global sync gate is currently closed.
+ */
+export function isSyncGateClosed(): boolean {
+  return syncGateClosed;
+}

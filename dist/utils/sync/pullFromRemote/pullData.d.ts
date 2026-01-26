@@ -5,7 +5,11 @@ import { RealtimeFilter } from "../../../types/realtimeData.types";
  * @param table - The table to pull data from
  * @returns The data from the table
  */
-export declare function pullData(table: string, filters?: RealtimeFilter[]): Promise<{
+export declare function pullData({ table, filters, batchId, }: {
+    table: string;
+    filters?: RealtimeFilter[];
+    batchId: string;
+}): Promise<{
     data: PayloadData[];
     deletedIds: string[];
     timestamps: {

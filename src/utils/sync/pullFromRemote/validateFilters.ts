@@ -31,6 +31,12 @@ function isValidFilter<R = any>(filters: RealtimeFilter<R>[]): boolean {
 
     switch (operator) {
       case "is":
+        if (typeof value === "boolean") {
+          // normalize
+          filter.value = value ? "true" : "false";
+          break;
+        }
+
         if (
           !(
             value === null ||

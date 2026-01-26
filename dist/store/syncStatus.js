@@ -61,3 +61,36 @@ export const DEFAULT_SYNC_LOG_ENTRY = {
     startTime: 0,
     endTime: 0,
 };
+export const RECEIVED_DATA_THRESHOLD = 1000;
+export const RECEIVED_DATA_COMPLETED_MAP = {};
+export const DEFAULT_RECEIVED_DATA_COMPLETED = {
+    completed: false,
+    lastTimestamp: "",
+    lastId: "",
+};
+/**
+ * Global Sync Gate
+ * ----------------
+ * Acts as a hard stop for all sync operations across the app.
+ */
+let syncGateClosed = false;
+/**
+ * Closes the global sync gate.
+ * Prevents all sync operations from running.
+ */
+export function closeSyncGate() {
+    syncGateClosed = true;
+}
+/**
+ * Opens the global sync gate.
+ * Allows sync operations to run.
+ */
+export function openSyncGate() {
+    syncGateClosed = false;
+}
+/**
+ * Returns whether the global sync gate is currently closed.
+ */
+export function isSyncGateClosed() {
+    return syncGateClosed;
+}

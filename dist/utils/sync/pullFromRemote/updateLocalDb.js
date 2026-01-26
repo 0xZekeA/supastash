@@ -1,12 +1,15 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
+import { DEFAULT_RECEIVED_DATA_COMPLETED, RECEIVED_DATA_COMPLETED_MAP, } from "../../../store/syncStatus";
 import { isOnline } from "../../connection";
+import { generateUUIDv4 } from "../../genUUID";
 import { getTableSchema } from "../../getTableSchema";
 import log, { logError, logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { SyncInfoUpdater } from "../queryStatus";
 import { setSupastashSyncStatus } from "../status/services";
 import { updateLocalSyncedAt } from "../status/syncUpdate";
+import { deleteReceivedDataCompleted } from "./helpers";
 import { pullData } from "./pullData";
 import { stringifyValue } from "./stringifyFields";
 let isInSync = new Map();
@@ -20,84 +23,100 @@ const DELETE_CHUNK = 999;
 export async function updateLocalDb(table, filters, onReceiveData) {
     if (isInSync.get(table))
         return;
-    isInSync.set(table, true);
     const cfg = getSupastashConfig();
     if (cfg.supastashMode === "ghost")
         return;
+    if (!(await isOnline()))
+        return;
+    isInSync.set(table, true);
+    const batchId = generateUUIDv4();
     try {
-        if (!(await isOnline()))
-            return;
         const db = await getSupastashDb();
-        const dataResult = await pullData(table, filters);
-        const data = dataResult?.data;
-        const timestamps = dataResult?.timestamps;
-        const deletedIds = dataResult?.deletedIds;
-        const deletedIdSet = new Set(deletedIds ?? []);
-        SyncInfoUpdater.setUnsyncedDataCount({
-            amount: data?.length ?? 0,
-            type: "pull",
-            table,
-        });
-        SyncInfoUpdater.setUnsyncedDeletedCount({
-            amount: deletedIds?.length ?? 0,
-            type: "pull",
-            table,
-        });
-        const refreshNeeded = !!data?.length || !!deletedIds?.length;
-        // Delete records that are no longer in the remote data
-        if (deletedIds && deletedIds.length > 0) {
-            const ids = deletedIds;
-            for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-                const slice = ids.slice(i, i + DELETE_CHUNK);
-                const placeholders = slice.map(() => "?").join(", ");
-                await db.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
-            }
-        }
-        // Get the local stamp of the records
-        let localStamp = new Map();
-        if (data?.length) {
-            const ids = data.map((r) => r.id).filter(Boolean);
-            for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-                const slice = ids.slice(i, i + DELETE_CHUNK);
-                const placeholders = slice.map(() => "?").join(", ");
-                const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
-                for (const row of rows ?? []) {
-                    localStamp.set(row.id, row.updated_at ?? null);
-                }
-            }
-        }
-        // Update local database with remote changes
-        if (data?.length) {
-            for (let i = 0; i < data.length; i++) {
-                const record = data[i];
-                if (!record?.id)
-                    continue;
-                if (deletedIdSet.has(record.id))
-                    continue;
-                const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
-                const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
-                if (new Date(localUpdated) >= new Date(remoteUpdated)) {
-                    // local is newer or same — skip
-                    continue;
-                }
-                if (onReceiveData) {
-                    await onReceiveData(record);
-                }
-                else {
-                    await upsertData(table, record, localStamp.has(record.id));
-                }
-                if ((i + 1) % BATCH_SIZE === 0) {
-                    await new Promise((res) => setTimeout(res, 0));
-                }
-            }
-        }
-        if (timestamps) {
-            await setSupastashSyncStatus(table, filters, {
-                lastCreatedAt: timestamps.createdMax,
-                lastSyncedAt: timestamps.updatedMax,
-                lastDeletedAt: timestamps.deletedMax,
-                filterNamespace: "global",
+        // Initialize the batch completed map
+        RECEIVED_DATA_COMPLETED_MAP[batchId] = {
+            created_at: DEFAULT_RECEIVED_DATA_COMPLETED,
+            updated_at: DEFAULT_RECEIVED_DATA_COMPLETED,
+            deleted_at: DEFAULT_RECEIVED_DATA_COMPLETED,
+        };
+        let refreshNeeded = false;
+        while (true) {
+            const dataResult = await pullData({ table, filters, batchId });
+            if (!dataResult)
+                break;
+            const data = dataResult?.data;
+            const timestamps = dataResult.timestamps;
+            const deletedIds = dataResult.deletedIds;
+            const deletedIdSet = new Set(deletedIds ?? []);
+            SyncInfoUpdater.setUnsyncedDataCount({
+                amount: data?.length ?? 0,
+                type: "pull",
+                table,
             });
+            SyncInfoUpdater.setUnsyncedDeletedCount({
+                amount: deletedIds?.length ?? 0,
+                type: "pull",
+                table,
+            });
+            refreshNeeded = !!data?.length || !!deletedIds?.length;
+            // Delete records that are no longer in the remote data
+            if (deletedIds && deletedIds.length > 0) {
+                const ids = deletedIds;
+                for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+                    const slice = ids.slice(i, i + DELETE_CHUNK);
+                    const placeholders = slice.map(() => "?").join(", ");
+                    await db.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
+                }
+            }
+            // Get the local stamp of the records
+            let localStamp = new Map();
+            if (data?.length) {
+                const ids = data.map((r) => r.id).filter(Boolean);
+                for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+                    const slice = ids.slice(i, i + DELETE_CHUNK);
+                    const placeholders = slice.map(() => "?").join(", ");
+                    const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
+                    for (const row of rows ?? []) {
+                        localStamp.set(row.id, row.updated_at ?? null);
+                    }
+                }
+            }
+            // Update local database with remote changes
+            if (data?.length) {
+                for (let i = 0; i < data.length; i++) {
+                    const record = data[i];
+                    if (!record?.id)
+                        continue;
+                    if (deletedIdSet.has(record.id))
+                        continue;
+                    const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
+                    const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
+                    if (new Date(localUpdated) >= new Date(remoteUpdated)) {
+                        // local is newer or same — skip
+                        continue;
+                    }
+                    if (onReceiveData) {
+                        await onReceiveData(record);
+                    }
+                    else {
+                        await upsertData(table, record, localStamp.has(record.id));
+                    }
+                    if ((i + 1) % BATCH_SIZE === 0) {
+                        await new Promise((res) => setTimeout(res, 0));
+                    }
+                }
+            }
+            if (timestamps) {
+                await setSupastashSyncStatus(table, filters, {
+                    lastCreatedAt: timestamps.createdMax,
+                    lastSyncedAt: timestamps.updatedMax,
+                    lastDeletedAt: timestamps.deletedMax,
+                    filterNamespace: "global",
+                });
+            }
+            const completedSet = RECEIVED_DATA_COMPLETED_MAP[batchId];
+            if (Object.values(completedSet ?? {}).every(Boolean)) {
+                break;
+            }
         }
         if (refreshNeeded)
             refreshScreen(table);
@@ -108,6 +127,7 @@ export async function updateLocalDb(table, filters, onReceiveData) {
     }
     finally {
         isInSync.delete(table);
+        deleteReceivedDataCompleted(batchId);
     }
 }
 const warned = new Map();

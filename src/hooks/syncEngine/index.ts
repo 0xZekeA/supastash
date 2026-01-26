@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { getSupastashConfig } from "../../core/config";
 import { syncCalls } from "../../store/syncCalls";
+import { isSyncGateClosed } from "../../store/syncStatus";
 import { tableFilters } from "../../store/tableFilters";
 import { isOnline } from "../../utils/connection";
 import log from "../../utils/logs";
@@ -33,6 +34,8 @@ const MIN_FOREGROUND_GAP = 5_000; // ms
  * - "force" ignores pull cadence timing.
  */
 export async function syncAll(force: boolean = false): Promise<void> {
+  const isGateClosed = isSyncGateClosed();
+  if (isGateClosed) return;
   if (isSyncing) return;
   if (!(await isOnline())) return;
 
