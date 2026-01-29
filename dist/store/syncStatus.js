@@ -65,8 +65,8 @@ export const RECEIVED_DATA_THRESHOLD = 1000;
 export const RECEIVED_DATA_COMPLETED_MAP = {};
 export const DEFAULT_RECEIVED_DATA_COMPLETED = {
     completed: false,
-    lastTimestamp: "",
-    lastId: "",
+    lastTimestamp: undefined,
+    lastId: undefined,
 };
 /**
  * Global Sync Gate

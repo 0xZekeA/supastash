@@ -110,6 +110,7 @@ export async function updateLocalDb(table, filters, onReceiveData) {
                     lastCreatedAt: timestamps.createdMax,
                     lastSyncedAt: timestamps.updatedMax,
                     lastDeletedAt: timestamps.deletedMax,
+                    lastSyncedAtPk: timestamps.updatedMaxPk,
                     filterNamespace: "global",
                 });
             }

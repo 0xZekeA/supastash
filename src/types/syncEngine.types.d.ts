@@ -34,7 +34,8 @@ export type SupastashSyncStatus = {
   filter_json: string;
   last_created_at: string;
   last_synced_at: string;
-  last_deleted_at: string;
+  last_synced_at_pk: string | null;
+  last_deleted_at: string | null;
 };
 
 export type PublicScope =
@@ -122,8 +123,8 @@ export type SyncInfo = {
 
 export type ReceivedDataCompleted = {
   completed: boolean;
-  lastTimestamp: string;
-  lastId: string;
+  lastTimestamp: string | undefined;
+  lastId: string | undefined;
 };
 export type ReceivedDataCompletedMap = {
   [key: string]: {

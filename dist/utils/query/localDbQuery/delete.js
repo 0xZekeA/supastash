@@ -15,7 +15,7 @@ export async function deleteData(table, filters, syncMode) {
         const db = await getSupastashDb();
         const timeStamp = new Date().toISOString();
         const itemsToBeDeleted = await db.getAllAsync(`SELECT * FROM ${table} ${clause}`, filterValues);
-        await db.runAsync(`UPDATE ${table} SET deleted_at = ?, synced_at = NULL ${clause}`, [timeStamp, ...filterValues]);
+        await db.runAsync(`UPDATE ${table} SET deleted_at = ?, updated_at = ?, synced_at = NULL ${clause}`, [timeStamp, timeStamp, ...filterValues]);
         if (syncMode === "localOnly" || syncMode === "remoteFirst") {
             permanentlyDeleteData(table, filters);
         }

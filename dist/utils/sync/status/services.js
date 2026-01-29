@@ -8,7 +8,7 @@ const maxIso = (a, b) => {
         return b ?? null;
     if (!b)
         return a ?? null;
-    return Date.parse(a) > Date.parse(b) ? a : b;
+    return Date.parse(b) > Date.parse(a) ? b : a;
 };
 const OLD_DATE = "2000-01-01T00:00:00Z";
 /**
@@ -21,7 +21,7 @@ export async function getSupastashSyncStatus(table, filters) {
     try {
         const filterToUse = filters ?? tableFilters.get(table) ?? [];
         const db = await getSupastashDb();
-        await ensureSyncMarksTable(db);
+        await ensureSyncMarksTable();
         const fk = await computeFilterKey(filterToUse);
         return await selectMarks(db, table, fk);
     }
@@ -33,7 +33,7 @@ export async function getSupastashSyncStatus(table, filters) {
 export async function setSupastashSyncStatus(table, filters, opts) {
     try {
         const db = await getSupastashDb();
-        await ensureSyncMarksTable(db);
+        await ensureSyncMarksTable();
         const filterToUse = filters ?? tableFilters.get(table) ?? [];
         const ns = opts.filterNamespace ?? "global";
         const fk = await computeFilterKey(filterToUse, ns);
@@ -52,6 +52,7 @@ export async function setSupastashSyncStatus(table, filters, opts) {
             table_name: table,
             filter_key: fk,
             filter_json: filterJson,
+            last_synced_at_pk: opts.lastSyncedAtPk ?? undefined,
             last_created_at: nextLastCreated ?? undefined,
             last_synced_at: nextLastSynced ?? undefined,
             last_deleted_at: nextLastDeleted ?? undefined,
@@ -74,7 +75,7 @@ export async function setSupastashSyncStatus(table, filters, opts) {
 export async function resetSupastashSyncStatus(table, filters, scope = "all") {
     try {
         const db = await getSupastashDb();
-        await ensureSyncMarksTable(db);
+        await ensureSyncMarksTable();
         const filterToUse = filters ?? tableFilters.get(table) ?? [];
         const fk = await computeFilterKey(filterToUse);
         const filterJson = canonicalizeFilters(filterToUse);
@@ -101,7 +102,7 @@ export async function clearSupastashSyncStatus(table, filters) {
     try {
         const filterToUse = filters ?? tableFilters.get(table) ?? [];
         const db = await getSupastashDb();
-        await ensureSyncMarksTable(db);
+        await ensureSyncMarksTable();
         const fk = filterToUse ? await computeFilterKey(filterToUse) : undefined;
         await deleteMarks(db, table, fk);
     }

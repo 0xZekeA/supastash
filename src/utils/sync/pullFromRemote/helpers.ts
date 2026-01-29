@@ -16,6 +16,7 @@ const MAX_PAGE_SIZE = 2000;
 const timesPulled = new Map<string, number>();
 const lastPulled = new Map<string, number>();
 const DEFAULT_MAX_PULL_ATTEMPTS = 150;
+const DEFAULT_PK = "00000000-0000-0000-0000-000000000000";
 
 function applyFilters(q: any, filters: RealtimeFilter[], table: string) {
   for (const f of filters) {
@@ -35,6 +36,7 @@ export async function pageThrough(base: {
   filters?: RealtimeFilter[];
   includeDeleted?: boolean;
   batchId: string;
+  previousPk?: string | null;
 }) {
   const supabase = getSupastashConfig().supabaseClient;
   if (!supabase)
@@ -47,7 +49,7 @@ export async function pageThrough(base: {
   });
   if (lastWork.completed) return results;
   let cursorTs = lastWork.lastTimestamp || base.since || RANDOM_OLD_DATE;
-  let cursorId = lastWork.lastId || "";
+  let cursorId = base.previousPk ?? lastWork.lastId;
 
   let lastDataSize = 0;
   const { table, filters = [], select = "*" } = base;
@@ -67,7 +69,7 @@ export async function pageThrough(base: {
     } else {
       q = q.gte(base.tsCol, cursorTs);
     }
-    if (!base.includeDeleted) q = (q as any).is("deleted_at", null);
+
     if (filters) {
       q = applyFilters(q, filters, table);
     }
@@ -77,6 +79,10 @@ export async function pageThrough(base: {
     if (!data || data.length === 0) break;
 
     results.push(...data);
+    const last = data[data.length - 1]! as any;
+    cursorTs = last[base.tsCol];
+    cursorId = last.id;
+    lastDataSize += data.length;
 
     if (data.length < PAGE_SIZE) {
       setReceivedDataCompleted({
@@ -90,11 +96,6 @@ export async function pageThrough(base: {
       });
       break;
     }
-
-    const last = data[data.length - 1]! as any;
-    cursorTs = last[base.tsCol];
-    cursorId = last.id;
-    lastDataSize += data.length;
 
     setReceivedDataCompleted({
       batchId: base.batchId,
@@ -111,6 +112,36 @@ export async function pageThrough(base: {
     await new Promise((res) => setTimeout(res, 0));
   }
   return results;
+}
+
+export function returnMaxDate({
+  row,
+  prevMax,
+  col,
+}: {
+  row: PayloadData;
+  prevMax: { value: string; pk: string | null } | null;
+  col: "created_at" | "updated_at" | "deleted_at";
+}): { value: string; pk: string | null } | null {
+  const v = row[col];
+  const pk = row.id;
+
+  if (!pk) throw new Error("Row without id");
+  if (!v) return prevMax;
+
+  if (!prevMax) {
+    return { value: v, pk };
+  }
+
+  if (v > prevMax.value) {
+    return { value: v, pk };
+  }
+
+  if (v === prevMax.value && pk > (prevMax.pk ?? pk)) {
+    return { value: v, pk };
+  }
+
+  return prevMax;
 }
 
 export function getMaxDate(
@@ -154,7 +185,11 @@ export function getReceivedDataCompleted({
   if (!batchId || !RECEIVED_DATA_COMPLETED_MAP[batchId]) {
     throw new Error(`Batch ${batchId} not found`);
   }
-  const completed = RECEIVED_DATA_COMPLETED_MAP[batchId][col] ?? false;
+  const completed = RECEIVED_DATA_COMPLETED_MAP[batchId][col] || {
+    completed: false,
+    lastTimestamp: undefined,
+    lastId: undefined,
+  };
   return completed;
 }
 

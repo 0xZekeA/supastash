@@ -9,7 +9,19 @@ export declare function pageThrough(base: {
     filters?: RealtimeFilter[];
     includeDeleted?: boolean;
     batchId: string;
+    previousPk?: string | null;
 }): Promise<any[]>;
+export declare function returnMaxDate({ row, prevMax, col, }: {
+    row: PayloadData;
+    prevMax: {
+        value: string;
+        pk: string | null;
+    } | null;
+    col: "created_at" | "updated_at" | "deleted_at";
+}): {
+    value: string;
+    pk: string | null;
+} | null;
 export declare function getMaxDate(rows: PayloadData[], col: "created_at" | "updated_at" | "deleted_at"): string | null;
 export declare function logNoUpdates(table: string): void;
 export declare function getReceivedDataCompleted({ batchId, col, }: {

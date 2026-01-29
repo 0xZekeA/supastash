@@ -11,6 +11,7 @@ export declare function setSupastashSyncStatus(table: string, filters: RealtimeF
     lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
+    lastSyncedAtPk?: string | null;
     filterNamespace?: string;
 }): Promise<void>;
 /**

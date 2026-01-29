@@ -33,8 +33,8 @@ export async function deleteData<Z = any>(
     );
 
     await db.runAsync(
-      `UPDATE ${table} SET deleted_at = ?, synced_at = NULL ${clause}`,
-      [timeStamp, ...filterValues]
+      `UPDATE ${table} SET deleted_at = ?, updated_at = ?, synced_at = NULL ${clause}`,
+      [timeStamp, timeStamp, ...filterValues]
     );
 
     if (syncMode === "localOnly" || syncMode === "remoteFirst") {

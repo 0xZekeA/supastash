@@ -16,6 +16,7 @@ export declare function pullData({ table, filters, batchId, }: {
         createdMax: string | null;
         updatedMax: string | null;
         deletedMax: string | null;
+        updatedMaxPk: string | null;
     };
 } | null>;
 //# sourceMappingURL=pullData.d.ts.map

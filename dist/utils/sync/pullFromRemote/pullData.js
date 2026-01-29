@@ -4,8 +4,8 @@ import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { SyncInfoUpdater } from "../queryStatus";
 import { computeFilterKey } from "../status/filterKey";
-import { selectAndAddAMillisecond } from "../status/repo";
-import { getMaxDate, logNoUpdates, pageThrough } from "./helpers";
+import { selectSyncStatus } from "../status/repo";
+import { logNoUpdates, pageThrough, returnMaxDate } from "./helpers";
 /**
  * Pulls data from the remote database for a given table
  * @param table - The table to pull data from
@@ -28,51 +28,58 @@ export async function pullData({ table, filters, batchId, }) {
         table,
     });
     const db = await getSupastashDb();
-    const { last_created_at, last_synced_at, last_deleted_at } = await selectAndAddAMillisecond(db, table, filters);
-    const [createdRows, updatedRows, deletedRows] = await Promise.all([
-        pageThrough({
-            tsCol: "created_at",
-            since: last_created_at,
-            table,
-            filters,
-            batchId,
-        }),
-        pageThrough({
-            tsCol: "updated_at",
-            since: last_synced_at,
-            table,
-            filters,
-            batchId,
-        }),
-        pageThrough({
-            tsCol: "deleted_at",
-            since: last_deleted_at,
-            includeDeleted: true,
-            select: "id, deleted_at",
-            table,
-            filters,
-            batchId,
-        }),
-    ]);
-    const merged = {};
-    for (const r of [...createdRows, ...updatedRows]) {
+    const syncStatus = await selectSyncStatus(db, table, filters);
+    const updatedRows = await pageThrough({
+        tsCol: "updated_at",
+        since: syncStatus.last_synced_at,
+        table,
+        filters,
+        batchId,
+        previousPk: syncStatus.last_synced_at_pk,
+    });
+    const updatedData = [];
+    let deletedIds = [];
+    let createdMax = null;
+    let updatedMax = null;
+    let deletedMax = null;
+    for (const r of updatedRows) {
         if (!r?.id) {
             logWarn(`[Supastash] Skipped row without id from "${table}"`);
             continue;
         }
-        merged[r.id] = r;
+        createdMax = returnMaxDate({
+            row: r,
+            prevMax: createdMax,
+            col: "created_at",
+        });
+        updatedMax = returnMaxDate({
+            row: r,
+            prevMax: updatedMax,
+            col: "updated_at",
+        });
+        // If the row is deleted, add the id to the deleted ids and update the deleted max
+        if (r.deleted_at) {
+            deletedIds.push(r.id);
+            deletedMax = returnMaxDate({
+                row: r,
+                prevMax: deletedMax,
+                col: "deleted_at",
+            });
+            continue;
+        }
+        // Push the row to the updated data
+        updatedData.push(r);
     }
-    const data = Object.values(merged);
-    if (data.length === 0 && deletedRows.length === 0) {
+    if (updatedData.length === 0 && deletedIds.length === 0) {
         logNoUpdates(table);
         return null;
     }
-    const deletedIds = deletedRows.map((r) => r.id);
     const timestamps = {
-        createdMax: getMaxDate(createdRows, "created_at"),
-        updatedMax: getMaxDate(updatedRows, "updated_at"),
-        deletedMax: getMaxDate(deletedRows, "deleted_at"),
+        createdMax: createdMax?.value ?? null,
+        updatedMax: updatedMax?.value ?? null,
+        deletedMax: deletedMax?.value ?? null,
+        updatedMaxPk: updatedMax?.pk ?? null,
     };
-    log(`[Supastash] Received ${data.length + deletedRows.length} updates for ${table} (c${createdRows.length}/u${updatedRows.length}/d${deletedRows.length})`);
-    return { data, deletedIds, timestamps };
+    log(`[Supastash] Received ${updatedData.length + deletedIds.length} updates for ${table} (u${updatedData.length}/d${deletedIds.length})`);
+    return { data: updatedData, deletedIds, timestamps };
 }

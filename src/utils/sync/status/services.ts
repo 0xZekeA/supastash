@@ -18,7 +18,7 @@ import {
 const maxIso = (a?: string | null, b?: string | null) => {
   if (!a) return b ?? null;
   if (!b) return a ?? null;
-  return Date.parse(a) > Date.parse(b) ? a : b;
+  return Date.parse(b) > Date.parse(a) ? b : a;
 };
 
 const OLD_DATE = "2000-01-01T00:00:00Z";
@@ -36,7 +36,7 @@ export async function getSupastashSyncStatus(
   try {
     const filterToUse = filters ?? tableFilters.get(table) ?? [];
     const db = await getSupastashDb();
-    await ensureSyncMarksTable(db);
+    await ensureSyncMarksTable();
     const fk = await computeFilterKey(filterToUse);
     return await selectMarks(db, table, fk);
   } catch (e) {
@@ -52,12 +52,13 @@ export async function setSupastashSyncStatus(
     lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
+    lastSyncedAtPk?: string | null;
     filterNamespace?: string;
   }
 ) {
   try {
     const db = await getSupastashDb();
-    await ensureSyncMarksTable(db);
+    await ensureSyncMarksTable();
 
     const filterToUse = filters ?? tableFilters.get(table) ?? [];
 
@@ -86,6 +87,7 @@ export async function setSupastashSyncStatus(
       table_name: table,
       filter_key: fk,
       filter_json: filterJson,
+      last_synced_at_pk: opts.lastSyncedAtPk ?? undefined,
       last_created_at: nextLastCreated ?? undefined,
       last_synced_at: nextLastSynced ?? undefined,
       last_deleted_at: nextLastDeleted ?? undefined,
@@ -115,7 +117,7 @@ export async function resetSupastashSyncStatus(
 ) {
   try {
     const db = await getSupastashDb();
-    await ensureSyncMarksTable(db);
+    await ensureSyncMarksTable();
     const filterToUse = filters ?? tableFilters.get(table) ?? [];
 
     const fk = await computeFilterKey(filterToUse);
@@ -146,7 +148,7 @@ export async function clearSupastashSyncStatus(
   try {
     const filterToUse = filters ?? tableFilters.get(table) ?? [];
     const db = await getSupastashDb();
-    await ensureSyncMarksTable(db);
+    await ensureSyncMarksTable();
 
     const fk = filterToUse ? await computeFilterKey(filterToUse) : undefined;
     await deleteMarks(db, table, fk);

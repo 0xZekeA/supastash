@@ -78,7 +78,7 @@ export async function getSyncLog(
 /**
  * Writes or updates the sync log for a table.
  *
- * Stores the latest `created_at`, `updated_at`, and/or `deleted_at`
+ * Stores the latest `updated_at` and `updated_at_pk`
  * timestamps for a table + filter combination.
  *
  * @param table - Table name to update.
@@ -87,7 +87,7 @@ export async function getSyncLog(
  * @example
  * await setSyncLog("users", undefined, {
  *   lastSyncedAt: new Date().toISOString(),
- *   lastCreatedAt: new Date().toISOString(),
+ *   lastSyncedAtPk: "00000000-0000-0000-0000-000000000000",
  * });
  */
 export async function setSyncLog(
@@ -97,6 +97,7 @@ export async function setSyncLog(
     lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
+    lastSyncedAtPk?: string | null;
     filterNamespace?: string;
   }
 ) {
