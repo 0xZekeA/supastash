@@ -6,7 +6,7 @@
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://0xZekeA.github.io/supastash/blog"/>
     <subtitle>Supastash Blog</subtitle>
-    <icon>https://0xZekeA.github.io/supastash/img/supastash-sm.png</icon>
+    <icon>https://0xZekeA.github.io/supastash/img/supastash.png</icon>
     <entry>
         <title type="html"><![CDATA[Welcome]]></title>
         <id>https://0xZekeA.github.io/supastash/blog/welcome</id>
