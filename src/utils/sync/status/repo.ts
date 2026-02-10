@@ -7,13 +7,21 @@ import { computeFilterKey } from "./filterKey";
 
 const OLD_DATE = "2000-01-01T00:00:00Z";
 
-const cleanDate = (date: string, table: string) => {
+const cleanDate = ({
+  date,
+  table,
+  column,
+}: {
+  date: string;
+  table: string;
+  column: string;
+}) => {
   const original = date || OLD_DATE;
   const d = new Date(original);
 
   if (Number.isNaN(d?.getTime?.())) {
     logWarn(
-      `[Supastash] Invalid date string found on deleted_at column for ${table}: ${original}`
+      `[Supastash] Invalid date string found on the ${column} column for ${table}: ${original}`
     );
     return original;
   }
@@ -23,15 +31,21 @@ const cleanDate = (date: string, table: string) => {
 const cleanSyncStatus = (syncStatus: SupastashSyncStatus) => {
   return {
     ...syncStatus,
-    last_created_at: cleanDate(
-      syncStatus.last_created_at,
-      syncStatus.table_name
-    ),
-    last_synced_at: cleanDate(syncStatus.last_synced_at, syncStatus.table_name),
-    last_deleted_at: cleanDate(
-      syncStatus.last_deleted_at || OLD_DATE,
-      syncStatus.table_name
-    ),
+    last_created_at: cleanDate({
+      date: syncStatus.last_created_at,
+      table: syncStatus.table_name,
+      column: "created_at",
+    }),
+    last_synced_at: cleanDate({
+      date: syncStatus.last_synced_at,
+      table: syncStatus.table_name,
+      column: "updated_at",
+    }),
+    last_deleted_at: cleanDate({
+      date: syncStatus.last_deleted_at || OLD_DATE,
+      table: syncStatus.table_name,
+      column: "deleted_at",
+    }),
   };
 };
 
