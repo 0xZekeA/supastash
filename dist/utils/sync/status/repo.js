@@ -4,8 +4,8 @@ import { computeFilterKey } from "./filterKey";
 const OLD_DATE = "2000-01-01T00:00:00Z";
 const cleanDate = (date, table) => {
     const original = date || OLD_DATE;
-    const timestamp = Date.parse(original);
-    if (isNaN(timestamp)) {
+    const d = new Date(original);
+    if (Number.isNaN(d?.getTime?.())) {
         logWarn(`[Supastash] Invalid date string found on deleted_at column for ${table}: ${original}`);
         return original;
     }
