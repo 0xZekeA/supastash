@@ -5,7 +5,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config: Config = {
   title: "Supastash",
   tagline: "Offline-first syncing built for Supabase",
-  favicon: "img/supastash-sm.png",
+  favicon: "img/supastash.png",
 
   future: {
     v4: true,
@@ -52,12 +52,12 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: "img/supastash-sm.png",
+    image: "img/supastash.png",
     navbar: {
       title: "Supastash",
       logo: {
         alt: "Supastash Logo",
-        src: "img/supastash-sm.png",
+        src: "img/supastash.png",
       },
       items: [
         {

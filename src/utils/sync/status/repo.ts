@@ -9,8 +9,9 @@ const OLD_DATE = "2000-01-01T00:00:00Z";
 
 const cleanDate = (date: string, table: string) => {
   const original = date || OLD_DATE;
-  const timestamp = Date.parse(original);
-  if (isNaN(timestamp)) {
+  const d = new Date(original);
+
+  if (Number.isNaN(d?.getTime?.())) {
     logWarn(
       `[Supastash] Invalid date string found on deleted_at column for ${table}: ${original}`
     );
