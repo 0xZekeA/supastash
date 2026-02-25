@@ -13,7 +13,6 @@ export declare function pullData({ table, filters, batchId, }: {
     data: PayloadData[];
     deletedIds: string[];
     timestamps: {
-        createdMax: string | null;
         updatedMax: string | null;
         deletedMax: string | null;
         updatedMaxPk: string | null;

@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../core/config";
 import { getSupastashDb } from "../../db/dbInitializer";
 /**
  * Creates the supastash_deleted_status table if it doesn't exist
@@ -13,19 +14,38 @@ export const SYNC_STATUS_TABLES_SQL = `
   table_name       TEXT NOT NULL,
   filter_key       TEXT NOT NULL,         
   filter_json      TEXT NULL,             
-  last_created_at  TEXT NULL,             
   last_synced_at   TEXT NULL,   
   last_synced_at_pk     TEXT NULL,          
   last_deleted_at  TEXT NULL,             
   updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (table_name, filter_key)
 );`;
+export const SERVER_SYNC_STATUS_TABLES_SQL = `
+  CREATE TABLE IF NOT EXISTS supastash_server_sync_marks (
+    table_name            TEXT NOT NULL,
+    filter_key            TEXT NOT NULL,
+    filter_json           TEXT NULL,
+
+    last_deleted_at       TEXT NULL,
+
+    last_synced_at        TEXT NULL,        -- represents arrived_at
+    last_synced_at_pk     TEXT NULL,        -- composite cursor safety
+
+    updated_at            TEXT NOT NULL DEFAULT (datetime('now')),
+
+    PRIMARY KEY (table_name, filter_key)
+  );
+`;
 export const ADD_PK_TO_SYNC_MARKS_SQL = `
   ALTER TABLE supastash_sync_marks ADD COLUMN last_synced_at_pk TEXT NULL;
 `;
 export const INDEX_SYNC_MARKS_SQL = `
   CREATE INDEX IF NOT EXISTS idx_supastash_marks_updated
     ON supastash_sync_marks(updated_at);
+`;
+export const INDEX_SERVER_SYNC_MARKS_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_supastash_server_marks_updated
+    ON supastash_server_sync_marks(updated_at);
 `;
 let addedPk = false;
 /**
@@ -35,7 +55,15 @@ let addedPk = false;
  */
 export async function createSyncStatusTable() {
     const db = await getSupastashDb();
-    await db.execAsync(SYNC_STATUS_TABLES_SQL);
+    const cfg = getSupastashConfig();
+    if (cfg.replicationMode === "server-side") {
+        await db.execAsync(SERVER_SYNC_STATUS_TABLES_SQL);
+        await db.execAsync(INDEX_SERVER_SYNC_MARKS_SQL);
+    }
+    else {
+        await db.execAsync(SYNC_STATUS_TABLES_SQL);
+        await db.execAsync(INDEX_SYNC_MARKS_SQL);
+    }
     try {
         if (addedPk)
             return;
@@ -45,5 +73,4 @@ export async function createSyncStatusTable() {
     catch (error) {
         // Ignore error if column already exists
     }
-    await db.execAsync(INDEX_SYNC_MARKS_SQL);
 }

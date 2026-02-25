@@ -29,8 +29,10 @@ export async function pullData({ table, filters, batchId, }) {
     });
     const db = await getSupastashDb();
     const syncStatus = await selectSyncStatus(db, table, filters);
+    const cfg = getSupastashConfig();
+    const tsCol = cfg.replicationMode === "server-side" ? "arrived_at" : "updated_at";
     const updatedRows = await pageThrough({
-        tsCol: "updated_at",
+        tsCol,
         since: syncStatus.last_synced_at,
         table,
         filters,
@@ -39,7 +41,6 @@ export async function pullData({ table, filters, batchId, }) {
     });
     const updatedData = [];
     let deletedIds = [];
-    let createdMax = null;
     let updatedMax = null;
     let deletedMax = null;
     for (const r of updatedRows) {
@@ -47,15 +48,10 @@ export async function pullData({ table, filters, batchId, }) {
             logWarn(`[Supastash] Skipped row without id from "${table}"`);
             continue;
         }
-        createdMax = returnMaxDate({
-            row: r,
-            prevMax: createdMax,
-            col: "created_at",
-        });
         updatedMax = returnMaxDate({
             row: r,
             prevMax: updatedMax,
-            col: "updated_at",
+            col: tsCol,
         });
         // If the row is deleted, add the id to the deleted ids and update the deleted max
         if (r.deleted_at) {
@@ -75,7 +71,6 @@ export async function pullData({ table, filters, batchId, }) {
         return null;
     }
     const timestamps = {
-        createdMax: createdMax?.value ?? null,
         updatedMax: updatedMax?.value ?? null,
         deletedMax: deletedMax?.value ?? null,
         updatedMaxPk: updatedMax?.pk ?? null,

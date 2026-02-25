@@ -34,9 +34,8 @@ export async function updateLocalDb(table, filters, onReceiveData) {
         const db = await getSupastashDb();
         // Initialize the batch completed map
         RECEIVED_DATA_COMPLETED_MAP[batchId] = {
-            created_at: DEFAULT_RECEIVED_DATA_COMPLETED,
+            arrived_at: DEFAULT_RECEIVED_DATA_COMPLETED,
             updated_at: DEFAULT_RECEIVED_DATA_COMPLETED,
-            deleted_at: DEFAULT_RECEIVED_DATA_COMPLETED,
         };
         let refreshNeeded = false;
         while (true) {
@@ -107,7 +106,6 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             }
             if (timestamps) {
                 await setSupastashSyncStatus(table, filters, {
-                    lastCreatedAt: timestamps.createdMax,
                     lastSyncedAt: timestamps.updatedMax,
                     lastDeletedAt: timestamps.deletedMax,
                     lastSyncedAtPk: timestamps.updatedMaxPk,

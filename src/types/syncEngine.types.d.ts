@@ -32,17 +32,12 @@ export type SupastashSyncStatus = {
   table_name: string;
   filter_key: string;
   filter_json: string;
-  last_created_at: string;
   last_synced_at: string;
   last_synced_at_pk: string | null;
   last_deleted_at: string | null;
 };
 
-export type PublicScope =
-  | "all"
-  | "last_synced_at"
-  | "last_created_at"
-  | "last_deleted_at";
+export type PublicScope = "all" | "last_synced_at" | "last_deleted_at";
 
 export type CurrentTableInfo = {
   /** Table currently being synced */
@@ -128,8 +123,7 @@ export type ReceivedDataCompleted = {
 };
 export type ReceivedDataCompletedMap = {
   [key: string]: {
-    created_at: ReceivedDataCompleted;
+    arrived_at: ReceivedDataCompleted;
     updated_at: ReceivedDataCompleted;
-    deleted_at: ReceivedDataCompleted;
   };
 };

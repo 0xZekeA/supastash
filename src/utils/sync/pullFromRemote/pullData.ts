@@ -26,7 +26,6 @@ export async function pullData({
   data: PayloadData[];
   deletedIds: string[];
   timestamps: {
-    createdMax: string | null;
     updatedMax: string | null;
     deletedMax: string | null;
     updatedMaxPk: string | null;
@@ -52,8 +51,13 @@ export async function pullData({
   const db = await getSupastashDb();
   const syncStatus = await selectSyncStatus(db, table, filters);
 
+  const cfg = getSupastashConfig();
+
+  const tsCol =
+    cfg.replicationMode === "server-side" ? "arrived_at" : "updated_at";
+
   const updatedRows = await pageThrough({
-    tsCol: "updated_at",
+    tsCol,
     since: syncStatus.last_synced_at,
     table,
     filters,
@@ -63,7 +67,6 @@ export async function pullData({
 
   const updatedData: PayloadData[] = [];
   let deletedIds: string[] = [];
-  let createdMax: { value: string; pk: string | null } | null = null;
   let updatedMax: { value: string; pk: string | null } | null = null;
   let deletedMax: { value: string; pk: string | null } | null = null;
   for (const r of updatedRows) {
@@ -72,15 +75,10 @@ export async function pullData({
       continue;
     }
 
-    createdMax = returnMaxDate({
-      row: r,
-      prevMax: createdMax,
-      col: "created_at",
-    });
     updatedMax = returnMaxDate({
       row: r,
       prevMax: updatedMax,
-      col: "updated_at",
+      col: tsCol,
     });
 
     // If the row is deleted, add the id to the deleted ids and update the deleted max
@@ -104,7 +102,6 @@ export async function pullData({
   }
 
   const timestamps = {
-    createdMax: createdMax?.value ?? null,
     updatedMax: updatedMax?.value ?? null,
     deletedMax: deletedMax?.value ?? null,
     updatedMaxPk: updatedMax?.pk ?? null,

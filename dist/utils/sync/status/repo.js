@@ -1,7 +1,16 @@
+import { getSupastashConfig } from "../../../core/config";
 import { logWarn } from "../../logs";
 import { createSyncStatusTable } from "../../schema/createSyncStatus";
 import { computeFilterKey } from "./filterKey";
 const OLD_DATE = "2000-01-01T00:00:00Z";
+const SYNC_STATUS_TABLE = "supastash_sync_marks";
+const SERVER_SYNC_STATUS_TABLE = "supastash_server_sync_marks";
+const getSyncStatusTable = () => {
+    const cfg = getSupastashConfig();
+    return cfg.replicationMode === "server-side"
+        ? SERVER_SYNC_STATUS_TABLE
+        : SYNC_STATUS_TABLE;
+};
 const cleanDate = ({ date, table, column, }) => {
     const original = date || OLD_DATE;
     const d = new Date(original);
@@ -12,17 +21,14 @@ const cleanDate = ({ date, table, column, }) => {
     return original;
 };
 const cleanSyncStatus = (syncStatus) => {
+    const cfg = getSupastashConfig();
+    const lastSyncedAtColumn = cfg.replicationMode === "server-side" ? "arrived_at" : "updated_at";
     return {
         ...syncStatus,
-        last_created_at: cleanDate({
-            date: syncStatus.last_created_at,
-            table: syncStatus.table_name,
-            column: "created_at",
-        }),
         last_synced_at: cleanDate({
             date: syncStatus.last_synced_at,
             table: syncStatus.table_name,
-            column: "updated_at",
+            column: lastSyncedAtColumn,
         }),
         last_deleted_at: cleanDate({
             date: syncStatus.last_deleted_at || OLD_DATE,
@@ -35,11 +41,13 @@ export async function ensureSyncMarksTable() {
     await createSyncStatusTable();
 }
 export async function selectMarks(db, table, filterKey) {
-    return db.getFirstAsync(`SELECT * FROM supastash_sync_marks WHERE table_name=? AND filter_key=?`, [table, filterKey]);
+    const syncStatusTable = getSyncStatusTable();
+    return db.getFirstAsync(`SELECT * FROM ${syncStatusTable} WHERE table_name=? AND filter_key=?`, [table, filterKey]);
 }
 export async function selectSyncStatus(db, table, tableFilters) {
     const filterKey = await computeFilterKey(tableFilters ?? []);
-    const result = await db.getFirstAsync(`SELECT * FROM supastash_sync_marks WHERE table_name=? AND filter_key=?`, [table, filterKey]);
+    const syncStatusTable = getSyncStatusTable();
+    const result = await db.getFirstAsync(`SELECT * FROM ${syncStatusTable} WHERE table_name=? AND filter_key=?`, [table, filterKey]);
     if (result) {
         return cleanSyncStatus(result);
     }
@@ -47,35 +55,34 @@ export async function selectSyncStatus(db, table, tableFilters) {
         table_name: table,
         filter_key: filterKey,
         filter_json: "{}",
-        last_created_at: OLD_DATE,
         last_synced_at: OLD_DATE,
         last_synced_at_pk: null,
         last_deleted_at: OLD_DATE,
     };
 }
 export async function upsertMarks(db, row) {
-    const { table_name, filter_key, filter_json = null, last_created_at = null, last_synced_at = null, last_deleted_at = null, last_synced_at_pk = null, } = row;
-    return db.runAsync(`INSERT INTO supastash_sync_marks
-       (table_name, filter_key, filter_json, last_created_at, last_synced_at, last_deleted_at, updated_at, last_synced_at_pk)
-       VALUES (?,?,?,?,?,?,datetime('now'),?)
+    const { table_name, filter_key, filter_json = null, last_synced_at = null, last_deleted_at = null, last_synced_at_pk = null, } = row;
+    const syncStatusTable = getSyncStatusTable();
+    return db.runAsync(`INSERT INTO ${syncStatusTable}
+       (table_name, filter_key, filter_json, last_synced_at, last_deleted_at, updated_at, last_synced_at_pk)
+       VALUES (?,?,?,?,?,datetime('now'),?)
        ON CONFLICT(table_name, filter_key) DO UPDATE SET
          filter_json     = excluded.filter_json,
-         last_created_at = COALESCE(excluded.last_created_at, supastash_sync_marks.last_created_at),
-         last_synced_at  = COALESCE(excluded.last_synced_at,  supastash_sync_marks.last_synced_at),
-         last_deleted_at = COALESCE(excluded.last_deleted_at, supastash_sync_marks.last_deleted_at),
+         last_synced_at  = COALESCE(excluded.last_synced_at,  ${syncStatusTable}.last_synced_at),
+         last_deleted_at = COALESCE(excluded.last_deleted_at, ${syncStatusTable}.last_deleted_at),
          updated_at      = datetime('now'),
-         last_synced_at_pk = COALESCE(excluded.last_synced_at_pk, supastash_sync_marks.last_synced_at_pk)`, [
+         last_synced_at_pk = COALESCE(excluded.last_synced_at_pk, ${syncStatusTable}.last_synced_at_pk)`, [
         table_name,
         filter_key,
         filter_json,
-        last_created_at,
         last_synced_at,
         last_deleted_at,
         last_synced_at_pk,
     ]);
 }
 export async function resetColumn(db, table, filterKey, col, value, filterJson) {
-    return db.runAsync(`INSERT INTO supastash_sync_marks (table_name, filter_key, filter_json, ${col}, updated_at)
+    const syncStatusTable = getSyncStatusTable();
+    return db.runAsync(`INSERT INTO ${syncStatusTable} (table_name, filter_key, filter_json, ${col}, updated_at)
        VALUES (?,?,?,?,datetime('now'))
        ON CONFLICT(table_name, filter_key) DO UPDATE SET
          filter_json = excluded.filter_json,
@@ -83,9 +90,8 @@ export async function resetColumn(db, table, filterKey, col, value, filterJson) 
          updated_at  = datetime('now')`, [table, filterKey, filterJson, value]);
 }
 export async function deleteMarks(db, table, filterKey) {
+    const syncStatusTable = getSyncStatusTable();
     return filterKey
-        ? db.runAsync(`DELETE FROM supastash_sync_marks WHERE table_name=? AND filter_key=?`, [table, filterKey])
-        : db.runAsync(`DELETE FROM supastash_sync_marks WHERE table_name=?`, [
-            table,
-        ]);
+        ? db.runAsync(`DELETE FROM ${syncStatusTable} WHERE table_name=? AND filter_key=?`, [table, filterKey])
+        : db.runAsync(`DELETE FROM ${syncStatusTable} WHERE table_name=?`, [table]);
 }

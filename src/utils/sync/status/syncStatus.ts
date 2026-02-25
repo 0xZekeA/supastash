@@ -1,3 +1,4 @@
+import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
 import {
@@ -14,7 +15,13 @@ import {
 } from "./services";
 
 const SYNC_STATUS_TABLE = "supastash_sync_marks";
-
+const SERVER_SYNC_STATUS_TABLE = "supastash_server_sync_marks";
+const getSyncStatusTable = () => {
+  const cfg = getSupastashConfig();
+  return cfg.replicationMode === "server-side"
+    ? SERVER_SYNC_STATUS_TABLE
+    : SYNC_STATUS_TABLE;
+};
 /**
  * Clears the sync log for a specific table.
  *
@@ -40,7 +47,8 @@ export async function clearLocalSyncLog(tableName: string) {
  */
 export async function clearAllLocalSyncLog() {
   const db = await getSupastashDb();
-  await db.runAsync(`DROP TABLE IF EXISTS ${SYNC_STATUS_TABLE}`);
+  const syncStatusTable = getSyncStatusTable();
+  await db.runAsync(`DROP TABLE IF EXISTS ${syncStatusTable}`);
   await createSyncStatusTable();
 }
 
@@ -55,7 +63,6 @@ export async function clearAllLocalSyncLog() {
  * return {
  *    table_name: "users",
  *    last_synced_at: "2021-01-01T00:00:00.000Z",
- *    last_created_at: "2021-01-01T00:00:00.000Z",
  *    last_deleted_at: "2021-01-01T00:00:00.000Z",
  *    filter_key: "1234567890",
  *    filter_json: "[...]",

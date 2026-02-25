@@ -39,9 +39,6 @@ export async function setSupastashSyncStatus(table, filters, opts) {
         const fk = await computeFilterKey(filterToUse, ns);
         const filterJson = canonicalizeFilters(filterToUse);
         const existing = await selectMarks(db, table, fk);
-        const nextLastCreated = opts.lastCreatedAt !== undefined
-            ? maxIso(opts.lastCreatedAt, existing?.last_created_at ?? null)
-            : existing?.last_created_at ?? null;
         const nextLastSynced = opts.lastSyncedAt !== undefined
             ? maxIso(opts.lastSyncedAt, existing?.last_synced_at ?? null)
             : existing?.last_synced_at ?? null;
@@ -53,11 +50,10 @@ export async function setSupastashSyncStatus(table, filters, opts) {
             filter_key: fk,
             filter_json: filterJson,
             last_synced_at_pk: opts.lastSyncedAtPk ?? undefined,
-            last_created_at: nextLastCreated ?? undefined,
             last_synced_at: nextLastSynced ?? undefined,
             last_deleted_at: nextLastDeleted ?? undefined,
         });
-        if (!opts.lastCreatedAt && !opts.lastSyncedAt && !opts.lastDeletedAt) {
+        if (!opts.lastSyncedAt && !opts.lastDeletedAt) {
             logWarn(`[Supastash] setSupastashSyncStatus(${table}): no fields provided`);
         }
     }
@@ -81,7 +77,6 @@ export async function resetSupastashSyncStatus(table, filters, scope = "all") {
         const filterJson = canonicalizeFilters(filterToUse);
         if (scope === "all") {
             await resetColumn(db, table, fk, "last_synced_at", OLD_DATE, filterJson);
-            await resetColumn(db, table, fk, "last_created_at", OLD_DATE, filterJson);
             await resetColumn(db, table, fk, "last_deleted_at", OLD_DATE, filterJson);
         }
         else {

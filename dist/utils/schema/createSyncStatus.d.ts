@@ -5,9 +5,11 @@
  * @deprecated Use createSyncStatusTable instead
  */
 export declare function createDeletedStatusTable(): Promise<void>;
-export declare const SYNC_STATUS_TABLES_SQL = "\n  CREATE TABLE IF NOT EXISTS supastash_sync_marks (\n  table_name       TEXT NOT NULL,\n  filter_key       TEXT NOT NULL,         \n  filter_json      TEXT NULL,             \n  last_created_at  TEXT NULL,             \n  last_synced_at   TEXT NULL,   \n  last_synced_at_pk     TEXT NULL,          \n  last_deleted_at  TEXT NULL,             \n  updated_at       TEXT NOT NULL DEFAULT (datetime('now')),\n  PRIMARY KEY (table_name, filter_key)\n);";
+export declare const SYNC_STATUS_TABLES_SQL = "\n  CREATE TABLE IF NOT EXISTS supastash_sync_marks (\n  table_name       TEXT NOT NULL,\n  filter_key       TEXT NOT NULL,         \n  filter_json      TEXT NULL,             \n  last_synced_at   TEXT NULL,   \n  last_synced_at_pk     TEXT NULL,          \n  last_deleted_at  TEXT NULL,             \n  updated_at       TEXT NOT NULL DEFAULT (datetime('now')),\n  PRIMARY KEY (table_name, filter_key)\n);";
+export declare const SERVER_SYNC_STATUS_TABLES_SQL = "\n  CREATE TABLE IF NOT EXISTS supastash_server_sync_marks (\n    table_name            TEXT NOT NULL,\n    filter_key            TEXT NOT NULL,\n    filter_json           TEXT NULL,\n\n    last_deleted_at       TEXT NULL,\n\n    last_synced_at        TEXT NULL,        -- represents arrived_at\n    last_synced_at_pk     TEXT NULL,        -- composite cursor safety\n\n    updated_at            TEXT NOT NULL DEFAULT (datetime('now')),\n\n    PRIMARY KEY (table_name, filter_key)\n  );\n";
 export declare const ADD_PK_TO_SYNC_MARKS_SQL = "\n  ALTER TABLE supastash_sync_marks ADD COLUMN last_synced_at_pk TEXT NULL;\n";
 export declare const INDEX_SYNC_MARKS_SQL = "\n  CREATE INDEX IF NOT EXISTS idx_supastash_marks_updated\n    ON supastash_sync_marks(updated_at);\n";
+export declare const INDEX_SERVER_SYNC_MARKS_SQL = "\n  CREATE INDEX IF NOT EXISTS idx_supastash_server_marks_updated\n    ON supastash_server_sync_marks(updated_at);\n";
 /**
  * Creates the supastash_sync_marks table if it doesn't exist
  *

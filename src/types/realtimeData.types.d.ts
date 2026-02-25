@@ -8,13 +8,17 @@ export type FilterOperator =
   | "in"
   | "is";
 
-export type RealtimeFilter<R = any> = {
+export type Filter<R = any> = {
   column: keyof R;
   operator: FilterOperator;
   value: string | number | null | boolean | (string | number)[];
 };
 
-export type SupastashFilter<R = any> = RealtimeFilter<R>;
+export type SupastashFilter<R = any> =
+  | Filter<R>
+  | {
+      or: Filter<R>[];
+    };
 
 export interface RealtimeOptions<R = any> {
   /**

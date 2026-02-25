@@ -1,8 +1,8 @@
 import { getSupastashConfig } from "../../../core/config";
 import { RECEIVED_DATA_COMPLETED_MAP, RECEIVED_DATA_THRESHOLD, } from "../../../store/syncStatus";
 import log from "../../logs";
+import { ReusedHelpers } from "../../reusedHelpers";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import isValidFilter from "./validateFilters";
 const RANDOM_OLD_DATE = "2000-01-01T00:00:00Z";
 const PAGE_SIZE = RECEIVED_DATA_THRESHOLD;
 const MAX_PAGE_SIZE = 2000;
@@ -10,15 +10,6 @@ const timesPulled = new Map();
 const lastPulled = new Map();
 const DEFAULT_MAX_PULL_ATTEMPTS = 150;
 const DEFAULT_PK = "00000000-0000-0000-0000-000000000000";
-function applyFilters(q, filters, table) {
-    for (const f of filters) {
-        if (!isValidFilter([f])) {
-            throw new Error(`Invalid syncFilter: ${JSON.stringify(f)} for ${table}`);
-        }
-        q = q[f.operator](f.column, f.value);
-    }
-    return q;
-}
 export async function pageThrough(base) {
     const supabase = getSupastashConfig().supabaseClient;
     if (!supabase)
@@ -34,7 +25,11 @@ export async function pageThrough(base) {
     let cursorId = base.previousPk ?? lastWork.lastId;
     let lastDataSize = 0;
     const { table, filters = [], select = "*" } = base;
+    const maxSyncLookBack = getMaxSyncLookBack({ table });
     while (true) {
+        const ts = maxSyncLookBack && Date.parse(cursorTs) < Date.parse(maxSyncLookBack)
+            ? maxSyncLookBack
+            : cursorTs;
         let q = supabase
             .from(table)
             .select(select)
@@ -42,13 +37,13 @@ export async function pageThrough(base) {
             .order("id", { ascending: true })
             .limit(PAGE_SIZE);
         if (cursorId) {
-            q = q.or(`${base.tsCol}.gt.${cursorTs},and(${base.tsCol}.eq.${cursorTs},id.gt.${cursorId})`);
+            q = q.or(`${base.tsCol}.gt.${ts},and(${base.tsCol}.eq.${ts},id.gt.${cursorId})`);
         }
         else {
-            q = q.gte(base.tsCol, cursorTs);
+            q = q.gte(base.tsCol, ts);
         }
-        if (filters) {
-            q = applyFilters(q, filters, table);
+        if (filters && filters.length > 0) {
+            q = ReusedHelpers.applyFilters(q, filters, table);
         }
         const { data, error } = await q;
         if (error)
@@ -149,4 +144,15 @@ export function setReceivedDataCompleted({ batchId, col, completed, }) {
 }
 export function deleteReceivedDataCompleted(batchId) {
     delete RECEIVED_DATA_COMPLETED_MAP[batchId];
+}
+export function getMaxSyncLookBack({ table, }) {
+    const cfg = getSupastashConfig();
+    if (cfg.fullSyncTables?.includes(table)) {
+        return undefined;
+    }
+    const perTable = cfg.perTableSyncLookbackDays?.[table];
+    const days = perTable !== undefined ? perTable : cfg.maxSyncLookbackDays;
+    if (days === undefined)
+        return undefined;
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }

@@ -32,7 +32,6 @@ export declare function clearAllLocalSyncLog(): Promise<void>;
  * return {
  *    table_name: "users",
  *    last_synced_at: "2021-01-01T00:00:00.000Z",
- *    last_created_at: "2021-01-01T00:00:00.000Z",
  *    last_deleted_at: "2021-01-01T00:00:00.000Z",
  *    filter_key: "1234567890",
  *    filter_json: "[...]",

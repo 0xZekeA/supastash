@@ -49,7 +49,6 @@ export async function setSupastashSyncStatus(
   table: string,
   filters: RealtimeFilter[] | undefined,
   opts: {
-    lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
     lastSyncedAtPk?: string | null;
@@ -68,11 +67,6 @@ export async function setSupastashSyncStatus(
 
     const existing = await selectMarks(db, table, fk);
 
-    const nextLastCreated =
-      opts.lastCreatedAt !== undefined
-        ? maxIso(opts.lastCreatedAt, existing?.last_created_at ?? null)
-        : existing?.last_created_at ?? null;
-
     const nextLastSynced =
       opts.lastSyncedAt !== undefined
         ? maxIso(opts.lastSyncedAt, existing?.last_synced_at ?? null)
@@ -88,12 +82,11 @@ export async function setSupastashSyncStatus(
       filter_key: fk,
       filter_json: filterJson,
       last_synced_at_pk: opts.lastSyncedAtPk ?? undefined,
-      last_created_at: nextLastCreated ?? undefined,
       last_synced_at: nextLastSynced ?? undefined,
       last_deleted_at: nextLastDeleted ?? undefined,
     });
 
-    if (!opts.lastCreatedAt && !opts.lastSyncedAt && !opts.lastDeletedAt) {
+    if (!opts.lastSyncedAt && !opts.lastDeletedAt) {
       logWarn(
         `[Supastash] setSupastashSyncStatus(${table}): no fields provided`
       );
@@ -125,7 +118,6 @@ export async function resetSupastashSyncStatus(
 
     if (scope === "all") {
       await resetColumn(db, table, fk, "last_synced_at", OLD_DATE, filterJson);
-      await resetColumn(db, table, fk, "last_created_at", OLD_DATE, filterJson);
       await resetColumn(db, table, fk, "last_deleted_at", OLD_DATE, filterJson);
     } else {
       await resetColumn(db, table, fk, scope, OLD_DATE, filterJson);

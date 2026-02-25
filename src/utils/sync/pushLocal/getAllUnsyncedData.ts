@@ -1,81 +1,41 @@
-import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
-import { tableSchemaData } from "../../../store/tableSchemaData";
 import { PayloadData } from "../../../types/query.types";
 import { getTableSchema } from "../../../utils/getTableSchema";
 import log from "../../../utils/logs";
-import { isNetworkError, isOnline } from "../../connection";
-import { supabaseClientErr } from "../../supabaseClientErr";
+import { getRemoteTableSchema } from "../status/remoteSchema";
 
-const numberOfErrors = new Map<string, number>();
 const sharedKeysCache = new Map<string, string[]>();
 
 async function getRemoteKeys(table: string): Promise<string[] | null> {
-  const config = getSupastashConfig();
-  const supabase = config?.supabaseClient;
-
-  if (!supabase) {
-    throw new Error(`Supabase client not found, ${supabaseClientErr}`);
-  }
-
   if (sharedKeysCache.has(table)) {
     return sharedKeysCache.get(table)!;
   }
 
-  if (numberOfErrors.get(table) && (numberOfErrors.get(table) || 0) > 3) {
-    return null;
-  }
+  const remoteSchema = await getRemoteTableSchema(table);
+  if (!remoteSchema) return null;
 
-  if (!tableSchemaData.has(table)) {
-    const isConnected = await isOnline();
-    if (!isConnected) {
-      return null;
-    }
-    const { data, error } = await supabase.rpc("get_table_schema", {
-      table_name: table,
-    });
-    if (error) {
-      if (!isNetworkError(error)) {
-        log(
-          `[Supastash] Error getting remote keys for table ${table} on public schema: ${error.message}
-        You can find more information in the Supastash docs: https://0xzekea.github.io/supastash/docs/getting-started#%EF%B8%8F-server-side-setup-for-filtered-pulls`
-        );
-        numberOfErrors.set(table, (numberOfErrors.get(table) || 0) + 1);
-        return null;
-      }
-    }
-    tableSchemaData.set(table, data);
-  }
+  const remoteKeys = remoteSchema.map((col) => col.column_name);
 
-  if (!tableSchemaData.get(table)) {
-    return null;
-  }
+  const localSchema = await getTableSchema(table);
+  if (!localSchema) return null;
 
-  const keys = (tableSchemaData.get(table) as { column_name: string }[])?.map(
-    (item) => item.column_name
-  );
-  const columns = await getTableSchema(table);
-  const sharedKeys = keys?.filter((key) => columns.includes(key));
-  const missingKeys = columns.filter(
-    (column) => !keys?.includes(column) && column !== "synced_at"
+  const localKeys = localSchema;
+
+  const sharedKeys = remoteKeys.filter((key) => localKeys.includes(key));
+
+  const missingKeys = remoteKeys.filter(
+    (key) => !localKeys.includes(key) && key !== "synced_at"
   );
 
-  // Inform user of missing keys
   if (missingKeys.length > 0) {
     log(
-      `[Supastash] Missing keys for table ${table} on public schema: ${missingKeys.join(
-        ", "
-      )}`
+      `[Supastash] Missing keys for table ${table}: ${missingKeys.join(", ")}`
     );
   }
 
-  // Return shared keys if they exist
-  if (sharedKeys) {
-    sharedKeysCache.set(table, sharedKeys);
-    return sharedKeys;
-  }
+  sharedKeysCache.set(table, sharedKeys);
 
-  return null;
+  return sharedKeys.length ? sharedKeys : null;
 }
 
 /**

@@ -1,58 +1,10 @@
-import { getSupastashConfig } from "../../core/config";
 import { getSupastashDb } from "../../db/dbInitializer";
-import { tableSchemaData } from "../../store/tableSchemaData";
 import { PayloadData } from "../../types/query.types";
-import { TableSchema } from "../../types/realtimeData.types";
-import { isNetworkError, isOnline } from "../connection";
 import log from "../logs";
-import { supabaseClientErr } from "../supabaseClientErr";
+import { getRemoteTableSchema } from "../sync/status/remoteSchema";
 import { checkIfTableExist } from "../tableValidator";
 import { mapPgTypeToSQLite } from "./getKeyType";
-import { validatePayload, validatePayloadForTable } from "./validatePayload";
-
-let errorCount = new Map<string, number>();
-
-async function getTableSchema(table: string): Promise<TableSchema[] | null> {
-  const config = getSupastashConfig();
-  const supabase = config?.supabaseClient;
-  if (!supabase) {
-    throw new Error(`Supabase client not found, ${supabaseClientErr}`);
-  }
-  if (tableSchemaData.has(table)) {
-    return tableSchemaData.get(table);
-  }
-  if (errorCount.get(table) && (errorCount.get(table) || 0) > 3) {
-    return null;
-  }
-  const isConnected = await isOnline();
-  if (!isConnected) {
-    return null;
-  }
-  const { data, error } = await supabase.rpc("get_table_schema", {
-    table_name: table,
-  });
-
-  if (error) {
-    if (!isNetworkError(error)) {
-      log(
-        `[Supastash] Error getting table schema for table ${table}: ${error.message}`
-      );
-    }
-    errorCount.set(table, (errorCount.get(table) || 0) + 1);
-    return null;
-  }
-  if (!data || !Array.isArray(data)) return null;
-  validatePayloadForTable(data);
-  tableSchemaData.set(table, data);
-  return [
-    ...data,
-    {
-      column_name: "synced_at",
-      data_type: "text",
-      is_nullable: "YES",
-    },
-  ];
-}
+import { validatePayload } from "./validatePayload";
 
 /**
  * Creates a table in the database
@@ -67,7 +19,7 @@ export async function createTable(table: string, payload?: PayloadData) {
 
   if (isTableExist) return;
 
-  const tableSchema = await getTableSchema(table);
+  const tableSchema = await getRemoteTableSchema(table);
 
   if (!tableSchema) {
     throw new Error(

@@ -8,7 +8,6 @@ import { PublicScope, SupastashSyncStatus } from "../../../types/syncEngine.type
  */
 export declare function getSupastashSyncStatus(table: string, filters?: RealtimeFilter[]): Promise<SupastashSyncStatus | null>;
 export declare function setSupastashSyncStatus(table: string, filters: RealtimeFilter[] | undefined, opts: {
-    lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
     lastSyncedAtPk?: string | null;

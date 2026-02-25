@@ -7,8 +7,8 @@ import { PayloadData } from "../../../types/query.types";
 import { RealtimeFilter } from "../../../types/realtimeData.types";
 import { ReceivedDataCompleted } from "../../../types/syncEngine.types";
 import log from "../../logs";
+import { ReusedHelpers } from "../../reusedHelpers";
 import { supabaseClientErr } from "../../supabaseClientErr";
-import isValidFilter from "./validateFilters";
 
 const RANDOM_OLD_DATE = "2000-01-01T00:00:00Z";
 const PAGE_SIZE = RECEIVED_DATA_THRESHOLD;
@@ -18,18 +18,8 @@ const lastPulled = new Map<string, number>();
 const DEFAULT_MAX_PULL_ATTEMPTS = 150;
 const DEFAULT_PK = "00000000-0000-0000-0000-000000000000";
 
-function applyFilters(q: any, filters: RealtimeFilter[], table: string) {
-  for (const f of filters) {
-    if (!isValidFilter([f])) {
-      throw new Error(`Invalid syncFilter: ${JSON.stringify(f)} for ${table}`);
-    }
-    q = (q as any)[f.operator](f.column, f.value);
-  }
-  return q;
-}
-
 export async function pageThrough(base: {
-  tsCol: "created_at" | "updated_at" | "deleted_at";
+  tsCol: "arrived_at" | "updated_at";
   since: string;
   table: string;
   select?: string;
@@ -53,8 +43,13 @@ export async function pageThrough(base: {
 
   let lastDataSize = 0;
   const { table, filters = [], select = "*" } = base;
+  const maxSyncLookBack = getMaxSyncLookBack({ table });
 
   while (true) {
+    const ts =
+      maxSyncLookBack && Date.parse(cursorTs) < Date.parse(maxSyncLookBack)
+        ? maxSyncLookBack
+        : cursorTs;
     let q = supabase
       .from(table)
       .select(select)
@@ -64,14 +59,14 @@ export async function pageThrough(base: {
 
     if (cursorId) {
       q = q.or(
-        `${base.tsCol}.gt.${cursorTs},and(${base.tsCol}.eq.${cursorTs},id.gt.${cursorId})`
+        `${base.tsCol}.gt.${ts},and(${base.tsCol}.eq.${ts},id.gt.${cursorId})`
       );
     } else {
-      q = q.gte(base.tsCol, cursorTs);
+      q = q.gte(base.tsCol, ts);
     }
 
-    if (filters) {
-      q = applyFilters(q, filters, table);
+    if (filters && filters.length > 0) {
+      q = ReusedHelpers.applyFilters(q, filters, table);
     }
 
     const { data, error } = await q;
@@ -121,7 +116,7 @@ export function returnMaxDate({
 }: {
   row: PayloadData;
   prevMax: { value: string; pk: string | null } | null;
-  col: "created_at" | "updated_at" | "deleted_at";
+  col: "arrived_at" | "updated_at" | "deleted_at";
 }): { value: string; pk: string | null } | null {
   const v = row[col];
   const pk = row.id;
@@ -146,7 +141,7 @@ export function returnMaxDate({
 
 export function getMaxDate(
   rows: PayloadData[],
-  col: "created_at" | "updated_at" | "deleted_at"
+  col: "arrived_at" | "updated_at"
 ): string | null {
   if (!rows?.length) return null;
   let max = RANDOM_OLD_DATE;
@@ -180,7 +175,7 @@ export function getReceivedDataCompleted({
   col,
 }: {
   batchId: string;
-  col: "created_at" | "updated_at" | "deleted_at";
+  col: "arrived_at" | "updated_at";
 }): ReceivedDataCompleted {
   if (!batchId || !RECEIVED_DATA_COMPLETED_MAP[batchId]) {
     throw new Error(`Batch ${batchId} not found`);
@@ -199,7 +194,7 @@ export function setReceivedDataCompleted({
   completed,
 }: {
   batchId: string;
-  col: "created_at" | "updated_at" | "deleted_at";
+  col: "arrived_at" | "updated_at";
   completed: ReceivedDataCompleted;
 }) {
   if (!batchId || !RECEIVED_DATA_COMPLETED_MAP[batchId]) {
@@ -210,4 +205,24 @@ export function setReceivedDataCompleted({
 
 export function deleteReceivedDataCompleted(batchId: string) {
   delete RECEIVED_DATA_COMPLETED_MAP[batchId];
+}
+
+export function getMaxSyncLookBack({
+  table,
+}: {
+  table: string;
+}): string | undefined {
+  const cfg = getSupastashConfig();
+
+  if (cfg.fullSyncTables?.includes(table)) {
+    return undefined;
+  }
+
+  const perTable = cfg.perTableSyncLookbackDays?.[table];
+
+  const days = perTable !== undefined ? perTable : cfg.maxSyncLookbackDays;
+
+  if (days === undefined) return undefined;
+
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }

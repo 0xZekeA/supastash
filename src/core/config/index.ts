@@ -19,6 +19,8 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
     pull: true,
     useFiltersFromStore: true,
   },
+  replicationMode: "client-side",
+  maxSyncLookbackDays: 365,
   listeners: 250,
   supabaseBatchSize: 100,
   debugMode: true,

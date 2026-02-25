@@ -120,7 +120,6 @@ const log = await getSyncLog("users");
   table_name: "users",
   last_synced_at: "2024-06-01T10:00:00.000Z",
   last_synced_at_pk: "00000000-0000-0000-0000-000000000000"
-  last_created_at: "2024-06-01T10:00:00.000Z",
   last_deleted_at: "2024-06-01T10:00:00.000Z",
   filter_key: "abc123",
   filter_json: "[...]",
@@ -203,7 +202,6 @@ await resetSyncLog("posts", [{ column: "user_id", value: "123" }], "all");
 | `"all"` (default)     | Resets created, updated, and deleted checkpoints.  |
 | `"last_synced_at"`    | Resets only the authoritative `updated_at` cursor. |
 | `"last_synced_at_pk"` | Resets only the authoritative `id` cursor.         |
-| `"last_created_at"`   | Resets only the created metadata.                  |
 | `"last_deleted_at"`   | Resets only the deleted metadata.                  |
 
 **When to use:**
@@ -410,7 +408,7 @@ setSyncLog(
 resetSyncLog(
   table: string,
   filters?: RealtimeFilter[],
-  scope?: "all" | "last_synced_at" | "last_created_at" | "last_deleted_at"
+  scope?: "all" | "last_synced_at" | "last_deleted_at"
 ): Promise<void>
 ```
 
