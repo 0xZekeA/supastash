@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { AppState } from "react-native";
 import { localCache } from "../../store/localCache";
 import { supastashEventBus } from "../../utils/events/eventBus";
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
 import useRealtimeData from "../../utils/fetchData/realTimeCall";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 import { isTrulyNullish } from "../../utils/serializer";
 import useDataState from "./dataState";
 import useEventQueues from "./eventQueues";
@@ -80,11 +80,19 @@ export function useSupastashData(table, options = {}) {
     const { dataMap, data, groupedBy, } = useDataState(table);
     const queueHandler = useEventQueues(table, options, flushIntervalMs);
     const { triggerRefresh, trigger, cancel, initialFetchAndSync, isFetching } = fetchCalls(table, options, hasTriggeredRef);
-    const subKey = useMemo(() => `${table}:${buildFilterString(filter)}`, [table, filter]);
+    const subKey = useMemo(() => `${table}:${ReusedHelpers.buildFilterString(filter)}`, [table, filter]);
     const isAnyNullish = useMemo(() => {
-        if (!options.sqlFilter)
+        if (!options.sqlFilter?.length)
             return false;
-        return options.sqlFilter.some((filter) => isTrulyNullish(filter.value) && filter.operator !== "is");
+        const check = (filter) => {
+            if (!filter || typeof filter !== "object")
+                return false;
+            if ("or" in filter) {
+                return filter.or?.some(check) ?? false;
+            }
+            return isTrulyNullish(filter.value) && filter.operator !== "is";
+        };
+        return options.sqlFilter.some(check);
     }, [options.sqlFilter]);
     useEffect(() => {
         if (!shouldFetch || (lazy && !hasTriggeredRef.current))

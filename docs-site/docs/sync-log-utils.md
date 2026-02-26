@@ -19,9 +19,9 @@ Legacy helpers such as `setLocalSyncLog` / `setLocalDeleteLog` are **deprecated*
   - [clearLocalSyncLog](#-clearlocalsynclogtablename-string)
   - [clearAllLocalSyncLog](#-clearalllocalsynclog)
   - [getSyncLog](#-getsynclogtablename-string)
-  - [setSyncLog](#-setsyncloglable-string-filters-realtimefilter--undefined-opts)
-  - [resetSyncLog](#-resetsyncloglable-string-filters-realtimefilter-scope-all--last_synced_at--last_created_at--last_deleted_at)
-  - [clearSyncLog](#-clearsyncloglable-string-filters-realtimefilter)
+  - [setSyncLog](#-setsynclogtable-string-filters-SupastashFilter--undefined-opts)
+  - [resetSyncLog](#-resetsynclogtable-string-filters-SupastashFilter-scope-all--last_synced_at--last_deleted_at)
+  - [clearSyncLog](#-clearsynclogtable-string-filters-SupastashFilter)
 - [Usage Notes](#usage-notes)
 - [Migration Guide](#migration-guide)
 - [Best Practices](#best-practices)
@@ -137,7 +137,7 @@ Returns `null` if the table has no entry.
 
 ---
 
-### ✍️ `setSyncLog(table: string, filters: RealtimeFilter[] | undefined, opts)`
+### ✍️ `setSyncLog(table: string, filters: SupastashFilter[] | undefined, opts)`
 
 Writes (or updates) sync metadata for a table.
 
@@ -175,7 +175,7 @@ When filters are supplied, a filter key is computed and stored alongside the tim
 
 ---
 
-### 🔁 `resetSyncLog(table: string, filters?: RealtimeFilter[], scope?: "all" | "last_synced_at" | "last_created_at" | "last_deleted_at")`
+### 🔁 `resetSyncLog(table: string, filters?: SupastashFilter[], scope?: "all" | "last_synced_at" | "last_deleted_at")`
 
 Resets one or more timestamps for a table.
 
@@ -212,7 +212,7 @@ await resetSyncLog("posts", [{ column: "user_id", value: "123" }], "all");
 
 ---
 
-### 🗑 `clearSyncLog(table: string, filters?: RealtimeFilter[])`
+### 🗑 `clearSyncLog(table: string, filters?: SupastashFilter[])`
 
 Removes the sync status row for a table and filter key.
 
@@ -387,7 +387,7 @@ await pullData("users");
 // Clear operations
 clearLocalSyncLog(tableName: string): Promise<void>
 clearAllLocalSyncLog(): Promise<void>
-clearSyncLog(table: string, filters?: RealtimeFilter[]): Promise<void>
+clearSyncLog(table: string, filters?: SupastashFilter[]): Promise<void>
 
 // Read operations
 getSyncLog(tableName: string): Promise<SyncLog | null>
@@ -395,7 +395,7 @@ getSyncLog(tableName: string): Promise<SyncLog | null>
 // Write operations
 setSyncLog(
   table: string,
-  filters: RealtimeFilter[] | undefined,
+  filters: SupastashFilter[] | undefined,
   opts: {
     lastSyncedAt: string;
     lastCreatedAt: string;
@@ -407,7 +407,7 @@ setSyncLog(
 // Reset operations
 resetSyncLog(
   table: string,
-  filters?: RealtimeFilter[],
+  filters?: SupastashFilter[],
   scope?: "all" | "last_synced_at" | "last_deleted_at"
 ): Promise<void>
 ```

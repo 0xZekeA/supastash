@@ -59,7 +59,7 @@ export async function pushLocalData() {
                 });
             }
             catch (e) {
-                const msg = e?.code ?? e?.name ?? String(e);
+                const msg = e?.message ?? e?.code ?? e?.name ?? String(e);
                 SyncInfoUpdater.markLogError({
                     type: "push",
                     table,

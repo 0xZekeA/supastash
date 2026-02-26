@@ -116,7 +116,7 @@ If you **don’t use filters** (and don’t have RLS), your app might:
 - Pull **all rows** from a table (even for other users)
 - Waste memory and bandwidth
 - Break in production with **missing or mismatched data**
-- Filters will default to realtimeFilters used in the `useSupastashData` hook
+- Filters will default to SupastashFilters used in the `useSupastashData` hook
 
 So yeah — don’t skip this part.
 

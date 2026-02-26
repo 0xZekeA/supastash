@@ -1,5 +1,6 @@
+import { getSupastashConfig } from "../../../core/config";
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { logWarn } from "../../logs";
 import { FetchOlderHelpers } from "./fetchOlderHelpers";
 
@@ -21,7 +22,7 @@ export async function fetchOlder({
   /**
    * The filters to apply to the data.
    */
-  filters?: RealtimeFilter[];
+  filters?: SupastashFilter[];
 
   /**
    * The maximum number of records to fetch.
@@ -34,6 +35,11 @@ export async function fetchOlder({
   shouldStoreToLocalDb?: boolean;
 }): Promise<{ hasMore: boolean; data: PayloadData[] }> {
   try {
+    const isGhost = getSupastashConfig().supastashMode === "ghost";
+    if (isGhost) {
+      return { hasMore: false, data: [] };
+    }
+
     const lookbackDays = await FetchOlderHelpers.getLookbackDays({
       table,
       filters,

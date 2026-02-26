@@ -1,5 +1,5 @@
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 export declare function fetchOlder({ boundaryTs, table, filters, limit, shouldStoreToLocalDb, }: {
     /**
      * The timestamp to cap lookback at.
@@ -12,7 +12,7 @@ export declare function fetchOlder({ boundaryTs, table, filters, limit, shouldSt
     /**
      * The filters to apply to the data.
      */
-    filters?: RealtimeFilter[];
+    filters?: SupastashFilter[];
     /**
      * The maximum number of records to fetch.
      */

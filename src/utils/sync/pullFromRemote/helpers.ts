@@ -4,7 +4,7 @@ import {
   RECEIVED_DATA_THRESHOLD,
 } from "../../../store/syncStatus";
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { ReceivedDataCompleted } from "../../../types/syncEngine.types";
 import log from "../../logs";
 import { ReusedHelpers } from "../../reusedHelpers";
@@ -23,7 +23,7 @@ export async function pageThrough(base: {
   since: string;
   table: string;
   select?: string;
-  filters?: RealtimeFilter[];
+  filters?: SupastashFilter[];
   includeDeleted?: boolean;
   batchId: string;
   previousPk?: string | null;

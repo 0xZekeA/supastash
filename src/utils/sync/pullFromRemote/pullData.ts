@@ -1,7 +1,7 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import log, { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { SyncInfoUpdater } from "../queryStatus";
@@ -20,7 +20,7 @@ export async function pullData({
   batchId,
 }: {
   table: string;
-  filters?: RealtimeFilter[];
+  filters?: SupastashFilter[];
   batchId: string;
 }): Promise<{
   data: PayloadData[];

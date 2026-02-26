@@ -1,5 +1,5 @@
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 /**
  * Pulls data from the remote database for a given table
  * @param table - The table to pull data from
@@ -7,7 +7,7 @@ import { RealtimeFilter } from "../../../types/realtimeData.types";
  */
 export declare function pullData({ table, filters, batchId, }: {
     table: string;
-    filters?: RealtimeFilter[];
+    filters?: SupastashFilter[];
     batchId: string;
 }): Promise<{
     data: PayloadData[];

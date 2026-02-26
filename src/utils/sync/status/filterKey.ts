@@ -1,5 +1,5 @@
 import * as ExpoCrypto from "expo-crypto";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 
 // let sha256: (s: string) => Promise<string>;
 // try {
@@ -32,19 +32,30 @@ function normVal(v: any) {
  * @param filters - The filters to canonicalize
  * @returns The canonicalized filters
  */
-export function canonicalizeFilters(filters?: RealtimeFilter[] | null): string {
-  const list = (filters ?? []).map((f) => ({
-    column: String(f.column),
-    operator: f.operator,
-    value: normVal(f.value),
-  }));
+export function canonicalizeFilters(
+  filters?: SupastashFilter[] | null
+): string {
+  const list = (filters ?? [])
+    .filter(
+      (f): f is Extract<SupastashFilter, { column: any }> =>
+        !!f && typeof f === "object" && "column" in f && "operator" in f
+    )
+    .map((f) => ({
+      column: String(f.column),
+      operator: f.operator,
+      value: normVal(f.value),
+    }));
+
   list.sort((a, b) => {
     if (a.column !== b.column) return a.column < b.column ? -1 : 1;
     if (a.operator !== b.operator) return a.operator < b.operator ? -1 : 1;
-    const av = JSON.stringify(a.value),
-      bv = JSON.stringify(b.value);
+
+    const av = JSON.stringify(a.value);
+    const bv = JSON.stringify(b.value);
+
     return av < bv ? -1 : av > bv ? 1 : 0;
   });
+
   return JSON.stringify(list);
 }
 
@@ -55,7 +66,7 @@ export function canonicalizeFilters(filters?: RealtimeFilter[] | null): string {
  * @returns The computed filter key
  */
 export async function computeFilterKey(
-  filters?: RealtimeFilter[] | null,
+  filters?: SupastashFilter[] | null,
   ns = "global"
 ) {
   const canon = canonicalizeFilters(filters);

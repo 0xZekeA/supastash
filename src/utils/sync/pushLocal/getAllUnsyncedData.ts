@@ -24,7 +24,8 @@ async function getRemoteKeys(table: string): Promise<string[] | null> {
   const sharedKeys = remoteKeys.filter((key) => localKeys.includes(key));
 
   const missingKeys = remoteKeys.filter(
-    (key) => !localKeys.includes(key) && key !== "synced_at"
+    (key) =>
+      !localKeys.includes(key) && key !== "synced_at" && key !== "arrived_at"
   );
 
   if (missingKeys.length > 0) {

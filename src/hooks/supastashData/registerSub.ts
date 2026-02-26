@@ -1,10 +1,10 @@
-import { RealtimeFilter } from "../../types/realtimeData.types";
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
+import { SupastashFilter } from "../../types/realtimeData.types";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 
 const subRegistry: Record<string, number> = {};
 
-export function registerSub(table: string, filter?: RealtimeFilter): boolean {
-  const key = `${table}::${buildFilterString(filter) ?? ""}`;
+export function registerSub(table: string, filter?: SupastashFilter): boolean {
+  const key = `${table}::${ReusedHelpers.buildFilterString(filter) ?? ""}`;
   if (subRegistry[key]) {
     subRegistry[key]++;
     return true;
@@ -13,8 +13,8 @@ export function registerSub(table: string, filter?: RealtimeFilter): boolean {
   return false;
 }
 
-export function unregisterSub(table: string, filter?: RealtimeFilter): void {
-  const key = `${table}::${buildFilterString(filter) ?? ""}`;
+export function unregisterSub(table: string, filter?: SupastashFilter): void {
+  const key = `${table}::${ReusedHelpers.buildFilterString(filter) ?? ""}`;
   if (subRegistry[key]) {
     subRegistry[key]--;
     if (subRegistry[key] <= 0) {

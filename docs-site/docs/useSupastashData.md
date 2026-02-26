@@ -94,9 +94,9 @@ useEffect(() => {
 | `shouldFetch`              | `boolean`                            | `true`         | Whether to automatically fetch local data on mount                        |
 | `lazy`                     | `boolean`                            | `false`        | If true, hook does nothing until you manually call `trigger()`            |
 | `extraMapKeys`             | `string[]`                           | —              | Build secondary maps for grouping by additional keys (e.g., `chat_id`)    |
-| `filter`                   | `RealtimeFilter`                     | —              | Filter applied only to Supabase realtime events                           |
+| `filter`                   | `SupastashFilter`                    | —              | Filter applied only to Supabase realtime events                           |
 | `onlyUseFilterForRealtime` | `boolean`                            | `false`        | If true, `filter` won’t affect local query—just realtime stream           |
-| `sqlFilter`                | `RealtimeFilter[]`                   | —              | SQL-style filters applied to local and remote queries                     |
+| `sqlFilter`                | `SupastashFilter[]`                  | —              | SQL-style filters applied to local and remote queries                     |
 | `flushIntervalMs`          | `number`                             | `100`          | Debounce interval for UI updates                                          |
 | `realtime`                 | `boolean`                            | `true`         | Whether to subscribe to Supabase `postgres_changes`                       |
 | `limit`                    | `number`                             | `1000`         | Max number of local records to load                                       |

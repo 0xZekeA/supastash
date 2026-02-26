@@ -8,13 +8,17 @@ export type FilterOperator =
   | "in"
   | "is";
 
-export type RealtimeFilter<R = any> = {
+export type Filter<R = any> = {
   column: keyof R;
   operator: FilterOperator;
   value: string | number | null | boolean | (string | number)[];
 };
 
-export type SupastashFilter<R = any> = RealtimeFilter<R>;
+export type SupastashFilter<R = any> =
+  | Filter<R>
+  | {
+      or: Filter<R>[];
+    };
 
 export interface RealtimeOptions<R = any> {
   /**
@@ -88,7 +92,7 @@ export interface RealtimeOptions<R = any> {
    * @example
    * sqlFilter: [{ column: "user_id", operator: "eq", value: "123" }]
    */
-  sqlFilter?: RealtimeFilter<R>[];
+  sqlFilter?: SupastashFilter<R>[];
 
   /**
    * Clears the shared cache for this table when the hook mounts.
@@ -115,7 +119,7 @@ export interface RealtimeOptions<R = any> {
    *   value: "123"
    * }
    */
-  filter?: RealtimeFilter<R>;
+  filter?: SupastashFilter<R>;
 
   /**
    * If true, only use the filter for the realtime subscription stream.

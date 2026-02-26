@@ -1,6 +1,6 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import {
   PublicScope,
   SupastashSyncStatus,
@@ -99,7 +99,7 @@ export async function getSyncLog(
  */
 export async function setSyncLog(
   table: string,
-  filters: RealtimeFilter[] | undefined,
+  filters: SupastashFilter[] | undefined,
   opts: {
     lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
@@ -127,7 +127,7 @@ export async function setSyncLog(
  */
 export async function resetSyncLog(
   table: string,
-  filters: RealtimeFilter[] | undefined,
+  filters: SupastashFilter[] | undefined,
   scope: PublicScope = "all"
 ) {
   try {
@@ -145,7 +145,7 @@ export async function resetSyncLog(
  * @example
  * await clearSyncLog("users");
  */
-export async function clearSyncLog(table: string, filters?: RealtimeFilter[]) {
+export async function clearSyncLog(table: string, filters?: SupastashFilter[]) {
   try {
     await clearSupastashSyncStatus(table, filters);
   } catch (e: any) {

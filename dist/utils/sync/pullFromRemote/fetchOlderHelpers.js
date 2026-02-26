@@ -2,7 +2,6 @@ import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { ReusedHelpers } from "../../../utils/reusedHelpers";
 import { SupastashError } from "../../errorHandler";
-import { buildFilterForSql } from "../../fetchData/buildFilter";
 import { logWarn } from "../../logs";
 import { supabaseClientErr } from "../../supabaseClientErr";
 import { upsertData } from "./updateLocalDb";
@@ -24,7 +23,7 @@ export const FetchOlderHelpers = {
         let sqlFilter = "";
         if (filters) {
             for (const filter of filters) {
-                sqlFilter += buildFilterForSql(filter);
+                sqlFilter += ReusedHelpers.buildFilterForSql(filter);
             }
         }
         // Fetch the earliest date and id

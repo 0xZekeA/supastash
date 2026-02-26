@@ -92,7 +92,7 @@ export interface RealtimeOptions<R = any> {
    * @example
    * sqlFilter: [{ column: "user_id", operator: "eq", value: "123" }]
    */
-  sqlFilter?: RealtimeFilter<R>[];
+  sqlFilter?: SupastashFilter<R>[];
 
   /**
    * Clears the shared cache for this table when the hook mounts.
@@ -119,7 +119,7 @@ export interface RealtimeOptions<R = any> {
    *   value: "123"
    * }
    */
-  filter?: RealtimeFilter<R>;
+  filter?: SupastashFilter<R>;
 
   /**
    * If true, only use the filter for the realtime subscription stream.

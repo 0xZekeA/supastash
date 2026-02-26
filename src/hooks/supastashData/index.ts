@@ -4,10 +4,11 @@ import { localCache } from "../../store/localCache";
 import {
   RealtimeOptions,
   SupastashDataResult,
+  SupastashFilter,
 } from "../../types/realtimeData.types";
 import { supastashEventBus } from "../../utils/events/eventBus";
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
 import useRealtimeData from "../../utils/fetchData/realTimeCall";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 import { isTrulyNullish } from "../../utils/serializer";
 import useDataState from "./dataState";
 import useEventQueues from "./eventQueues";
@@ -111,15 +112,24 @@ export function useSupastashData<R = any>(
   const { triggerRefresh, trigger, cancel, initialFetchAndSync, isFetching } =
     fetchCalls(table, options, hasTriggeredRef);
   const subKey = useMemo(
-    () => `${table}:${buildFilterString(filter)}`,
+    () => `${table}:${ReusedHelpers.buildFilterString(filter)}`,
     [table, filter]
   );
 
   const isAnyNullish = useMemo(() => {
-    if (!options.sqlFilter) return false;
-    return options.sqlFilter.some(
-      (filter) => isTrulyNullish(filter.value) && filter.operator !== "is"
-    );
+    if (!options.sqlFilter?.length) return false;
+
+    const check = (filter: SupastashFilter): boolean => {
+      if (!filter || typeof filter !== "object") return false;
+
+      if ("or" in filter) {
+        return filter.or?.some(check) ?? false;
+      }
+
+      return isTrulyNullish(filter.value) && filter.operator !== "is";
+    };
+
+    return options.sqlFilter.some(check);
   }, [options.sqlFilter]);
 
   useEffect(() => {

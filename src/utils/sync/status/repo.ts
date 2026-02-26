@@ -1,5 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { SupastashSQLiteDatabase } from "../../../types/supastashConfig.types";
 import { SupastashSyncStatus } from "../../../types/syncEngine.types";
 import { logWarn } from "../../logs";
@@ -75,7 +75,7 @@ export async function selectMarks(
 export async function selectSyncStatus(
   db: SupastashSQLiteDatabase,
   table: string,
-  tableFilters?: RealtimeFilter[]
+  tableFilters?: SupastashFilter[]
 ): Promise<SupastashSyncStatus> {
   const filterKey = await computeFilterKey(tableFilters ?? []);
   const syncStatusTable = getSyncStatusTable();

@@ -1,5 +1,5 @@
 import { PayloadData } from "../../types/query.types";
-import { RealtimeFilter } from "../../types/realtimeData.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 /**
  * Fetches the local data from the database
  * @param table - The table name to fetch from
@@ -7,7 +7,7 @@ import { RealtimeFilter } from "../../types/realtimeData.types";
  * @param limit - Optional limit for rows
  * @param extraMapKeys - Optional fields to group data by
  */
-export declare function fetchLocalData<R = any>(table: string, shouldFetch?: boolean, limit?: number, extraMapKeys?: (keyof R)[], daylength?: number, filter?: RealtimeFilter[], orderBy?: keyof R | string, orderDesc?: boolean): Promise<{
+export declare function fetchLocalData<R = any>(table: string, shouldFetch?: boolean, limit?: number, extraMapKeys?: (keyof R)[], daylength?: number, filter?: SupastashFilter[], orderBy?: keyof R | string, orderDesc?: boolean): Promise<{
     data: PayloadData[];
     dataMap: Map<string, PayloadData>;
     groupedBy: {

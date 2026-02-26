@@ -1,4 +1,4 @@
-import { SupastashFilter } from "../../types/supastashFilters.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 /**
  * useSupastashFilters
  *
@@ -27,7 +27,7 @@ import { SupastashFilter } from "../../types/supastashFilters.types";
  * ```
  *
  * @param {SupastashFilter} filters - An object where each key is a table name, and its value is
- *   an array of `RealtimeFilter` objects that define the filter criteria for that table's pull sync.
+ *   an array of `SupastashFilter` objects that define the filter criteria for that table's pull sync.
  *
  * @note This hook does not re-run unless the `filters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).

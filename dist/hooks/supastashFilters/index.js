@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { filterTracker, tableFilters, tableFiltersUsed, } from "../../store/tableFilters";
 import { logWarn } from "../../utils/logs";
-import isValidFilter, { warnOnMisMatch, } from "../../utils/sync/pullFromRemote/validateFilters";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
+import { warnOnMisMatch } from "../../utils/sync/pullFromRemote/validateFilters";
 import { checkIfTableExist } from "../../utils/tableValidator";
 /**
  * useSupastashFilters
@@ -31,7 +32,7 @@ import { checkIfTableExist } from "../../utils/tableValidator";
  * ```
  *
  * @param {SupastashFilter} filters - An object where each key is a table name, and its value is
- *   an array of `RealtimeFilter` objects that define the filter criteria for that table's pull sync.
+ *   an array of `SupastashFilter` objects that define the filter criteria for that table's pull sync.
  *
  * @note This hook does not re-run unless the `filters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).
@@ -62,8 +63,9 @@ export function useSupastashFilters(filters) {
                     logWarn(`Table '${table}' does not exist; skipping filters`);
                     continue;
                 }
-                const raw = filters[table] ?? [];
-                const valid = raw.filter((f) => isValidFilter([f]));
+                const raw = (filters[table] ??
+                    []);
+                const valid = raw.filter((f) => ReusedHelpers.isValidFilter([f]));
                 if (!valid.length) {
                     tableFilters.delete(table);
                     tableFiltersUsed.delete(table);

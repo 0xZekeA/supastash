@@ -1,4 +1,4 @@
-import { RealtimeFilter, SupastashFilter } from "../types/realtimeData.types";
+import { SupastashFilter } from "../types/realtimeData.types";
 
 const validOperators = new Set([
   "eq",
@@ -12,13 +12,22 @@ const validOperators = new Set([
 ]);
 
 export const ReusedHelpers = {
-  isValidFilter<R = any>(filters: RealtimeFilter<R>[]): boolean {
-    for (const filter of filters ?? []) {
-      if (!filter || typeof filter !== "object") {
-        return false;
+  isValidFilter<R = any>(filters: SupastashFilter<R>[]): boolean {
+    if (!Array.isArray(filters)) return false;
+
+    const validateNode = (node: SupastashFilter<R>): boolean => {
+      if (!node || typeof node !== "object") return false;
+
+      // OR group
+      if ("or" in node) {
+        if (!Array.isArray(node.or) || node.or.length === 0) {
+          return false;
+        }
+        return node.or.every(validateNode);
       }
 
-      const { column, operator, value } = filter;
+      // Condition
+      const { column, operator, value } = node;
 
       if (typeof column !== "string" || column.trim() === "") {
         return false;
@@ -30,52 +39,24 @@ export const ReusedHelpers = {
 
       switch (operator) {
         case "is":
-          if (typeof value === "boolean") {
-            // normalize
-            filter.value = value ? "true" : "false";
-            break;
-          }
-
-          if (
-            !(
-              value === null ||
-              value === "null" ||
-              value === "true" ||
-              value === "false"
-            )
-          ) {
-            return false;
-          }
-          break;
+          return (
+            value === null ||
+            value === true ||
+            value === false ||
+            value === "null" ||
+            value === "true" ||
+            value === "false"
+          );
 
         case "in":
-          if (Array.isArray(value)) {
-            if (value.length === 0) {
-              return false;
-            }
-          } else if (typeof value === "string") {
-            const trimmed = value.trim();
-            if (
-              trimmed === "" ||
-              trimmed.split(",").filter((item) => item.trim() !== "").length ===
-                0
-            ) {
-              return false;
-            }
-          } else {
-            return false;
-          }
-          break;
+          return Array.isArray(value) && value.length > 0;
 
         default:
-          if (value === undefined || value === null) {
-            return false;
-          }
-          break;
+          return value !== undefined && value !== null;
       }
-    }
+    };
 
-    return true;
+    return filters.every(validateNode);
   },
   applyFilters(q: any, filters: SupastashFilter[], table: string) {
     for (const f of filters) {
@@ -113,4 +94,114 @@ export const ReusedHelpers = {
 
     return q;
   },
+  buildFilterString<R = any>(
+    filter: SupastashFilter<R> | undefined
+  ): string | undefined {
+    if (!filter) return undefined;
+
+    // OR group
+    if ("or" in filter) {
+      if (!Array.isArray(filter.or) || filter.or.length === 0) {
+        return undefined;
+      }
+
+      const inner = filter.or
+        .map((f) => {
+          if ("and" in f || "or" in f) {
+            return undefined; // nested groups not supported here
+          }
+
+          if (f.value === null) {
+            return `${String(f.column)}.${f.operator}.null`;
+          }
+
+          if (f.operator === "in" && Array.isArray(f.value)) {
+            return `${String(f.column)}.in.(${f.value.join(",")})`;
+          }
+
+          return `${String(f.column)}.${f.operator}.${f.value}`;
+        })
+        .filter(Boolean)
+        .join(",");
+
+      return inner ? `or=(${inner})` : undefined;
+    }
+
+    // Condition
+    const { column, operator, value } = filter;
+
+    if (value === null) {
+      return `${String(column)}=${operator}.null`;
+    }
+
+    if (operator === "in" && Array.isArray(value)) {
+      return `${String(column)}=in.(${value.join(",")})`;
+    }
+
+    return `${String(column)}=${operator}.${value}`;
+  },
+  buildFilterForSql<R = any>(
+    filter: SupastashFilter<R> | undefined
+  ): string | undefined {
+    if (!filter) return undefined;
+
+    // OR group
+    if ("or" in filter) {
+      const parts = filter.or
+        .map(ReusedHelpers.buildFilterForSql)
+        .filter(Boolean);
+
+      if (parts.length === 0) return undefined;
+
+      return `(${parts.join(" OR ")})`;
+    }
+
+    const { column, operator, value } = filter;
+
+    switch (operator) {
+      case "eq":
+        return value === null
+          ? `${String(column)} IS NULL`
+          : `${String(column)} = ${sqlValue(value)}`;
+
+      case "neq":
+        return value === null
+          ? `${String(column)} IS NOT NULL`
+          : `${String(column)} != ${sqlValue(value)}`;
+
+      case "gt":
+        return `${String(column)} > ${sqlValue(value)}`;
+
+      case "lt":
+        return `${String(column)} < ${sqlValue(value)}`;
+
+      case "gte":
+        return `${String(column)} >= ${sqlValue(value)}`;
+
+      case "lte":
+        return `${String(column)} <= ${sqlValue(value)}`;
+
+      case "in":
+        if (!Array.isArray(value)) return undefined;
+        return `${String(column)} IN (${value.map(sqlValue).join(", ")})`;
+
+      case "is":
+        return `${String(column)} IS ${sqlValue(value)}`;
+
+      default:
+        throw new Error(`Unsupported operator: ${operator}`);
+    }
+  },
 };
+
+function sqlValue(
+  val: string | number | null | boolean | (string | number)[]
+): string {
+  if (Array.isArray(val)) {
+    return val.map(sqlValue).join(", ");
+  }
+  if (typeof val === "boolean") return val ? "1" : "0";
+  if (val === null) return "NULL";
+  if (typeof val === "number") return val.toString();
+  return `'${val.replace(/'/g, "''")}'`; // Escape single quotes
+}

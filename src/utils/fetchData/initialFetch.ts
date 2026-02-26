@@ -1,4 +1,4 @@
-import { RealtimeFilter } from "../../types/realtimeData.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 import { logError } from "../logs";
 import { updateLocalDb } from "../sync/pullFromRemote/updateLocalDb";
 import { pushLocalDataToRemote } from "../sync/pushLocal/sendUnsyncedToSupabase";
@@ -8,7 +8,7 @@ let isInSync = new Map<string, boolean>();
 
 export async function initialFetch(
   table: string,
-  filter?: RealtimeFilter[],
+  filter?: SupastashFilter[],
   onReceiveData?: (payload: any) => Promise<void>,
   onPushToRemote?: (payload: any[]) => Promise<boolean>
 ) {

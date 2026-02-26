@@ -185,7 +185,7 @@ const { data } = useSupastashData("orders", {
     column: "user_id",
     operator: "eq",
     value: currentUserId,
-  }, // RealtimeFilter
+  }, // SupastashFilter
   sqlFilter: [{ column: "user_id", operator: "eq", value: currentUserId }], //sql (optional)
 });
 ```

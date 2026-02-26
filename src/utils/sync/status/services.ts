@@ -1,6 +1,6 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { tableFilters } from "../../../store/tableFilters";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import {
   PublicScope,
   SupastashSyncStatus,
@@ -31,7 +31,7 @@ const OLD_DATE = "2000-01-01T00:00:00Z";
  */
 export async function getSupastashSyncStatus(
   table: string,
-  filters?: RealtimeFilter[]
+  filters?: SupastashFilter[]
 ): Promise<SupastashSyncStatus | null> {
   try {
     const filterToUse = filters ?? tableFilters.get(table) ?? [];
@@ -47,7 +47,7 @@ export async function getSupastashSyncStatus(
 
 export async function setSupastashSyncStatus(
   table: string,
-  filters: RealtimeFilter[] | undefined,
+  filters: SupastashFilter[] | undefined,
   opts: {
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
@@ -105,7 +105,7 @@ export async function setSupastashSyncStatus(
  */
 export async function resetSupastashSyncStatus(
   table: string,
-  filters: RealtimeFilter[] | undefined,
+  filters: SupastashFilter[] | undefined,
   scope: PublicScope = "all"
 ) {
   try {
@@ -135,7 +135,7 @@ export async function resetSupastashSyncStatus(
  */
 export async function clearSupastashSyncStatus(
   table: string,
-  filters?: RealtimeFilter[]
+  filters?: SupastashFilter[]
 ) {
   try {
     const filterToUse = filters ?? tableFilters.get(table) ?? [];

@@ -57,7 +57,7 @@ useEffect(() => {
 | ------------------------------- | ------------------------------------ | ----------- | ----------------------------------------------------------------- |
 | `table`                         | `string`                             | —           | Name of the table (should match both local and remote)            |
 | `options.shouldFetch`           | `boolean`                            | `true`      | Whether to fetch local data on mount                              |
-| `options.filter`                | `RealtimeFilter`                     | `undefined` | Filter to apply both to initial sync and to realtime events       |
+| `options.filter`                | `SupastashFilter`                    | `undefined` | Filter to apply both to initial sync and to realtime events       |
 | `options.lazy`                  | `boolean`                            | `false`     | Delay the fetch and subscription until `trigger()` is called      |
 | `options.flushIntervalMs`       | `number`                             | `100`       | Flush interval for batched updates to UI                          |
 | `options.realtime`              | `boolean`                            | `true`      | Enable Supabase realtime subscriptions                            |

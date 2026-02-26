@@ -2,9 +2,9 @@
 import NetInfo from "@react-native-community/netinfo";
 import { useCallback, useEffect, useRef } from "react";
 import { getSupastashConfig } from "../../core/config";
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
 import { RealtimeManager } from "../../utils/fetchData/realTimeManager";
 import { logError } from "../../utils/logs";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 import { supabaseClientErr } from "../../utils/supabaseClientErr";
 const generateHookId = () => `hook_${Date.now()}_${Math.random().toString(36)}`;
 function useRealtimeSubscription(table, queueHandler, options, initialized, realtime) {
@@ -36,7 +36,7 @@ function useRealtimeSubscription(table, queueHandler, options, initialized, real
         if (!isConnected) {
             if (isSubscribedRef.current) {
                 const filterString = options.filter
-                    ? buildFilterString(options.filter)
+                    ? ReusedHelpers.buildFilterString(options.filter)
                     : undefined;
                 RealtimeManager.unsubscribe(table, hookId, filterString);
                 isSubscribedRef.current = false;
@@ -50,7 +50,7 @@ function useRealtimeSubscription(table, queueHandler, options, initialized, real
                 (!options.lazy || initialized));
             if (shouldSubscribe && !isSubscribedRef.current) {
                 const filterString = options.filter
-                    ? buildFilterString(options.filter)
+                    ? ReusedHelpers.buildFilterString(options.filter)
                     : undefined;
                 RealtimeManager.subscribe(table, hookId, queueHandler, filterString);
                 isSubscribedRef.current = true;
@@ -63,7 +63,7 @@ function useRealtimeSubscription(table, queueHandler, options, initialized, real
             return;
         }
         const filterString = options.filter
-            ? buildFilterString(options.filter)
+            ? ReusedHelpers.buildFilterString(options.filter)
             : undefined;
         const unsubscribeStatus = RealtimeManager.onStatusChange(handleStatusChange);
         const unsubscribeNetInfo = NetInfo.addEventListener(({ isConnected }) => {

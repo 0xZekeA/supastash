@@ -1,7 +1,7 @@
 import { getSupastashDb } from "../../db/dbInitializer";
 import { localCache } from "../../store/localCache";
 import { PayloadData } from "../../types/query.types";
-import { RealtimeFilter } from "../../types/realtimeData.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 import log, { logError, logWarn } from "../logs";
 import {
   buildFilters,
@@ -76,7 +76,7 @@ export async function fetchLocalData<R = any>(
   limit: number = 200,
   extraMapKeys?: (keyof R)[],
   daylength?: number,
-  filter?: RealtimeFilter[],
+  filter?: SupastashFilter[],
   orderBy?: keyof R | string,
   orderDesc: boolean = true
 ): Promise<{

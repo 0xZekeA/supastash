@@ -2,7 +2,7 @@ import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import { tableSchemaData } from "../../../store/tableSchemaData";
 import { isNetworkError, isOnline } from "../../connection";
-import log from "../../logs";
+import log, { logWarn } from "../../logs";
 const SERVER_SIDE_DOCS_URL = `https://0xzekea.github.io/supastash/docs/getting-started/#%EF%B8%8F-server-side-setup-for-filtered-pulls`;
 async function ensureRemoteSchemaTableExists() {
     const db = await getSupastashDb();
@@ -23,31 +23,44 @@ function validatePayloadForTable(payload, tableName) {
         id.is_nullable === "YES") {
         throw new Error(`Column 'id' must be uuid/text and NOT NULL for table ${tableName}`);
     }
+    const timestampType = ["timestamp with time zone", "timestamptz"];
     const updatedAt = columnsMap.get("updated_at");
-    if (!updatedAt || updatedAt.data_type !== "timestamptz") {
-        throw new Error(`'updated_at' must be of type timestamptz on table ${tableName}
+    if (!updatedAt) {
+        throw new Error(`'updated_at' must be present on table ${tableName}
       See docs ${SERVER_SIDE_DOCS_URL}
       `);
+    }
+    if (!timestampType.includes(updatedAt.data_type)) {
+        logWarn(`'updated_at' must be of type "timestamptz" on table ${tableName}. Current type: ${updatedAt.data_type}. This can cause inconsistencies in the sync logic.`);
     }
     const createdAt = columnsMap.get("created_at");
-    if (!createdAt || createdAt.data_type !== "timestamptz") {
-        throw new Error(`'created_at' must be of type timestamptz on table ${tableName}
+    if (!createdAt) {
+        throw new Error(`'created_at' must be present on table ${tableName}
       See docs ${SERVER_SIDE_DOCS_URL}
       `);
     }
+    if (!timestampType.includes(createdAt.data_type)) {
+        logWarn(`'created_at' must be of type "timestamptz" on table ${tableName}. Current type: ${createdAt.data_type}. This can cause inconsistencies in the sync logic.`);
+    }
     const deletedAt = columnsMap.get("deleted_at");
-    if (!deletedAt || deletedAt.data_type !== "timestamptz") {
-        throw new Error(`'deleted_at' must be of type timestamptz on table ${tableName}
+    if (!deletedAt) {
+        throw new Error(`'deleted_at' must be present on table ${tableName}
       See docs ${SERVER_SIDE_DOCS_URL}
       `);
+    }
+    if (!timestampType.includes(deletedAt.data_type)) {
+        logWarn(`'deleted_at' must be of type "timestamptz" on table ${tableName}. Current type: ${deletedAt.data_type}. This can cause inconsistencies in the sync logic.`);
     }
     const cfg = getSupastashConfig();
     if (cfg.replicationMode === "server-side") {
         const arrivedAt = columnsMap.get("arrived_at");
-        if (!arrivedAt || arrivedAt.data_type !== "timestamptz") {
-            throw new Error(`'arrived_at' must be of type timestamptz on table ${tableName}
+        if (!arrivedAt) {
+            throw new Error(`'arrived_at' must be present on table ${tableName}
         See docs ${SERVER_SIDE_DOCS_URL}
         `);
+        }
+        if (!timestampType.includes(arrivedAt.data_type)) {
+            logWarn(`'arrived_at' must be of type "timestamptz" on table ${tableName}. Current type: ${arrivedAt.data_type}. This can cause inconsistencies in the sync logic.`);
         }
     }
 }
@@ -95,13 +108,13 @@ export async function getRemoteTableSchema(table) {
     if (tableSchemaData.has(table)) {
         return appendSyncedAt(tableSchemaData.get(table));
     }
+    await ensureRemoteSchemaTableExists();
     const online = await isOnline();
     // 2. If offline → SQLite fallback
     if (!online) {
         if (localSchemaCache.has(table)) {
             return appendSyncedAt(localSchemaCache.get(table));
         }
-        await ensureRemoteSchemaTableExists();
         const local = await getLocalSchema(table);
         if (!local)
             return null;

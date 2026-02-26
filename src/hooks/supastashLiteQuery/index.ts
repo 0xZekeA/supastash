@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { getSupastashDb } from "../../db/dbInitializer";
 import { LiteQueryOptions, LiteQueryResult } from "../../types/liteQuery.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 import { SupastashSQLiteDatabase } from "../../types/supastashConfig.types";
 import {
   buildFilters,
@@ -139,10 +140,19 @@ export function useSupastashLiteQuery<R = any>(
   }, [loadMore]);
 
   const isAnyNullish = useMemo(() => {
-    if (!options.sqlFilter) return false;
-    return options.sqlFilter.some(
-      (filter) => isTrulyNullish(filter.value) && filter.operator !== "is"
-    );
+    if (!options.sqlFilter?.length) return false;
+
+    const check = (filter: SupastashFilter): boolean => {
+      if (!filter || typeof filter !== "object") return false;
+
+      if ("or" in filter) {
+        return filter.or?.some(check) ?? false;
+      } else {
+        return isTrulyNullish(filter.value) && filter.operator !== "is";
+      }
+    };
+
+    return options.sqlFilter.some(check);
   }, [options.sqlFilter]);
 
   return { data, loadMore, loading, hasMore, reset };

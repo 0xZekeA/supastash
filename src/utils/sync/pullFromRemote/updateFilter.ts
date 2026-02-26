@@ -3,10 +3,11 @@ import {
   tableFilters,
   tableFiltersUsed,
 } from "../../../store/tableFilters";
-import { SupastashFilter } from "../../../types/supastashFilters.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { logWarn } from "../../logs";
+import { ReusedHelpers } from "../../reusedHelpers";
 import { checkIfTableExist } from "../../tableValidator";
-import isValidFilter, { warnOnMisMatch } from "./validateFilters";
+import { warnOnMisMatch } from "./validateFilters";
 
 /**
  * Updates the filter for the given table
@@ -37,8 +38,9 @@ export async function updateFilters(filters: SupastashFilter) {
       continue;
     }
 
-    const raw = filters[table] ?? [];
-    const valid = raw.filter((f) => isValidFilter([f]));
+    const raw = (filters[table as keyof typeof filters] ??
+      []) as SupastashFilter[];
+    const valid = raw.filter((f) => ReusedHelpers.isValidFilter([f]));
     if (!valid.length) {
       tableFilters.delete(table);
       tableFiltersUsed.delete(table);

@@ -4,8 +4,8 @@ import { PayloadData } from "../../types/query.types";
 import { RealtimeOptions } from "../../types/realtimeData.types";
 import { supastashEventBus } from "../events/eventBus";
 import { logError } from "../logs";
+import { ReusedHelpers } from "../reusedHelpers";
 import { supabaseClientErr } from "../supabaseClientErr";
-import { buildFilterString } from "./buildFilter";
 
 const hasRegistered = new Map<string, boolean>();
 
@@ -18,7 +18,7 @@ const useRealtimeData = (
 ) => {
   const { lazy, shouldFetch } = options;
   const filterString = useMemo(
-    () => buildFilterString(options.filter),
+    () => ReusedHelpers.buildFilterString(options.filter),
     [options.filter]
   );
   const subKey = useMemo(

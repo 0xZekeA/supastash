@@ -4,7 +4,7 @@ import {
   DEFAULT_RECEIVED_DATA_COMPLETED,
   RECEIVED_DATA_COMPLETED_MAP,
 } from "../../../store/syncStatus";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { isOnline } from "../../connection";
 import { generateUUIDv4 } from "../../genUUID";
 import { getTableSchema } from "../../getTableSchema";
@@ -28,7 +28,7 @@ const DELETE_CHUNK = 999;
  */
 export async function updateLocalDb(
   table: string,
-  filters?: RealtimeFilter[],
+  filters?: SupastashFilter[],
   onReceiveData?: (payload: any) => Promise<void>
 ) {
   if (isInSync.get(table)) return;

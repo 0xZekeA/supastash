@@ -1,12 +1,12 @@
 import { PayloadData } from "../../../types/query.types";
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { ReceivedDataCompleted } from "../../../types/syncEngine.types";
 export declare function pageThrough(base: {
     tsCol: "arrived_at" | "updated_at";
     since: string;
     table: string;
     select?: string;
-    filters?: RealtimeFilter[];
+    filters?: SupastashFilter[];
     includeDeleted?: boolean;
     batchId: string;
     previousPk?: string | null;

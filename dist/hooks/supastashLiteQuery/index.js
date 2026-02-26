@@ -109,9 +109,19 @@ export function useSupastashLiteQuery(table, options = {}) {
         loadMore();
     }, [loadMore]);
     const isAnyNullish = useMemo(() => {
-        if (!options.sqlFilter)
+        if (!options.sqlFilter?.length)
             return false;
-        return options.sqlFilter.some((filter) => isTrulyNullish(filter.value) && filter.operator !== "is");
+        const check = (filter) => {
+            if (!filter || typeof filter !== "object")
+                return false;
+            if ("or" in filter) {
+                return filter.or?.some(check) ?? false;
+            }
+            else {
+                return isTrulyNullish(filter.value) && filter.operator !== "is";
+            }
+        };
+        return options.sqlFilter.some(check);
     }, [options.sqlFilter]);
     return { data, loadMore, loading, hasMore, reset };
 }

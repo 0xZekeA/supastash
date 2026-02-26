@@ -1,4 +1,4 @@
-import { RealtimeFilter } from "../../../types/realtimeData.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 import { PublicScope, SupastashSyncStatus } from "../../../types/syncEngine.types";
 /**
  * Clears the sync log for a specific table.
@@ -54,7 +54,7 @@ export declare function getSyncLog(tableName: string): Promise<SupastashSyncStat
  *   lastSyncedAtPk: "00000000-0000-0000-0000-000000000000",
  * });
  */
-export declare function setSyncLog(table: string, filters: RealtimeFilter[] | undefined, opts: {
+export declare function setSyncLog(table: string, filters: SupastashFilter[] | undefined, opts: {
     lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
@@ -71,7 +71,7 @@ export declare function setSyncLog(table: string, filters: RealtimeFilter[] | un
  * @example
  * await resetSyncLog("users", undefined, "all");
  */
-export declare function resetSyncLog(table: string, filters: RealtimeFilter[] | undefined, scope?: PublicScope): Promise<void>;
+export declare function resetSyncLog(table: string, filters: SupastashFilter[] | undefined, scope?: PublicScope): Promise<void>;
 /**
  * Deletes the sync log entry for a table (and optional filter key).
  *
@@ -80,7 +80,7 @@ export declare function resetSyncLog(table: string, filters: RealtimeFilter[] | 
  * @example
  * await clearSyncLog("users");
  */
-export declare function clearSyncLog(table: string, filters?: RealtimeFilter[]): Promise<void>;
+export declare function clearSyncLog(table: string, filters?: SupastashFilter[]): Promise<void>;
 /** ------------------- DEPRECATED 🗑 Local Sync & Delete Log ------------------- */
 /**
  * @deprecated Use `setSyncLog` instead.

@@ -31,7 +31,9 @@ function normVal(v) {
  * @returns The canonicalized filters
  */
 export function canonicalizeFilters(filters) {
-    const list = (filters ?? []).map((f) => ({
+    const list = (filters ?? [])
+        .filter((f) => !!f && typeof f === "object" && "column" in f && "operator" in f)
+        .map((f) => ({
         column: String(f.column),
         operator: f.operator,
         value: normVal(f.value),
@@ -41,7 +43,8 @@ export function canonicalizeFilters(filters) {
             return a.column < b.column ? -1 : 1;
         if (a.operator !== b.operator)
             return a.operator < b.operator ? -1 : 1;
-        const av = JSON.stringify(a.value), bv = JSON.stringify(b.value);
+        const av = JSON.stringify(a.value);
+        const bv = JSON.stringify(b.value);
         return av < bv ? -1 : av > bv ? 1 : 0;
     });
     return JSON.stringify(list);

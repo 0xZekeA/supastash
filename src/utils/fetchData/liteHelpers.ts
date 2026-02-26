@@ -1,8 +1,8 @@
 import { LiteQueryOptions } from "../../types/liteQuery.types";
-import { RealtimeFilter } from "../../types/realtimeData.types";
+import { SupastashFilter } from "../../types/realtimeData.types";
 import { getTableSchema } from "../getTableSchema";
 import { logError, logWarn } from "../logs";
-import { buildFilterForSql } from "./buildFilter";
+import { ReusedHelpers } from "../reusedHelpers";
 
 export function parseJSONColumns<R extends Record<string, any>>(row: R): R {
   const parsedRow: R = { ...row };
@@ -53,7 +53,7 @@ function buildFilterKey(
 const filterCache = new Map<string, string>();
 
 export async function buildFilters<R = any>(
-  filters: RealtimeFilter<R>[],
+  filters: SupastashFilter<R>[],
   table: string,
   noChecks: boolean = false
 ): Promise<string> {
@@ -72,6 +72,21 @@ export async function buildFilters<R = any>(
     const filterStringArray: string[] = [];
 
     for (const filter of filters) {
+      if ("or" in filter) {
+        try {
+          const filterSql = ReusedHelpers.buildFilterForSql(filter);
+          if (filterSql) {
+            filterStringArray.push(filterSql);
+          }
+        } catch (error) {
+          logError(
+            `[Supastash] Failed to build OR filter for table ${table}:`,
+            error
+          );
+        }
+        continue;
+      }
+
       if (!filter?.column) {
         logWarn(`[Supastash] Skipping filter with missing column`);
         continue;
@@ -88,7 +103,7 @@ export async function buildFilters<R = any>(
       }
 
       try {
-        const filterSql = buildFilterForSql(filter);
+        const filterSql = ReusedHelpers.buildFilterForSql(filter);
         if (filterSql) {
           filterStringArray.push(filterSql);
         }
@@ -109,147 +124,4 @@ export async function buildFilters<R = any>(
     logError(`[Supastash] Failed to build filters for table ${table}:`, error);
     return "";
   }
-}
-
-// export async function fetchData<R = any>({
-//   table,
-//   options,
-//   state,
-//   isLoadMore,
-//   isRefresh,
-// }: FetchOptions<R>): Promise<FetchResult<R> | null> {
-//   const db = await getSupastashDb();
-//   const sanitizedTable = sanitizeTableName(table);
-//   const sanitizedOrderBy = sanitizeOrderBy(options.orderBy ?? "created_at");
-//   const limit = options.pageSize ?? 50;
-//   const orderDirection = options.orderDesc === false ? "ASC" : "DESC";
-//   const enableCursor = options.enableCursor !== false;
-
-//   try {
-//     const filters = await buildFilters(options.sqlFilter ?? [], sanitizedTable);
-
-//     const staleTime = options.staleTime ?? 30000;
-//     const isCacheStale = Date.now() - state.lastFetch > staleTime;
-
-//     if (!isRefresh && !isLoadMore && state.data.length > 0 && !isCacheStale) {
-//       logWarn(`[Supastash] Using cached data for ${table}`);
-//       return null;
-//     }
-
-//     let query: string;
-//     let params: any[] = [];
-
-//     if (enableCursor && isLoadMore && state.cursor) {
-//       const operator = orderDirection === "DESC" ? "<" : ">";
-//       const snapshotClause = state.snapshotTime
-//         ? ` AND created_at <= '${state.snapshotTime}'`
-//         : "";
-
-//       query = `
-//         SELECT * FROM ${sanitizedTable}
-//         WHERE deleted_at IS NULL${filters}${snapshotClause}
-//         AND ${sanitizedOrderBy} ${operator} ?
-//         ORDER BY ${sanitizedOrderBy} ${orderDirection}, id ${orderDirection}
-//         LIMIT ${limit};
-//       `;
-//       params = [state.cursor];
-//     } else {
-//       const snapshotClause =
-//         !isRefresh && state.snapshotTime
-//           ? ` AND created_at <= '${state.snapshotTime}'`
-//           : "";
-
-//       query = `
-//         SELECT * FROM ${sanitizedTable}
-//         WHERE deleted_at IS NULL${filters}${snapshotClause}
-//         ORDER BY ${sanitizedOrderBy} ${orderDirection}, id ${orderDirection}
-//         LIMIT ${limit};
-//       `;
-//     }
-
-//     const rows = await db.getAllAsync(query, params);
-
-//     if (!rows || rows.length === 0) {
-//       return {
-//         data: [],
-//         dataMap: new Map(),
-//         groupedBy: undefined,
-//         hasMore: false,
-//         cursor: null,
-//       };
-//     }
-
-//     const processed = await processRows<R>(
-//       rows,
-//       options.extraMapKeys,
-//       sanitizedOrderBy
-//     );
-
-//     const newCursor =
-//       enableCursor && rows.length > 0
-//         ? rows[rows.length - 1][sanitizedOrderBy]
-//         : null;
-
-//     return {
-//       data: processed.parsed,
-//       dataMap: processed.dataMap,
-//       groupedBy: processed.groupedBy,
-//       hasMore: rows.length === limit,
-//       cursor: newCursor,
-//     };
-//   } catch (error) {
-//     logError(`[Supastash] Failed to fetch data from ${table}:`, error);
-//     throw error;
-//   }
-// }
-
-async function processRows<R>(
-  rows: any[],
-  extraMapKeys?: (keyof R)[],
-  orderByColumn?: string
-): Promise<{
-  parsed: R[];
-  dataMap: Map<string, R>;
-  groupedBy?: { [K in keyof R]: Map<R[K], Array<R>> };
-}> {
-  const parsed: R[] = [];
-  const dataMap = new Map<string, R>();
-  const groupedBy: { [K in keyof R]: Map<R[K], Array<R>> } = {} as any;
-
-  for (const row of rows) {
-    try {
-      const parsedRow = parseJSONColumns(row) as R;
-      parsed.push(parsedRow);
-      dataMap.set(row.id, parsedRow);
-
-      if (extraMapKeys?.length) {
-        for (const key of extraMapKeys) {
-          if (key === "id") {
-            logWarn(`[Supastash] Key 'id' is redundant - use dataMap.get(id)`);
-            continue;
-          }
-
-          if (parsedRow[key] == null) {
-            logWarn(
-              `[Supastash] Item ${(parsedRow as any).id} missing ${String(key)}`
-            );
-            continue;
-          }
-
-          const groupVal = parsedRow[key];
-          if (!groupedBy[key]) groupedBy[key] = new Map();
-          if (!groupedBy[key].has(groupVal)) groupedBy[key].set(groupVal, []);
-          groupedBy[key].get(groupVal)!.push(parsedRow);
-        }
-      }
-    } catch (error) {
-      logError(`[Supastash] Failed to process row:`, error, row);
-    }
-  }
-
-  return {
-    parsed,
-    dataMap,
-    groupedBy: Object.keys(groupedBy).length > 0 ? groupedBy : undefined,
-  };
 }

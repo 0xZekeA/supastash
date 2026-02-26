@@ -8,9 +8,9 @@ import {
   RealtimeOptions,
   RealtimeStatus,
 } from "../../types/realtimeData.types";
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
 import { RealtimeManager } from "../../utils/fetchData/realTimeManager";
 import { logError } from "../../utils/logs";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 import { supabaseClientErr } from "../../utils/supabaseClientErr";
 
 const generateHookId = () => `hook_${Date.now()}_${Math.random().toString(36)}`;
@@ -55,7 +55,7 @@ function useRealtimeSubscription(
       if (!isConnected) {
         if (isSubscribedRef.current) {
           const filterString = options.filter
-            ? buildFilterString(options.filter)
+            ? ReusedHelpers.buildFilterString(options.filter)
             : undefined;
           RealtimeManager.unsubscribe(table, hookId, filterString);
           isSubscribedRef.current = false;
@@ -70,7 +70,7 @@ function useRealtimeSubscription(
         );
         if (shouldSubscribe && !isSubscribedRef.current) {
           const filterString = options.filter
-            ? buildFilterString(options.filter)
+            ? ReusedHelpers.buildFilterString(options.filter)
             : undefined;
           RealtimeManager.subscribe(table, hookId, queueHandler, filterString);
           isSubscribedRef.current = true;
@@ -87,7 +87,7 @@ function useRealtimeSubscription(
     }
 
     const filterString = options.filter
-      ? buildFilterString(options.filter)
+      ? ReusedHelpers.buildFilterString(options.filter)
       : undefined;
 
     const unsubscribeStatus =

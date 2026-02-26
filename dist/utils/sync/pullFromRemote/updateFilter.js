@@ -1,7 +1,8 @@
 import { filterTracker, tableFilters, tableFiltersUsed, } from "../../../store/tableFilters";
 import { logWarn } from "../../logs";
+import { ReusedHelpers } from "../../reusedHelpers";
 import { checkIfTableExist } from "../../tableValidator";
-import isValidFilter, { warnOnMisMatch } from "./validateFilters";
+import { warnOnMisMatch } from "./validateFilters";
 /**
  * Updates the filter for the given table
  * Non-hook version of useSupastashFilters
@@ -26,8 +27,9 @@ export async function updateFilters(filters) {
             logWarn(`Table '${table}' does not exist; skipping filters`);
             continue;
         }
-        const raw = filters[table] ?? [];
-        const valid = raw.filter((f) => isValidFilter([f]));
+        const raw = (filters[table] ??
+            []);
+        const valid = raw.filter((f) => ReusedHelpers.isValidFilter([f]));
         if (!valid.length) {
             tableFilters.delete(table);
             tableFiltersUsed.delete(table);

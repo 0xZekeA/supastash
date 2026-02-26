@@ -1,4 +1,4 @@
-import { RealtimeFilter } from "./realtimeData.types";
+import { SupastashFilter } from "./realtimeData.types";
 
 /**
  * LiteQueryOptions
@@ -44,7 +44,7 @@ export type LiteQueryOptions<R = any> = {
    *   }
    * ]
    */
-  sqlFilter?: RealtimeFilter<R>[];
+  sqlFilter?: SupastashFilter<R>[];
 };
 
 export interface LiteQueryResult<R> {

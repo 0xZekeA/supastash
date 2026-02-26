@@ -1,7 +1,12 @@
+import { getSupastashConfig } from "../../../core/config";
 import { logWarn } from "../../logs";
 import { FetchOlderHelpers } from "./fetchOlderHelpers";
 export async function fetchOlder({ boundaryTs, table, filters, limit, shouldStoreToLocalDb = true, }) {
     try {
+        const isGhost = getSupastashConfig().supastashMode === "ghost";
+        if (isGhost) {
+            return { hasMore: false, data: [] };
+        }
         const lookbackDays = await FetchOlderHelpers.getLookbackDays({
             table,
             filters,

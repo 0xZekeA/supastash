@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { syncCalls } from "../../store/syncCalls";
 import { tableFilters, tableFiltersUsed } from "../../store/tableFilters";
 import {
-  RealtimeFilter,
   RealtimeOptions,
+  SupastashFilter,
 } from "../../types/realtimeData.types";
 import { fetchLocalData } from "../../utils/fetchData/fetchLocalData";
 import { initialFetch } from "../../utils/fetchData/initialFetch";
@@ -50,7 +50,7 @@ export function fetchCalls<R = any>(
   }, [filter]);
 
   const fetch = async () => {
-    let filters: RealtimeFilter[] | undefined;
+    let filters: SupastashFilter[] | undefined;
 
     if (sqlFilter) {
       filters = sqlFilter;
@@ -92,7 +92,7 @@ export function fetchCalls<R = any>(
   const initialFetchAndSync = async () => {
     if (!shouldFetch || cancelled.current) return;
 
-    let filters: RealtimeFilter[] | undefined;
+    let filters: SupastashFilter[] | undefined;
 
     if (sqlFilter) {
       filters = sqlFilter;

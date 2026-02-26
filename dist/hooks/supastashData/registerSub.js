@@ -1,7 +1,7 @@
-import { buildFilterString } from "../../utils/fetchData/buildFilter";
+import { ReusedHelpers } from "../../utils/reusedHelpers";
 const subRegistry = {};
 export function registerSub(table, filter) {
-    const key = `${table}::${buildFilterString(filter) ?? ""}`;
+    const key = `${table}::${ReusedHelpers.buildFilterString(filter) ?? ""}`;
     if (subRegistry[key]) {
         subRegistry[key]++;
         return true;
@@ -10,7 +10,7 @@ export function registerSub(table, filter) {
     return false;
 }
 export function unregisterSub(table, filter) {
-    const key = `${table}::${buildFilterString(filter) ?? ""}`;
+    const key = `${table}::${ReusedHelpers.buildFilterString(filter) ?? ""}`;
     if (subRegistry[key]) {
         subRegistry[key]--;
         if (subRegistry[key] <= 0) {

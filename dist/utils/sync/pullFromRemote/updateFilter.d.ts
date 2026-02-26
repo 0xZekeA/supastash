@@ -1,4 +1,4 @@
-import { SupastashFilter } from "../../../types/supastashFilters.types";
+import { SupastashFilter } from "../../../types/realtimeData.types";
 /**
  * Updates the filter for the given table
  * Non-hook version of useSupastashFilters
