@@ -1,4 +1,3 @@
-import { SupastashSQLiteExecutor } from "src/types/supastashConfig.types";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
   CrudMethods,
@@ -6,6 +5,7 @@ import {
   SupastashQuery,
   SupatashDeleteResult,
 } from "../../../types/query.types";
+import { SupastashSQLiteExecutor } from "../../../types/supastashConfig.types";
 import { logError } from "../../logs";
 import { assertTableExists } from "../../tableValidator";
 import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";

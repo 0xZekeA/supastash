@@ -1,5 +1,5 @@
-import { SupastashSQLiteExecutor } from "src/types/supastashConfig.types";
 import { CrudMethods, FilterCalls, SupastashQuery, SupatashDeleteResult } from "../../../types/query.types";
+import { SupastashSQLiteExecutor } from "../../../types/supastashConfig.types";
 /**
  * Soft delete: Sets `deleted_at` timestamp based on provided filters.
  * @param table - The name of the table to delete from
