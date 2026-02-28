@@ -19,7 +19,7 @@ Legacy helpers such as `setLocalSyncLog` / `setLocalDeleteLog` are **deprecated*
   - [clearLocalSyncLog](#-clearlocalsynclogtablename-string)
   - [clearAllLocalSyncLog](#-clearalllocalsynclog)
   - [getSyncLog](#-getsynclogtablename-string)
-  - [setSyncLog](#-setsynclogtable-string-filters-SupastashFilter--undefined-opts)
+  - [setSyncLog](./sync-log-utils#%EF%B8%8F-setsynclogtable-string-filters-supastashfilter--undefined-opts)
   - [resetSyncLog](#-resetsynclogtable-string-filters-SupastashFilter-scope-all--last_synced_at--last_deleted_at)
   - [clearSyncLog](#-clearsynclogtable-string-filters-SupastashFilter)
 - [Usage Notes](#usage-notes)
