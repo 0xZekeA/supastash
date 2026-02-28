@@ -1,8 +1,8 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SQLiteOpenOptions } from "expo-sqlite";
+import { NitroSQLiteConnection } from "react-native-nitro-sqlite";
+import { SQLiteDatabase as RNStorageSQLiteDatabase } from "react-native-sqlite-storage";
 import { ExpoSQLiteDatabase } from "./expoSqlite.types";
-import { RNNitroSQLiteDatabase } from "./rnNitroSqlite.types";
-import { RNStorageSQLiteDatabase } from "./rnSqliteStorage.types";
 
 export type SupastashSQLiteClientTypes =
   | "expo"
@@ -50,7 +50,7 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   /**
    * Maximum number of rows sent per Supabase write request.
    * Large payloads are automatically split into sequential batches.
-   * Default: 100.
+   * Default: 800.
    */
   supabaseBatchSize?: number;
 
@@ -124,15 +124,12 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
    * Allows you to define a different lookback window (in days) for specific tables.
    *
    * If a table is listed here, its value takes precedence over maxSyncLookbackDays.
-   *
-   * Set a table’s value to undefined to remove the cap entirely and always
-   * sync its full history.
+   
    *
    * Example:
    * {
    *   messages: 30,        // only sync last 30 days
    *   orders: 180,         // sync last 6 months
-   *   audit_logs: undefined // always sync full history
    * }
    */
   perTableSyncLookbackDays?: Record<string, number | undefined>;
@@ -272,7 +269,7 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   supastashMode?: SupastashMode;
 };
 
-interface SupastashSQLiteDatabase {
+export interface SupastashSQLiteExecutor {
   /**
    * Executes a SQL statement without returning any result.
    * Useful for `INSERT`, `UPDATE`, `DELETE`, or `CREATE TABLE` commands.
@@ -281,7 +278,7 @@ interface SupastashSQLiteDatabase {
    * @param params - Optional parameters for the statement
    * @returns A Promise that resolves when the execution is complete
    */
-  runAsync(sql: string, params?: any[]): Promise<void>;
+  runAsync(sql: string, params?: any[]): Promise<any>;
 
   /**
    * Executes a query and returns **all rows** as an array.
@@ -309,7 +306,9 @@ interface SupastashSQLiteDatabase {
    * @returns A Promise that resolves when all statements are executed
    */
   execAsync(statements: string): Promise<void>;
+}
 
+export interface SupastashSQLiteDatabase extends SupastashSQLiteExecutor {
   /**
    * Closes the underlying SQLite connection.
    *
@@ -320,6 +319,15 @@ interface SupastashSQLiteDatabase {
    * Do NOT call this in production app code.
    */
   closeAsync(): Promise<void>;
+
+  /**
+   * Executes a function within a transaction.
+   * @param fn - The function to execute within the transaction
+   * @returns A Promise that resolves when the transaction is complete
+   */
+  withTransaction(
+    fn: (tx: SupastashSQLiteExecutor) => Promise<void> | void
+  ): Promise<void>;
 }
 
 export interface SupastashSQLiteAdapter {
@@ -346,7 +354,7 @@ export interface RNStorageSQLiteClient {
 }
 
 export interface RNSqliteNitroClient {
-  open: (options: { name: string; location?: string }) => RNNitroSQLiteDatabase;
+  open: (options: { name: string; location?: string }) => NitroSQLiteConnection;
 }
 
 export interface SupastashHookReturn {

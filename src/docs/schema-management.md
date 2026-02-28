@@ -152,12 +152,13 @@ It **lazily initializes** the database connection only once (singleton pattern),
 
 ### 🔧 API Methods
 
-| Method                        | Description                                                                 | Returns                |
-| ----------------------------- | --------------------------------------------------------------------------- | ---------------------- |
-| `runAsync(sql, params?)`      | Executes a single statement (e.g., `INSERT`, `UPDATE`, `DELETE`)            | `Promise<void>`        |
-| `getAllAsync(sql, params?)`   | Fetches **all rows** from a `SELECT` query                                  | `Promise<any[]>`       |
-| `getFirstAsync(sql, params?)` | Fetches **first row only** (or `null` if none) from a `SELECT` query        | `Promise<any \| null>` |
-| `execAsync(statements)`       | Executes multiple SQL statements separated by `;` (used in schema creation) | `Promise<void>`        |
+| Method                        | Description                                                                                                                                                                    | Returns                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| `runAsync(sql, params?)`      | Executes a single statement (e.g., `INSERT`, `UPDATE`, `DELETE`)                                                                                                               | `Promise<void>`        |
+| `getAllAsync(sql, params?)`   | Fetches **all rows** from a `SELECT` query                                                                                                                                     | `Promise<any[]>`       |
+| `getFirstAsync(sql, params?)` | Fetches **first row only** (or `null` if none) from a `SELECT` query                                                                                                           | `Promise<any \| null>` |
+| `execAsync(statements)`       | Executes multiple SQL statements separated by `;` (used in schema creation)                                                                                                    | `Promise<void>`        |
+| `withTransaction(fn)`         | Executes multiple operations inside a single SQLite transaction. Automatically commits on success and rolls back if an error is thrown. Nested transactions are not supported. | `Promise<T>`           |
 
 Follows the same call patterns as `expo-sqlite`, making it familiar and easy to use.
 
@@ -170,6 +171,20 @@ This function is used **internally** by other Supastash functions (e.g., `define
 ```ts
 const db = await getSupastashDb();
 const users = await db.getAllAsync("SELECT * FROM users");
+
+await db.withTransaction(async (tx) => {
+  await tx.runAsync(
+    `INSERT INTO orders (id, customer_name, total_amount, created_at)
+     VALUES (?, ?, ?, ?)`,
+    ["1", "John Udoka", 250.0, new Date().toISOString()]
+  );
+
+  await tx.runAsync(
+    `INSERT INTO order_items (id, order_id, product_name, quantity, price)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["10", "1", "Premium Shirt", 2, 125.0]
+  );
+});
 ```
 
 ---

@@ -5,6 +5,7 @@ import {
   SupastashQuery,
   SyncMode,
 } from "../../../../types/query.types";
+import { SupastashSQLiteExecutor } from "../../../../types/supastashConfig.types";
 import { generateUUIDv4 } from "../../../genUUID";
 import { parseStringifiedFields as parseRow } from "../../../sync/pushLocal/parseFields";
 import { queueRemoteCall } from "../queueRemote";
@@ -17,6 +18,8 @@ interface UpsertOptions<R = any> {
   preserveTimestamp?: boolean; // if false, we set updated_at when missing
   returnRows?: boolean; // default true
   yieldEvery?: number; // default 500
+  withTx: boolean;
+  tx: SupastashSQLiteExecutor | null;
 }
 
 const CHECK_BATCH = 900; // param headroom under 999
@@ -73,7 +76,7 @@ export async function upsertMany<R = any>(
   const upserted: R[] = [];
   const remotePayload: R[] = [];
 
-  const run = async () => {
+  const run = async (db: SupastashSQLiteExecutor) => {
     for (let i = 0; i < items.length; i++) {
       const input: any = items[i] ?? {};
       const row: any = { ...input };
@@ -197,7 +200,13 @@ export async function upsertMany<R = any>(
   };
 
   try {
-    await run();
+    if (opts.withTx) {
+      await db.withTransaction(async (tx) => {
+        await run(tx);
+      });
+    } else {
+      await run(opts.tx ?? db);
+    }
     const newState = { ...state, payload: remotePayload };
     if (remoteCalls.includes(newState.type)) {
       queueRemoteCall(newState);

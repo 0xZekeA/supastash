@@ -15,6 +15,15 @@
 
 ---
 
+> 🔴 **NEW — Replication Mode**
+>
+> Improves sync ordering and prevents missed updates in distributed offline systems.  
+> ⚠️ Must read if your app supports multiple devices or long offline sessions.
+>
+> 👉 Learn more: https://0xzekea.github.io/supastash/docs/replication-mode
+
+---
+
 ## ✨ Features
 
 - 🔁 **Two-way sync** (Supabase ↔ SQLite)
@@ -91,8 +100,8 @@ configureSupastash({
       id: "TEXT PRIMARY KEY",
       name: "TEXT",
       email: "TEXT",
-      created_at: "TIMESTAMP",
-      updated_at: "TIMESTAMP",
+      created_at: "TEXT NOT NULL",
+      updated_at: "TEXT NOT NULL",
     });
   },
 
@@ -173,9 +182,12 @@ useSupastashFilters({
 - Your Supabase tables must have:
 
   - A primary key `id` (string or UUID)
-  - `timestamptz` columns for `created_at`, `updated_at`, and `deleted_at`
 
-- Run this SQL in Supabase to allow schema reflection:
+  - `timestamptz` columns for `created_at`, `updated_at`, and `deleted_at`
+  - If using `replicationMode: "server-side"`(Recommended), you must also add:
+    - `arrived_at timestamptz NOT NULL DEFAULT now()`
+    - A server trigger to enforce `arrived_at` updates
+  - Run this SQL in Supabase to allow schema reflection:
 
 ```sql
 create or replace function get_table_schema(table_name text)
@@ -206,7 +218,7 @@ const { data: orders } = useSupatashData("orders", {
 
 ## 🔄 How Sync Works
 
-- Tracks rows using `updated_at`, `deleted_at`, and `created_at`
+- Tracks rows using a replication cursor (`updated_at` by default, or `arrived_at` in server-side mode)
 - Batches changes in background and retries failed ones
 - Local cache backed by Supabase
 - Runs pull/push jobs efficiently using staged task pipelines

@@ -174,6 +174,10 @@ export async function querySupabase<T extends boolean, R, Z>(
     filterQuery = filterQuery.select();
   }
 
+  if (state.throwOnError) {
+    filterQuery = filterQuery.throwOnError();
+  }
+
   const result = await filterQuery;
   const db = await getSupastashDb();
 
@@ -231,7 +235,7 @@ export async function querySupabase<T extends boolean, R, Z>(
       ]);
 
       if (method === "delete") {
-        await permanentlyDeleteData(table, filters);
+        await permanentlyDeleteData({ table, filters, tx: state.tx });
       }
     }
     refreshScreen(table);

@@ -1,4 +1,5 @@
 import { PostgrestError, PostgrestSingleResponse } from "@supabase/supabase-js";
+import { SupastashSQLiteExecutor } from "./supastashConfig.types";
 
 export type SupabaseResult<T> = PostgrestSingleResponse<T>;
 export type PayloadData = any;
@@ -50,6 +51,12 @@ export interface SupastashQuery<
   viewRemoteResult: boolean;
   onConflictKeys?: string[];
   preserveTimestamp: boolean;
+  throwOnError: boolean;
+  fetchPolicy: FetchPolicy | null;
+  // With tx
+  txId: string | null;
+  tx: SupastashSQLiteExecutor | null;
+  withTx: boolean;
 }
 
 export interface CrudReturnValue {
@@ -95,6 +102,8 @@ export type SyncMode =
   | "localOnly"
   | "remoteOnly";
 
+export type FetchPolicy = "localFirst" | "remoteFirst";
+
 export type SupastashQueryResult<
   T extends CrudMethods,
   U extends boolean,
@@ -134,6 +143,13 @@ export type QueryBuilder<
 
   // Transitions to U = true when called
   single(): QueryBuilder<T, true, R, Z>;
+
+  /**
+   * Throws an error if the query fails.
+   *
+   * @returns more filter options.
+   */
+  throwOnError(): QueryBuilder<T, U, R, Z>;
 
   // Executes the query
   execute<V extends boolean = false>(

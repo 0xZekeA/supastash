@@ -10,6 +10,15 @@ import log from "../../../utils/logs";
 import { querySupabase } from "../remoteQuery/supabaseQuery";
 import { queryDb } from "./mainQuery";
 
+type FilterBuilderFor<
+  T extends CrudMethods,
+  U extends boolean,
+  R,
+  Z
+> = T extends "select"
+  ? SupastashFilterBuilder<T, U, R, Z>
+  : Omit<SupastashFilterBuilder<T, U, R, Z>, "cacheFirst">;
+
 /**
  * Builder for the filter methods
  * @param T - The method to call
@@ -28,14 +37,14 @@ export default class SupastashFilterBuilder<
    */
   private build<M extends T>(
     filter: FilterCalls
-  ): SupastashFilterBuilder<M, U, R, Z> {
+  ): FilterBuilderFor<M, U, R, Z> {
     return new SupastashFilterBuilder<M, U, R, Z>({
       ...(this.query as SupastashQuery<M, U, R>),
       filters: [
         ...((this.query as SupastashQuery<M, U, R>).filters || []),
         filter,
       ],
-    });
+    }) as FilterBuilderFor<M, U, R, Z>;
   }
 
   /**
@@ -45,11 +54,11 @@ export default class SupastashFilterBuilder<
    */
   private withQueryPatch<M extends T, NewU extends U = U>(
     patch: Partial<SupastashQuery<M, NewU, R>>
-  ): SupastashFilterBuilder<M, NewU, R, Z> {
+  ): FilterBuilderFor<M, NewU, R, Z> {
     return new SupastashFilterBuilder<M, NewU, R, Z>({
       ...(this.query as SupastashQuery<M, NewU, R>),
       ...patch,
-    });
+    }) as FilterBuilderFor<M, NewU, R, Z>;
   }
 
   /**
@@ -182,6 +191,22 @@ export default class SupastashFilterBuilder<
   }
 
   /**
+   * Creates its own SQLite transaction for this insert or upsert.
+   *
+   * Do not use inside `db.withTransaction(...)` or
+   * `supastash.withTransaction(...)` — nested transactions are not allowed.
+   */
+  withTx() {
+    const isInATx = this.query.txId !== null;
+    if (isInATx) {
+      throw new Error(
+        `[Supastash] Cannot use \`withTx()\` inside a transaction. Method: ${this.query.method} on table: ${this.query.table}`
+      );
+    }
+    return this.withQueryPatch<T>({ withTx: true });
+  }
+
+  /**
    * Sets the preserve timestamp of the query.
    *
    * @param preserve - Whether to preserve the timestamp.
@@ -199,6 +224,27 @@ export default class SupastashFilterBuilder<
    */
   syncMode(mode: SyncMode) {
     return this.withQueryPatch<T>({ type: mode });
+  }
+
+  /**
+   * Throws an error if the query fails.
+   *
+   * @returns more filter options.
+   */
+  throwOnError() {
+    return this.withQueryPatch<T>({ throwOnError: true });
+  }
+
+  /**
+   * Executes a cache-first fetch strategy.
+   *
+   * Attempts to resolve the query from the local database.
+   * Falls back to the remote database if no usable result is found.
+   *
+   * @returns Query results from local and/or remote sources.
+   */
+  cacheFirst() {
+    return this.withQueryPatch<T>({ fetchPolicy: "localFirst" });
   }
 
   /**

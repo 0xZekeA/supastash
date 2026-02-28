@@ -1,6 +1,7 @@
 import { PostgrestError, PostgrestSingleResponse } from "@supabase/supabase-js";
+import { SupastashSQLiteExecutor } from "./supastashConfig.types";
 
-type SupabaseResult<T> = PostgrestSingleResponse<T>;
+export type SupabaseResult<T> = PostgrestSingleResponse<T>;
 export type PayloadData = any;
 
 export type SupabaseQueryReturn<U extends boolean, Z> = U extends true
@@ -50,6 +51,12 @@ export interface SupastashQuery<
   viewRemoteResult: boolean;
   onConflictKeys?: string[];
   preserveTimestamp: boolean;
+  throwOnError: boolean;
+  fetchPolicy: FetchPolicy | null;
+  // With tx
+  txId: string | null;
+  tx: SupastashSQLiteExecutor | null;
+  withTx: boolean;
 }
 
 export interface CrudReturnValue {
@@ -95,6 +102,8 @@ export type SyncMode =
   | "localOnly"
   | "remoteOnly";
 
+export type FetchPolicy = "localFirst" | "remoteFirst";
+
 export type SupastashQueryResult<
   T extends CrudMethods,
   U extends boolean,
@@ -135,6 +144,13 @@ export type QueryBuilder<
   // Transitions to U = true when called
   single(): QueryBuilder<T, true, R, Z>;
 
+  /**
+   * Throws an error if the query fails.
+   *
+   * @returns more filter options.
+   */
+  throwOnError(): QueryBuilder<T, U, R, Z>;
+
   // Executes the query
   execute<V extends boolean = false>(
     options?: ExecuteOptions & { viewRemoteResult?: V }
@@ -167,4 +183,11 @@ export interface ExecuteOptions {
    * Whether to enable debug logging
    */
   debug?: boolean;
+}
+
+interface BatchedCall<T extends CrudMethods, U extends boolean, R> {
+  state: SupastashQuery<T, U, R>;
+  opKey: string;
+  resolve: (success: boolean) => void;
+  reject: (error: any) => void;
 }

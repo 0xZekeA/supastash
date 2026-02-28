@@ -77,6 +77,55 @@ export function getCommonError<U extends boolean, T extends CrudMethods, R, Z>(
   return null;
 }
 
+async function handleSelect<T extends CrudMethods, U extends boolean, R, Z>(
+  state: SupastashQuery<T, U, R>
+): Promise<{
+  localResult: MethodReturnTypeMap<U, Z>[T] | null;
+  remoteResult: SupabaseQueryReturn<U, Z> | null;
+}> {
+  let localResult: MethodReturnTypeMap<U, Z>[T] | null = null;
+  let remoteResult: SupabaseQueryReturn<U, Z> | null = null;
+  const isEmpty = (result: any) =>
+    result?.error ||
+    !result?.data ||
+    (Array.isArray(result.data) && result.data.length === 0);
+
+  if (state.fetchPolicy === "localFirst") {
+    localResult = await queryLocalDb<T, U, R, Z>(state);
+
+    if (isEmpty(localResult)) {
+      remoteResult = await querySupabase<U, R, Z>(state);
+    }
+
+    return { localResult, remoteResult };
+  }
+
+  if (state.fetchPolicy === "remoteFirst") {
+    remoteResult = await querySupabase<U, R, Z>(state);
+
+    if (isEmpty(remoteResult)) {
+      localResult = await queryLocalDb<T, U, R, Z>(state);
+      return { localResult, remoteResult: null };
+    }
+
+    return { localResult: null, remoteResult };
+  }
+
+  if (state.type === "remoteFirst") {
+    remoteResult = await querySupabase<U, R, Z>(state);
+    localResult = await queryLocalDb<T, U, R, Z>(state);
+    return { localResult, remoteResult };
+  }
+
+  if (state.type === "remoteOnly") {
+    remoteResult = await querySupabase<U, R, Z>(state);
+    return { localResult, remoteResult: null };
+  }
+
+  localResult = await queryLocalDb<T, U, R, Z>(state);
+  return { localResult, remoteResult };
+}
+
 export async function runSyncStrategy<
   T extends CrudMethods,
   U extends boolean,
@@ -93,14 +142,7 @@ export async function runSyncStrategy<
   let remoteResult: SupabaseQueryReturn<U, Z> | null = null;
 
   if (state.method === "select") {
-    if (state.type.includes("remote")) {
-      remoteResult = await querySupabase<U, R, Z>(state);
-      localResult = await queryLocalDb<T, U, R, Z>(state);
-      return { localResult, remoteResult };
-    } else {
-      localResult = await queryLocalDb<T, U, R, Z>(state);
-      return { localResult, remoteResult };
-    }
+    return await handleSelect<T, U, R, Z>(state);
   }
   const isUpsert = state.method === "upsert";
 
@@ -113,11 +155,17 @@ export async function runSyncStrategy<
       break;
     case "localFirst":
       localResult = await queryLocalDb<T, U, R, Z>(state);
+
+      // If we are in a transaction, we don't want to queue a remote call
+      // Remote calls are handled write after the transaction is committed
+      if (state.txId) return { localResult, remoteResult: null };
+
       if (state.viewRemoteResult) {
         if (isUpsert) {
           logWarn(
             "Cannot view remote result for upserts. Data will still be synced."
           );
+          queueRemoteCall(state);
           return { localResult, remoteResult: null };
         }
         remoteResult = await querySupabase<U, R, Z>(state);

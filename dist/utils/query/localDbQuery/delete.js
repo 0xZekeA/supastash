@@ -8,25 +8,34 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param filters - The filters to apply to the delete query
  * @returns The result of the delete query
  */
-export async function deleteData(table, filters, syncMode) {
+export async function deleteData(state) {
+    const { table, filters, tx, type: syncMode } = state;
     await assertTableExists(table);
     const { clause, values: filterValues } = buildWhereClause(filters ?? []);
     try {
-        const db = await getSupastashDb();
+        const db = tx ?? (await getSupastashDb());
         const timeStamp = new Date().toISOString();
         const itemsToBeDeleted = await db.getAllAsync(`SELECT * FROM ${table} ${clause}`, filterValues);
         await db.runAsync(`UPDATE ${table} SET deleted_at = ?, updated_at = ?, synced_at = NULL ${clause}`, [timeStamp, timeStamp, ...filterValues]);
         if (syncMode === "localOnly" || syncMode === "remoteFirst") {
-            permanentlyDeleteData(table, filters);
+            await permanentlyDeleteData({
+                table,
+                filters,
+                tx,
+                throwOnError: state.throwOnError,
+            });
         }
         return { error: null, data: itemsToBeDeleted };
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (state.throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),
             },
+            data: null,
         };
     }
 }
@@ -36,16 +45,18 @@ export async function deleteData(table, filters, syncMode) {
  * @param id - The id of the row to delete
  * @returns The result of the delete query
  */
-export async function permanentlyDeleteData(table, filters) {
+export async function permanentlyDeleteData({ table, filters, tx, throwOnError = true, }) {
     await assertTableExists(table);
     try {
-        const db = await getSupastashDb();
+        const db = tx ?? (await getSupastashDb());
         const { clause, values: filterValues } = buildWhereClause(filters ?? []);
         await db.runAsync(`DELETE FROM ${table} ${clause}`, filterValues);
         return { error: null };
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

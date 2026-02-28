@@ -8,9 +8,10 @@ const warned = new Set();
  * - Otherwise, it is inserted.
  * Returns all the rows that were upserted.
  */
-export async function upsertData(table, payload, state, syncMode, isSingle, onConflictKeys = ["id"], preserveTimestamp) {
-    if (!payload || !table)
-        throw new Error("Table and payload are required for upsert.");
+export async function upsertData(state) {
+    const { table, payload, type: syncMode, isSingle, onConflictKeys, preserveTimestamp, } = state;
+    if (!payload)
+        throw new Error(`[Supastash] Payload data was not provided for an upsert call on ${table}`);
     await assertTableExists(table);
     const items = Array.isArray(payload) ? payload : [payload];
     try {
@@ -20,6 +21,8 @@ export async function upsertData(table, payload, state, syncMode, isSingle, onCo
             returnRows: true,
             onConflictKeys,
             preserveTimestamp,
+            withTx: state.withTx,
+            tx: state.tx,
         }, state);
         return {
             error: null,
@@ -28,6 +31,8 @@ export async function upsertData(table, payload, state, syncMode, isSingle, onCo
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (state.throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

@@ -1,8 +1,9 @@
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
-  FilterCalls,
+  CrudMethods,
   PayloadListResult,
   PayloadResult,
+  SupastashQuery,
 } from "../../../types/query.types";
 import { logError } from "../../logs";
 import { parseStringifiedFields } from "../../sync/pushLocal/parseFields";
@@ -20,12 +21,9 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @returns a data / error object
  */
 export async function selectData<T extends boolean, R, Z>(
-  table: string,
-  select: string,
-  filters: FilterCalls[] | null,
-  limit: number | null,
-  isSingle: T
+  state: SupastashQuery<CrudMethods, boolean, R>
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
+  const { table, filters, limit, isSingle, tx, select } = state;
   if (!table) throw new Error("Table name was not provided for a select call");
 
   await assertTableExists(table);
@@ -37,7 +35,7 @@ export async function selectData<T extends boolean, R, Z>(
   const query = `SELECT ${select} FROM ${table} ${clause} ${limitClause}`;
 
   try {
-    const db = await getSupastashDb();
+    const db = tx ?? (await getSupastashDb());
 
     let data: any;
 
@@ -54,6 +52,8 @@ export async function selectData<T extends boolean, R, Z>(
       : PayloadListResult<Z>;
   } catch (error) {
     logError(`[Supastash] ${error}`);
+
+    if (state.throwOnError) throw error;
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

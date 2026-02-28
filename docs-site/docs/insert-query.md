@@ -59,6 +59,27 @@ await supastash
 
 You shouldn’t use `.single()` when inserting an array. Supastash will catch this at runtime and throw a clear error to let you know.
 
+### 3. **Using `.withTx()` (Transactional Insert)**
+
+Use `.withTx()` when you want the insert or upsert of a large chunk of data to run inside its own SQLite transaction for faster writes.
+
+```ts
+await supastash
+  .from("orders")
+  .insert<T>([
+    { id: "o1", amount: 100 },
+    { id: "o2", amount: 200 },
+  ])
+  .withTx()
+  .run();
+```
+
+- **Executes** the operation inside a single SQLite transaction.
+- **Improves performance** for batch writes (significantly faster than individual inserts).
+- **Ensures atomicity** (all rows succeed or all fail).
+
+> [!WARNING] > **Do not** use `.withTx()` inside `supastash.withTransaction(...)` or any existing `db.withTransaction(...)`. Nested transactions are not supported.
+
 ---
 
 ## 🔐 ID Handling

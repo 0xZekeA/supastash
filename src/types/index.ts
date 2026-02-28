@@ -6,5 +6,7 @@ export type {
 export type {
   SupastashConfig,
   SupastashSQLiteClientTypes,
+  SupastashSQLiteDatabase,
+  SupastashSQLiteExecutor,
 } from "./supastashConfig.types";
 export type { SyncResult, TableSchema } from "./syncEngine.types";

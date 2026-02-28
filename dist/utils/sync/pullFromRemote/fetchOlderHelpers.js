@@ -97,11 +97,14 @@ export const FetchOlderHelpers = {
         if (data.length === 0)
             return;
         const batchSize = 500;
-        for (let i = 0; i < data.length; i++) {
-            await upsertData(table, data[i]);
-            if ((i + 1) % batchSize === 0) {
-                await new Promise((res) => setTimeout(res, 0));
+        const db = await getSupastashDb();
+        await db.withTransaction(async (tx) => {
+            for (let i = 0; i < data.length; i++) {
+                await upsertData({ tx, table, record: data[i] });
+                if ((i + 1) % batchSize === 0) {
+                    await new Promise((res) => setTimeout(res, 0));
+                }
             }
-        }
+        });
     },
 };

@@ -32,7 +32,7 @@ export default class SupastashCrudBuilder<
     };
     return new SupastashFilterBuilder<"insert", false, R, Z>(
       newQuery as SupastashQuery<"insert", false, R>
-    );
+    ) as Omit<SupastashFilterBuilder<"insert", false, R, Z>, "cacheFirst">;
   }
 
   /**
@@ -49,7 +49,10 @@ export default class SupastashCrudBuilder<
     };
     return new SupastashFilterBuilder<"update", false, R, Z>(
       newQuery as SupastashQuery<"update", false, R>
-    );
+    ) as Omit<
+      SupastashFilterBuilder<"update", false, R, Z>,
+      "cacheFirst" | "run" | "go" | "execute"
+    >;
   }
 
   /**
@@ -64,7 +67,7 @@ export default class SupastashCrudBuilder<
     };
     return new SupastashFilterBuilder<"delete", false, R, Z>(
       newQuery as SupastashQuery<"delete", false, R>
-    );
+    ) as Omit<SupastashFilterBuilder<"delete", false, R, Z>, "cacheFirst">;
   }
 
   /**
@@ -81,7 +84,7 @@ export default class SupastashCrudBuilder<
     };
     return new SupastashFilterBuilder<"select", false, R, Z>(
       newQuery as SupastashQuery<"select", false, R>
-    );
+    ) as Omit<SupastashFilterBuilder<"select", false, R, Z>, "withTx">;
   }
 
   /**
@@ -111,6 +114,6 @@ export default class SupastashCrudBuilder<
     };
     return new SupastashFilterBuilder<"upsert", false, R, Z>(
       newQuery as SupastashQuery<"upsert", false, R>
-    );
+    ) as Omit<SupastashFilterBuilder<"upsert", false, R, Z>, "cacheFirst">;
   }
 }

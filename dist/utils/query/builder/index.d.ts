@@ -1,4 +1,4 @@
-import { CrudMethods, SupastashQuery } from "../../../types/query.types";
+import { CrudMethods, PayloadData, SupastashQuery } from "../../../types/query.types";
 import SupastashCrudBuilder from "./crud";
 /**
  * Builder for the supastash query
@@ -19,7 +19,34 @@ export declare class SupastashQueryBuilder<T extends CrudMethods, U extends bool
      * @returns crud options.
      */
     from(table: string): SupastashCrudBuilder<T, U, R>;
+    /**
+     * Executes multiple Supastash operations inside a single SQLite transaction.
+     *
+     * ⚠️ Do NOT call this inside `db.withTransaction(...)`
+     *  or another `supastash.withTransaction(...)`.
+     * Nested transactions are not supported and will throw.
+     *
+     * All queries executed using the provided `tx` builder
+     * will share the same SQLite transaction and `txId`.
+     *
+     * If any operation inside the callback throws,
+     * the entire transaction is rolled back automatically.
+     *
+     * Example:
+     *
+     * await supastash.withTransaction(async (tx) => {
+     *   await tx.from("orders").insert(order).run();
+     *   await tx.from("ledger").insert(ledgerEntry).run();
+     * });
+     *
+     *
+     * In this example, both inserts succeed or both fail.
+     */
+    withTransaction(fn: (tx: SupastashTransactionalBuilder<T, U, R>) => Promise<void> | void): Promise<void>;
 }
+type SupastashTransactionalBuilder<T extends CrudMethods, U extends boolean, R> = Omit<SupastashQueryBuilder<T, U, R>, "withTransaction">;
+export type SupastashTransactionClient = SupastashTransactionalBuilder<CrudMethods, boolean, PayloadData>;
+export type SupastashClient = SupastashTransactionalBuilder<CrudMethods, boolean, PayloadData>;
 /**
  * Supastash query builder for local-first CRUD operations.
  *
@@ -42,4 +69,5 @@ export declare class SupastashQueryBuilder<T extends CrudMethods, U extends bool
  *   .run(); // Required to execute the query
  */
 export declare const supastash: SupastashQueryBuilder<CrudMethods, boolean, any>;
+export {};
 //# sourceMappingURL=index.d.ts.map

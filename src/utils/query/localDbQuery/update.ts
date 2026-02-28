@@ -1,11 +1,11 @@
 import { getSupastashConfig } from "../../../core/config";
 import { getSupastashDb } from "../../../db/dbInitializer";
 import {
-  FilterCalls,
+  CrudMethods,
   PayloadData,
   PayloadListResult,
   PayloadResult,
-  SyncMode,
+  SupastashQuery,
 } from "../../../types/query.types";
 import { parseStringifiedFields } from "../../../utils/sync/pushLocal/parseFields";
 import { logError, logWarn } from "../../logs";
@@ -24,13 +24,17 @@ const warned = new Set<string>();
  * @returns a data / error object
  */
 export async function updateData<T extends boolean, R, Z>(
-  table: string,
-  payload: R | null,
-  filters: FilterCalls[] | null,
-  syncMode?: SyncMode,
-  isSingle?: T,
-  preserveTimestamp?: boolean
+  state: SupastashQuery<CrudMethods, boolean, R>
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
+  const {
+    table,
+    payload,
+    filters,
+    type: syncMode,
+    isSingle,
+    preserveTimestamp,
+    tx,
+  } = state;
   if (!payload)
     throw new Error(
       `Payload data was not provided for an update call on ${table}`
@@ -75,7 +79,7 @@ export async function updateData<T extends boolean, R, Z>(
   const { clause, values: filterValues } = buildWhereClause(filters ?? []);
 
   try {
-    const db = await getSupastashDb();
+    const db = tx ?? (await getSupastashDb());
 
     await db.runAsync(`UPDATE ${table} SET ${cols} ${clause}`, [
       ...values,
@@ -102,6 +106,8 @@ export async function updateData<T extends boolean, R, Z>(
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     logError(`[Supastash] ${error}`);
+
+    if (state.throwOnError) throw error;
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

@@ -116,7 +116,11 @@ $$ language sql;
 grant execute on function get_table_schema(text) to anon, authenticated;
 ```
 
-⚠️ Make sure all sync-related timestamps (`created_at`, `updated_at`, `deleted_at`) use `timestamptz` — not plain `timestamp` to avoid timezone drift, inconsistent sync ordering, and data mismatches across devices. .
+⚠️ Make sure all sync-related timestamps (`created_at`, `updated_at`, `deleted_at`) use `timestamptz` — not plain `timestamp` — to avoid timezone drift, inconsistent sync ordering, and cross-device data mismatches.
+
+If you are using `replicationMode: "server-side"`(Recommended), you must also add an `arrived_at timestamptz NOT NULL DEFAULT now()` column to every synced table and enforce it with a trigger. Supastash will use `arrived_at` as the replication cursor instead of `updated_at`.
+
+👉 See the [Replication Mode guide](./replication-mode.md) for full setup instructions and required SQL.
 
 ---
 

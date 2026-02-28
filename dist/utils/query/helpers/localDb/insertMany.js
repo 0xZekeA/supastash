@@ -5,7 +5,6 @@ const MAX_PARAMS = 999;
 const CHECK_BATCH = 900;
 const YIELD_EVERY = 500;
 export async function insertMany(payload, opts) {
-    const db = await getSupastashDb();
     const { table, syncMode, returnInsertedRows } = opts;
     const timeStamp = opts.nowISO ?? new Date().toISOString();
     assertTableName(table);
@@ -24,6 +23,7 @@ export async function insertMany(payload, opts) {
         idSet.add(id);
         return id;
     });
+    const db = opts.tx ?? (await getSupastashDb());
     // 2) Check existing ids in DB (batched; fail-fast)
     for (let i = 0; i < ids.length; i += CHECK_BATCH) {
         const part = ids.slice(i, i + CHECK_BATCH);
@@ -36,7 +36,7 @@ export async function insertMany(payload, opts) {
     }
     // 3) Do inserts in a single transaction
     const insertedIds = [];
-    const run = async () => {
+    const run = async (db) => {
         for (let i = 0; i < payload.length; i++) {
             const item = payload[i];
             const newPayload = {
@@ -63,7 +63,14 @@ export async function insertMany(payload, opts) {
         }
     };
     try {
-        await run();
+        if (opts.withTx && !opts.tx) {
+            await db.withTransaction(async (tx) => {
+                await run(tx);
+            });
+        }
+        else {
+            await run(opts.tx ?? db);
+        }
     }
     catch (e) {
         throw e;

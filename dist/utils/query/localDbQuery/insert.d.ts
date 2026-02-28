@@ -1,4 +1,4 @@
-import { PayloadListResult, PayloadResult, SyncMode } from "../../../types/query.types";
+import { CrudMethods, PayloadListResult, PayloadResult, SupastashQuery } from "../../../types/query.types";
 /**
  * Inserts data locally, sets synced_at to null pending update to remote server
  *
@@ -6,5 +6,5 @@ import { PayloadListResult, PayloadResult, SyncMode } from "../../../types/query
  * @param payload - The payload to insert
  * @returns a data / error object
  */
-export declare function insertData<T extends boolean, R, Z>(table: string, payload: R[] | null, syncMode?: SyncMode, isSingle?: T): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>>;
+export declare function insertData<T extends boolean, R, Z>(state: SupastashQuery<CrudMethods, boolean, R>): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>>;
 //# sourceMappingURL=insert.d.ts.map

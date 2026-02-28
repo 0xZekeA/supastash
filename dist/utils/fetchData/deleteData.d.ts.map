@@ -1,1 +1,1 @@
-{"version":3,"file":"deleteData.d.ts","sourceRoot":"","sources":["../../../src/utils/fetchData/deleteData.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,yBAAyB,CAAC;AAOtD,wBAAsB,UAAU,CAC9B,OAAO,EAAE,WAAW,EACpB,KAAK,EAAE,MAAM,EACb,WAAW,GAAE,OAAc,iBAqB5B"}
+{"version":3,"file":"deleteData.d.ts","sourceRoot":"","sources":["../../../src/utils/fetchData/deleteData.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,yBAAyB,CAAC;AAOtD,wBAAsB,UAAU,CAC9B,OAAO,EAAE,WAAW,EACpB,KAAK,EAAE,MAAM,EACb,WAAW,GAAE,OAAc,iBAwB5B"}

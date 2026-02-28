@@ -1,4 +1,6 @@
-export interface ExpoSQLiteDatabase {
+import type { SQLiteDatabase, SQLiteRunResult } from "expo-sqlite";
+
+export interface ExpoSQLiteDatabase extends SQLiteDatabase {
   runAsync<T = any>(
     statement: string,
     params: SQLiteBindParams
@@ -44,15 +46,3 @@ export type SQLiteBindBlobParams = Record<string, Uint8Array>;
 export type SQLiteColumnNames = string[];
 export type SQLiteColumnValues = any[];
 export type SQLiteAnyDatabase = any;
-
-export interface SQLiteRunResult {
-  /**
-   * The last inserted row ID. Returned from the [`sqlite3_last_insert_rowid()`](https://www.sqlite.org/c3ref/last_insert_rowid.html) function.
-   */
-  lastInsertRowId: number;
-
-  /**
-   * The number of rows affected. Returned from the [`sqlite3_changes()`](https://www.sqlite.org/c3ref/changes.html) function.
-   */
-  changes: number;
-}

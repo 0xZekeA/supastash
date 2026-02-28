@@ -13,8 +13,8 @@ import { upsertData } from "../../localDbQuery/upsert";
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns query
  */
-export function buildSelect(table, select, filters, limit, isSingle) {
-    return async () => await selectData(table, select || "*", filters, limit, isSingle);
+export function buildSelect(state) {
+    return async () => await selectData({ ...state, select: state.select || "*" });
 }
 /**
  * Builds an insert query
@@ -23,30 +23,37 @@ export function buildSelect(table, select, filters, limit, isSingle) {
  * @param payload - The payload to insert
  * @returns query
  */
-export function buildInsert(table, payload, syncMode, isSingle) {
+export function buildInsert(state) {
+    const payload = state.payload;
     const newPayload = payload
         ? Array.isArray(payload)
             ? payload
             : [payload]
         : null;
-    return async () => await insertData(table, newPayload, syncMode, isSingle);
+    return async () => await insertData({ ...state, payload: newPayload });
 }
 /**
  * Builds an update query
  *
  * @returns query
  */
-export function buildUpdate(table, payload, filters, syncMode, isSingle, preserveTimestamp) {
-    return async () => await updateData(table, payload, filters, syncMode, isSingle, preserveTimestamp);
+export function buildUpdate(state) {
+    return async () => await updateData(state);
 }
 /**
  * Builds a delete query
  *
  * @returns query
  */
-export function buildDelete(table, filters, syncMode) {
-    return async () => await deleteData(table, filters, syncMode);
+export function buildDelete(state) {
+    return async () => await deleteData(state);
 }
-export function buildUpsert(table, payload, state, syncMode, isSingle, onConflictKeys, preserveTimestamp) {
-    return async () => await upsertData(table, payload, state, syncMode, isSingle, onConflictKeys, preserveTimestamp);
+export function buildUpsert(state) {
+    const payload = state.payload;
+    const newPayload = payload
+        ? Array.isArray(payload)
+            ? payload
+            : [payload]
+        : null;
+    return async () => await upsertData({ ...state, payload: newPayload });
 }

@@ -152,6 +152,19 @@ export default class SupastashFilterBuilder {
         });
     }
     /**
+     * Creates its own SQLite transaction for this insert or upsert.
+     *
+     * Do not use inside `db.withTransaction(...)` or
+     * `supastash.withTransaction(...)` — nested transactions are not allowed.
+     */
+    withTx() {
+        const isInATx = this.query.txId !== null;
+        if (isInATx) {
+            throw new Error(`[Supastash] Cannot use \`withTx()\` inside a transaction. Method: ${this.query.method} on table: ${this.query.table}`);
+        }
+        return this.withQueryPatch({ withTx: true });
+    }
+    /**
      * Sets the preserve timestamp of the query.
      *
      * @param preserve - Whether to preserve the timestamp.
@@ -168,6 +181,25 @@ export default class SupastashFilterBuilder {
      */
     syncMode(mode) {
         return this.withQueryPatch({ type: mode });
+    }
+    /**
+     * Throws an error if the query fails.
+     *
+     * @returns more filter options.
+     */
+    throwOnError() {
+        return this.withQueryPatch({ throwOnError: true });
+    }
+    /**
+     * Executes a cache-first fetch strategy.
+     *
+     * Attempts to resolve the query from the local database.
+     * Falls back to the remote database if no usable result is found.
+     *
+     * @returns Query results from local and/or remote sources.
+     */
+    cacheFirst() {
+        return this.withQueryPatch({ fetchPolicy: "localFirst" });
     }
     /**
      * Executes the query.

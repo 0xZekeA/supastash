@@ -1,4 +1,6 @@
+import { PayloadData } from "./query.types";
 import { SupastashFilter } from "./realtimeData.types";
+import { SupastashSQLiteExecutor } from "./supastashConfig.types";
 
 export type SyncResult = {
   success: string[]; // IDs that were successfully upserted
@@ -126,4 +128,36 @@ export type ReceivedDataCompletedMap = {
     arrived_at: ReceivedDataCompleted;
     updated_at: ReceivedDataCompleted;
   };
+};
+
+export type UpsertDataParams = {
+  /**
+   * Optional transaction executor.
+   *
+   * If provided, the upsert will execute within this existing transaction.
+   * This is typically supplied when called inside
+   * `db.withTransaction(...)` or `supastash.withTransaction(...)`.
+   *
+   * If omitted, the upsert will run using the root database executor.
+   */
+  tx?: SupastashSQLiteExecutor;
+
+  /**
+   * The table to perform the upsert on.
+   */
+  table: string;
+
+  /**
+   * The record to insert or update.
+   */
+  record: PayloadData | PayloadData[];
+
+  /**
+   * Optional optimization hint.
+   *
+   * If true, forces UPDATE.
+   * If false, forces INSERT.
+   * If undefined, existence will be determined automatically.
+   */
+  doesExist?: boolean;
 };

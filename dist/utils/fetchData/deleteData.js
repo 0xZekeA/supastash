@@ -14,9 +14,12 @@ export async function deleteData(payload, table, shouldFetch = true) {
         if (!payload?.id)
             return;
         // Delete the data
-        await permanentlyDeleteData(table, [
-            { column: "id", operator: "=", value: payload.id },
-        ]);
+        await permanentlyDeleteData({
+            table,
+            filters: [{ column: "id", operator: "=", value: payload.id }],
+            tx: null,
+            throwOnError: true,
+        });
         refreshScreen(table);
     }
     catch (error) {

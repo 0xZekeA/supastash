@@ -2,6 +2,7 @@ import {
   RNSqliteNitroClient,
   SupastashSQLiteAdapter,
   SupastashSQLiteDatabase,
+  SupastashSQLiteExecutor,
 } from "../../types/supastashConfig.types";
 import { logWarn } from "../../utils/logs";
 
@@ -47,6 +48,36 @@ export const SQLiteAdapterNitro: SupastashSQLiteAdapter = {
 
       closeAsync: async () => {
         await db.close?.();
+      },
+
+      withTransaction: async (
+        fn: (tx: SupastashSQLiteExecutor) => Promise<void> | void
+      ): Promise<void> => {
+        await db.transaction(async (tx) => {
+          const txExecutor: SupastashSQLiteExecutor = {
+            runAsync: async (sql: string, params?: any[]) =>
+              await tx.executeAsync(sql, params ?? []),
+            execAsync: async (statement: string) => {
+              await tx.executeAsync(statement);
+            },
+            getAllAsync: async (
+              sql: string,
+              params?: any[]
+            ): Promise<any[]> => {
+              const result = await tx.executeAsync(sql, params ?? []);
+              const mainResult = result.rows?._array ?? [];
+              return mainResult;
+            },
+            getFirstAsync: async (
+              sql: string,
+              params?: any[]
+            ): Promise<any | null> => {
+              const result = await tx.executeAsync(sql, params ?? []);
+              return result.rows?._array?.[0] ?? null;
+            },
+          };
+          return await fn(txExecutor);
+        });
       },
     };
   },

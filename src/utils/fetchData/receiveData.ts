@@ -45,7 +45,7 @@ export async function receiveData(
     if (upsertCall) {
       await upsertCall(payload);
     } else {
-      await upsertData(table, payload);
+      await upsertData({ table, record: payload });
     }
     refreshScreen(table);
   } catch (error) {

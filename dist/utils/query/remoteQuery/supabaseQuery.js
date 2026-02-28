@@ -125,6 +125,9 @@ export async function querySupabase(state, isBatched = false) {
         (viewRemoteResult || type === "remoteOnly")) {
         filterQuery = filterQuery.select();
     }
+    if (state.throwOnError) {
+        filterQuery = filterQuery.throwOnError();
+    }
     const result = await filterQuery;
     const db = await getSupastashDb();
     if (result.error) {
@@ -162,7 +165,7 @@ export async function querySupabase(state, isBatched = false) {
                 ...filterValues,
             ]);
             if (method === "delete") {
-                await permanentlyDeleteData(table, filters);
+                await permanentlyDeleteData({ table, filters, tx: state.tx });
             }
         }
         refreshScreen(table);

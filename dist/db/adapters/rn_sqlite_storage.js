@@ -20,6 +20,33 @@ export const SQLiteAdapterStorage = {
             closeAsync: async () => {
                 await db.close?.();
             },
+            withTransaction: async (fn) => {
+                await db.transaction(async (tx) => {
+                    const txExecutor = {
+                        runAsync: async (sql, params) => {
+                            await tx.executeSql(sql, params ?? []);
+                        },
+                        execAsync: async (statement) => {
+                            await tx.executeSql(statement);
+                        },
+                        getAllAsync: async (sql, params) => {
+                            const [, resultSet] = await tx.executeSql(sql, params ?? []);
+                            const rows = [];
+                            for (let i = 0; i < resultSet.rows.length; i++) {
+                                rows.push(resultSet.rows.item(i));
+                            }
+                            return rows;
+                        },
+                        getFirstAsync: async (sql, params) => {
+                            const [, resultSet] = await tx.executeSql(sql, params ?? []);
+                            if (resultSet.rows.length === 0)
+                                return null;
+                            return resultSet.rows.item(0);
+                        },
+                    };
+                    return await fn(txExecutor);
+                });
+            },
         };
     },
 };

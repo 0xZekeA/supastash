@@ -35,7 +35,7 @@ export async function upsertMany(items, opts, state) {
     }
     const upserted = [];
     const remotePayload = [];
-    const run = async () => {
+    const run = async (db) => {
         for (let i = 0; i < items.length; i++) {
             const input = items[i] ?? {};
             const row = { ...input };
@@ -120,7 +120,14 @@ export async function upsertMany(items, opts, state) {
         }
     };
     try {
-        await run();
+        if (opts.withTx) {
+            await db.withTransaction(async (tx) => {
+                await run(tx);
+            });
+        }
+        else {
+            await run(opts.tx ?? db);
+        }
         const newState = { ...state, payload: remotePayload };
         if (remoteCalls.includes(newState.type)) {
             queueRemoteCall(newState);

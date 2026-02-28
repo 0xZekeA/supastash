@@ -25,7 +25,7 @@ When `.upsert()` is called:
 
 ## 🧾 Accepted Payloads
 
-You can pass a single object or an array of objects:
+1. You can pass a single object or an array of objects:
 
 ```ts
 // Single row
@@ -41,7 +41,7 @@ await supastash
   .run();
 ```
 
-If `.single()` is chained, the payload **must not** be an array.
+2. If `.single()` is chained, the payload **must not** be an array.
 
 ```ts
 // With custom conflict keys
@@ -55,6 +55,28 @@ await supastash
   )
   .run();
 ```
+
+3. **Using `.withTx()` (Transactional Upsert)**
+
+Use `.withTx()` when you want to upsert a large chunk of data inside its own SQLite transaction for faster writes and data integrity.
+
+```ts
+await supastash
+  .from("orders")
+  .upsert<T>([
+    { id: "o1", amount: 150 },
+    { id: "o2", amount: 300 },
+    // ... 1000+ rows
+  ])
+  .withTx()
+  .run();
+```
+
+- **Executes** the entire upsert operation inside a single SQLite transaction.
+- **Improves performance** for batch processing by reducing the overhead of individual disk commits.
+- **Ensures atomicity**: if any row in the batch fails the upsert, the entire operation is rolled back, preventing partial data updates.
+
+> [!WARNING] > **Do not** use `.withTx()` inside an existing `supastash.withTransaction(...)` block. Nested transactions are not supported and will cause the operation to fail.
 
 ---
 

@@ -11,13 +11,14 @@ import { buildDelete, buildInsert, buildSelect, buildUpdate, buildUpsert, } from
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns query
  */
-export default function getLocalMethod(table, method, select, payload, filters, limit, isSingle, state, onConflictKeys, syncMode, preserveTimestamp) {
+export default function getLocalMethod(state) {
+    const { method } = state;
     const handlers = {
-        select: buildSelect(table, select, filters, limit, isSingle),
-        insert: buildInsert(table, payload, syncMode, isSingle),
-        update: buildUpdate(table, payload, filters, syncMode, isSingle, preserveTimestamp),
-        delete: buildDelete(table, filters, syncMode),
-        upsert: buildUpsert(table, payload, state, syncMode, isSingle, onConflictKeys, preserveTimestamp),
+        select: buildSelect(state),
+        insert: buildInsert(state),
+        update: buildUpdate(state),
+        delete: buildDelete(state),
+        upsert: buildUpsert(state),
         none: async () => null,
     };
     return handlers[method];

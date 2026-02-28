@@ -3,7 +3,6 @@ import {
   PayloadListResult,
   PayloadResult,
   SupastashQuery,
-  SyncMode,
 } from "../../../types/query.types";
 import { logError } from "../../logs";
 import { assertTableExists } from "../../tableValidator";
@@ -18,16 +17,20 @@ const warned = new Set<string>();
  * Returns all the rows that were upserted.
  */
 export async function upsertData<T extends boolean, R, Z>(
-  table: string,
-  payload: R | R[] | null,
-  state: SupastashQuery<CrudMethods, T, R>,
-  syncMode?: SyncMode,
-  isSingle?: T,
-  onConflictKeys: string[] = ["id"],
-  preserveTimestamp?: boolean
+  state: SupastashQuery<CrudMethods, boolean, R>
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
-  if (!payload || !table)
-    throw new Error("Table and payload are required for upsert.");
+  const {
+    table,
+    payload,
+    type: syncMode,
+    isSingle,
+    onConflictKeys,
+    preserveTimestamp,
+  } = state;
+  if (!payload)
+    throw new Error(
+      `[Supastash] Payload data was not provided for an upsert call on ${table}`
+    );
 
   await assertTableExists(table);
 
@@ -42,6 +45,8 @@ export async function upsertData<T extends boolean, R, Z>(
         returnRows: true,
         onConflictKeys,
         preserveTimestamp,
+        withTx: state.withTx,
+        tx: state.tx,
       },
       state
     );
@@ -52,6 +57,7 @@ export async function upsertData<T extends boolean, R, Z>(
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     logError(`[Supastash] ${error}`);
+    if (state.throwOnError) throw error;
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

@@ -311,7 +311,7 @@ export async function rewindAndDropLocal(
 }
 
 async function replaceLocalWithServer(table: string, serverRow: RowLike) {
-  await upsertData(table, serverRow);
+  await upsertData({ table, record: serverRow });
   await updateLocalSyncedAt(table, [serverRow.id]);
   setQueryStatus(serverRow.id, table, "success");
   supastashEventBus.emit("updateSyncStatus");

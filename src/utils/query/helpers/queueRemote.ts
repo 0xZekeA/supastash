@@ -5,6 +5,7 @@ import {
   SupastashQuery,
 } from "../../../types/query.types";
 import { isOnline } from "../../../utils/connection";
+import { generateUUIDv4 } from "../../../utils/genUUID";
 import { log, logWarn } from "../../../utils/logs";
 import { getQueryStatusFromDb } from "../../../utils/sync/queryStatus";
 import { supastashEventBus } from "../../events/eventBus";
@@ -12,9 +13,7 @@ import { querySupabase } from "../remoteQuery/supabaseQuery";
 
 let batchQueue: BatchedCall<any, any, any>[] = [];
 let isProcessing = false;
-let batchTimer: NodeJS.Timeout | number | null = null;
 
-const BATCH_DELAY = 10;
 const MAX_RETRIES = 3;
 const MAX_OFFLINE_RETRIES = 5;
 
@@ -40,15 +39,16 @@ function delay(ms: number): Promise<void> {
 function generateOpKey<T extends CrudMethods, U extends boolean, R>(
   state: SupastashQuery<T, U, R>
 ): string {
-  return `${state.table}_${state.method}_${state.id}_${JSON.stringify(
-    state.payload
-  )}`;
+  return state.id ? state.id : generateUUIDv4();
 }
 
-export function queueRemoteCall<T extends CrudMethods, U extends boolean, R>(
-  state: SupastashQuery<T, U, R>
-): Promise<boolean> {
-  return new Promise((resolve, reject) => {
+export async function queueRemoteCall<
+  T extends CrudMethods,
+  U extends boolean,
+  R
+>(state: SupastashQuery<T, U, R>): Promise<boolean> {
+  return new Promise(async (resolve, reject) => {
+    void reject;
     const opKey = generateOpKey(state);
 
     if (successfulCalls.has(opKey)) {
@@ -57,17 +57,13 @@ export function queueRemoteCall<T extends CrudMethods, U extends boolean, R>(
     }
 
     batchQueue.push({ state, opKey, resolve, reject });
-    scheduleBatch();
+    await startWorkerIfNeeded();
   });
 }
 
-function scheduleBatch(): void {
-  if (batchTimer) return;
-
-  batchTimer = setTimeout(() => {
-    processBatch();
-    batchTimer = null;
-  }, BATCH_DELAY);
+async function startWorkerIfNeeded(): Promise<void> {
+  if (isProcessing) return;
+  await processQueue();
 }
 
 async function executeSupabaseCall(state: SupastashQuery<any, any, any>) {
@@ -78,7 +74,7 @@ async function executeSupabaseCall(state: SupastashQuery<any, any, any>) {
     return querySupabase(state, true);
   }
 
-  const batchSize = config.supabaseBatchSize ?? 100;
+  const batchSize = config.supabaseBatchSize ?? 800;
 
   for (let i = 0; i < payload.length; i += batchSize) {
     const chunk = payload.slice(i, i + batchSize);
@@ -99,22 +95,24 @@ async function executeSupabaseCall(state: SupastashQuery<any, any, any>) {
   return { error: null };
 }
 
-async function processBatch(): Promise<void> {
-  if (isProcessing || batchQueue.length === 0) return;
-
+async function processQueue(): Promise<void> {
+  if (isProcessing) return;
   isProcessing = true;
-  const batch = [...batchQueue];
-  batchQueue = [];
 
-  for (const call of batch) {
-    const { state, opKey, resolve, reject } = call;
+  while (batchQueue.length > 0) {
+    const call = batchQueue[0];
+    const { state, opKey, resolve } = call;
 
     if (successfulCalls.has(opKey)) {
+      batchQueue.shift();
       resolve(true);
       continue;
     }
 
     try {
+      let shouldRemove = false;
+      let isSuccess = false;
+
       while ((retryCount.get(opKey) ?? 0) <= MAX_RETRIES) {
         const isConnected = await isOnline();
 
@@ -126,12 +124,13 @@ async function processBatch(): Promise<void> {
             if (!seenFailureLog.has(opKey)) {
               seenFailureLog.add(opKey);
               log(
-                `[Supastash] Offline — persisted locally, will retry later: ${opKey}`
+                `[Supastash] Offline — persisted locally, will retry later:  ${state.table} with ${state.method} `
               );
             }
             await getQueryStatusFromDb(state.table);
             supastashEventBus.emit("updateSyncStatus");
-            resolve(false);
+            shouldRemove = true;
+            isSuccess = false;
             break;
           }
 
@@ -149,7 +148,8 @@ async function processBatch(): Promise<void> {
           log(
             `[Supastash] Synced item on ${state.table} with ${state.method} to supabase`
           );
-          resolve(true);
+          shouldRemove = true;
+          isSuccess = true;
           break;
         } else {
           const currentRetries = retryCount.get(opKey) ?? 0;
@@ -166,7 +166,8 @@ async function processBatch(): Promise<void> {
                 }`
               );
             }
-            resolve(true);
+            shouldRemove = true;
+            isSuccess = true;
             break;
           }
 
@@ -177,12 +178,19 @@ async function processBatch(): Promise<void> {
                 `[Supastash] Gave up on ${state.table} with ${state.method} after ${MAX_RETRIES} retries — will retry on next sync \nError message: ${error.message}`
               );
             }
-            resolve(false);
+            shouldRemove = true;
+            isSuccess = false;
             break;
           }
 
           await delay(1000 * (currentRetries + 1));
         }
+      }
+
+      if (shouldRemove) {
+        batchQueue.shift();
+
+        resolve(isSuccess);
       }
     } catch (err) {
       if (!seenFailureLog.has(opKey)) {
@@ -193,6 +201,8 @@ async function processBatch(): Promise<void> {
           )}`
         );
       }
+      batchQueue.shift();
+      resolve(false);
     }
   }
 

@@ -1,9 +1,4 @@
-import {
-  CrudMethods,
-  FilterCalls,
-  SupastashQuery,
-  SyncMode,
-} from "../../../../types/query.types";
+import { CrudMethods, SupastashQuery } from "../../../../types/query.types";
 import { deleteData } from "../../localDbQuery/delete";
 import { insertData } from "../../localDbQuery/insert";
 import { selectData } from "../../localDbQuery/select";
@@ -21,14 +16,10 @@ import { upsertData } from "../../localDbQuery/upsert";
  * @returns query
  */
 export function buildSelect<T extends boolean, R, Z>(
-  table: string,
-  select: string | null,
-  filters: FilterCalls[] | null,
-  limit: number | null,
-  isSingle: T
+  state: SupastashQuery<CrudMethods, boolean, R>
 ) {
   return async () =>
-    await selectData<T, R, Z>(table, select || "*", filters, limit, isSingle);
+    await selectData<T, R, Z>({ ...state, select: state.select || "*" });
 }
 
 /**
@@ -39,18 +30,16 @@ export function buildSelect<T extends boolean, R, Z>(
  * @returns query
  */
 export function buildInsert<T extends boolean, R, Z>(
-  table: string,
-  payload: R | R[] | null,
-  syncMode?: SyncMode,
-  isSingle?: T
+  state: SupastashQuery<CrudMethods, boolean, R>
 ) {
+  const payload = state.payload;
   const newPayload = payload
     ? Array.isArray(payload)
       ? payload
       : [payload]
     : null;
   return async () =>
-    await insertData<T, R, Z>(table, newPayload, syncMode, isSingle);
+    await insertData<T, R, Z>({ ...state, payload: newPayload });
 }
 
 /**
@@ -59,22 +48,9 @@ export function buildInsert<T extends boolean, R, Z>(
  * @returns query
  */
 export function buildUpdate<T extends boolean, R, Z>(
-  table: string,
-  payload: R | null,
-  filters: FilterCalls[] | null,
-  syncMode?: SyncMode,
-  isSingle?: T,
-  preserveTimestamp?: boolean
+  state: SupastashQuery<CrudMethods, boolean, R>
 ) {
-  return async () =>
-    await updateData<T, R, Z>(
-      table,
-      payload,
-      filters,
-      syncMode,
-      isSingle,
-      preserveTimestamp
-    );
+  return async () => await updateData<T, R, Z>(state);
 }
 
 /**
@@ -83,30 +59,20 @@ export function buildUpdate<T extends boolean, R, Z>(
  * @returns query
  */
 export function buildDelete<Z = any>(
-  table: string,
-  filters: FilterCalls[] | null,
-  syncMode?: SyncMode
+  state: SupastashQuery<CrudMethods, boolean, Z>
 ) {
-  return async () => await deleteData<Z>(table, filters, syncMode);
+  return async () => await deleteData<Z>(state);
 }
 
 export function buildUpsert<T extends boolean, R, Z>(
-  table: string,
-  payload: R | R[] | null,
-  state: SupastashQuery<CrudMethods, T, R>,
-  syncMode?: SyncMode,
-  isSingle?: T,
-  onConflictKeys?: string[],
-  preserveTimestamp?: boolean
+  state: SupastashQuery<CrudMethods, boolean, R>
 ) {
+  const payload = state.payload;
+  const newPayload = payload
+    ? Array.isArray(payload)
+      ? payload
+      : [payload]
+    : null;
   return async () =>
-    await upsertData<T, R, Z>(
-      table,
-      payload,
-      state,
-      syncMode,
-      isSingle,
-      onConflictKeys,
-      preserveTimestamp
-    );
+    await upsertData<T, R, Z>({ ...state, payload: newPayload });
 }

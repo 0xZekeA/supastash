@@ -29,7 +29,7 @@ export async function receiveData(payload, table, shouldFetch = true, upsertCall
             await upsertCall(payload);
         }
         else {
-            await upsertData(table, payload);
+            await upsertData({ table, record: payload });
         }
         refreshScreen(table);
     }

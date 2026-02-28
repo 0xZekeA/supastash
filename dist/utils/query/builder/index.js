@@ -1,4 +1,7 @@
+import { getSupastashDb } from "../../../db/dbInitializer";
+import { txStore } from "../../../store/tx";
 import { generateUUIDv4 } from "../../genUUID";
+import { queueRemoteCall } from "../helpers/queueRemote";
 import SupastashCrudBuilder from "./crud";
 /**
  * Builder for the supastash query
@@ -20,8 +23,75 @@ export class SupastashQueryBuilder {
      * @returns crud options.
      */
     from(table) {
-        const newQuery = { ...this.query, table };
+        const id = generateUUIDv4();
+        const newQuery = { ...this.query, table, id };
         return new SupastashCrudBuilder(newQuery);
+    }
+    /**
+     * Executes multiple Supastash operations inside a single SQLite transaction.
+     *
+     * ⚠️ Do NOT call this inside `db.withTransaction(...)`
+     *  or another `supastash.withTransaction(...)`.
+     * Nested transactions are not supported and will throw.
+     *
+     * All queries executed using the provided `tx` builder
+     * will share the same SQLite transaction and `txId`.
+     *
+     * If any operation inside the callback throws,
+     * the entire transaction is rolled back automatically.
+     *
+     * Example:
+     *
+     * await supastash.withTransaction(async (tx) => {
+     *   await tx.from("orders").insert(order).run();
+     *   await tx.from("ledger").insert(ledgerEntry).run();
+     * });
+     *
+     *
+     * In this example, both inserts succeed or both fail.
+     */
+    withTransaction(fn) {
+        const query = async () => {
+            // Create a new transaction id
+            const newTxId = generateUUIDv4();
+            try {
+                const db = await getSupastashDb();
+                // Add the transaction to the store
+                txStore[newTxId] = [];
+                // Execute the local calls
+                await db.withTransaction(async (tx) => {
+                    const txQuery = {
+                        ...this.query,
+                        txId: newTxId,
+                        tx,
+                        throwOnError: true, // Throw the error to roll back the transaction
+                    };
+                    const txBuilder = new SupastashQueryBuilder(txQuery);
+                    return fn(txBuilder);
+                });
+                // Execute the remote calls
+                const remoteCalls = txStore[newTxId] ?? [];
+                if (remoteCalls.length > 0) {
+                    const newStates = remoteCalls.map((call) => {
+                        return {
+                            ...call,
+                            txId: null,
+                            tx: null,
+                            withTx: false,
+                            type: "remoteOnly",
+                        };
+                    });
+                    for (const state of newStates) {
+                        queueRemoteCall(state);
+                    }
+                }
+            }
+            finally {
+                // Delete the transaction from the store
+                delete txStore[newTxId];
+            }
+        };
+        return query();
     }
 }
 /**
@@ -59,4 +129,10 @@ export const supastash = new SupastashQueryBuilder({
     viewRemoteResult: false,
     onConflictKeys: ["id"],
     preserveTimestamp: false,
+    throwOnError: false,
+    fetchPolicy: null,
+    // With tx
+    txId: null,
+    tx: null,
+    withTx: false,
 });

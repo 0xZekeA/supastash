@@ -13,6 +13,7 @@ export { refreshScreen } from "./utils/refreshScreenCalls";
 export { dropAllTables, dropTable, wipeAllTables, wipeOldDataForAllTables, wipeOldDataForATable, wipeTable, } from "./utils/schema/wipeTables";
 export { getSupastashRuntimeMode, reinitializeSupastash, } from "./utils/supastashMode";
 export { getAllTables } from "./utils/sync/getAllTables";
+export { fetchOlderPage } from "./utils/sync/pullFromRemote/fetchOlder";
 export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
 export { updateLocalDb, upsertData, } from "./utils/sync/pullFromRemote/updateLocalDb";
 export { refreshAllTables, refreshTable, refreshTableWithPayload, } from "./utils/sync/refreshTables";
@@ -20,5 +21,6 @@ export { clearSyncCalls, getAllSyncTables, getSyncCall, registerSyncCall, unregi
 export { clearAllLocalDeleteLog, clearAllLocalSyncLog, clearLocalDeleteLog, clearLocalSyncLog, clearSyncLog, getLocalDeleteLog, getSyncLog, resetSyncLog, setLocalDeleteLog, setLocalSyncLog, setSyncLog, } from "./utils/sync/status/syncStatus";
 export type { CrudMethods } from "./types/query.types";
 export type { RealtimeOptions, SupastashDataResult, SupastashFilter, } from "./types/realtimeData.types";
-export type { SupastashConfig, SupastashHookReturn, SupastashSQLiteClientTypes, SupastashSQLiteDatabase, } from "./types/supastashConfig.types";
+export type { SupastashConfig, SupastashHookReturn, SupastashSQLiteClientTypes, SupastashSQLiteDatabase, SupastashSQLiteExecutor, } from "./types/supastashConfig.types";
+export type { SupastashClient, SupastashTransactionClient, } from "./utils/query/builder";
 //# sourceMappingURL=index.d.ts.map

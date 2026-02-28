@@ -29,6 +29,26 @@ export const SQLiteAdapterNitro = {
             closeAsync: async () => {
                 await db.close?.();
             },
+            withTransaction: async (fn) => {
+                await db.transaction(async (tx) => {
+                    const txExecutor = {
+                        runAsync: async (sql, params) => await tx.executeAsync(sql, params ?? []),
+                        execAsync: async (statement) => {
+                            await tx.executeAsync(statement);
+                        },
+                        getAllAsync: async (sql, params) => {
+                            const result = await tx.executeAsync(sql, params ?? []);
+                            const mainResult = result.rows?._array ?? [];
+                            return mainResult;
+                        },
+                        getFirstAsync: async (sql, params) => {
+                            const result = await tx.executeAsync(sql, params ?? []);
+                            return result.rows?._array?.[0] ?? null;
+                        },
+                    };
+                    return await fn(txExecutor);
+                });
+            },
         };
     },
 };

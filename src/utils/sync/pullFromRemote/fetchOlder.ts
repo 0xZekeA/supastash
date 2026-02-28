@@ -4,7 +4,23 @@ import { SupastashFilter } from "../../../types/realtimeData.types";
 import { logWarn } from "../../logs";
 import { FetchOlderHelpers } from "./fetchOlderHelpers";
 
-export async function fetchOlder({
+/**
+ * Fetches a backward page of records from the server relative to the current
+ * earliest locally stored row.
+ *
+ * This function performs cursor-based backward pagination by:
+ * - Determining the earliest known local record for the table
+ * - Validating the provided boundary timestamp
+ * - Fetching older records from the server up to the specified limit
+ * - Optionally persisting the results into the local database
+ *
+ * Designed for infinite scroll and historical lookback scenarios.
+ *
+ * @returns An object containing:
+ * - `data`: The fetched records
+ * - `hasMore`: Whether additional older records may exist
+ */
+export async function fetchOlderPage({
   boundaryTs,
   table,
   filters,

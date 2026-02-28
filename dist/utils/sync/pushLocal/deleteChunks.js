@@ -12,11 +12,13 @@ const SQL_CHUNK = 999;
  */
 async function permanentlyDeleteLocally(table, ids) {
     const db = await getSupastashDb();
-    for (let i = 0; i < ids.length; i += SQL_CHUNK) {
-        const slice = ids.slice(i, i + SQL_CHUNK);
-        const placeholders = slice.map(() => "?").join(", ");
-        await db.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
-    }
+    await db.withTransaction(async (tx) => {
+        for (let i = 0; i < ids.length; i += SQL_CHUNK) {
+            const slice = ids.slice(i, i + SQL_CHUNK);
+            const placeholders = slice.map(() => "?").join(", ");
+            await tx.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
+        }
+    });
 }
 /**
  * Deletes a chunk of data from the remote database

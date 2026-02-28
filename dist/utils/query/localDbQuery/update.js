@@ -14,7 +14,8 @@ const warned = new Set();
  * @param filters - The filters to apply to the update query
  * @returns a data / error object
  */
-export async function updateData(table, payload, filters, syncMode, isSingle, preserveTimestamp) {
+export async function updateData(state) {
+    const { table, payload, filters, type: syncMode, isSingle, preserveTimestamp, tx, } = state;
     if (!payload)
         throw new Error(`Payload data was not provided for an update call on ${table}`);
     if (!table)
@@ -48,7 +49,7 @@ export async function updateData(table, payload, filters, syncMode, isSingle, pr
         .map((c) => getSafeValue(newPayload[c]));
     const { clause, values: filterValues } = buildWhereClause(filters ?? []);
     try {
-        const db = await getSupastashDb();
+        const db = tx ?? (await getSupastashDb());
         await db.runAsync(`UPDATE ${table} SET ${cols} ${clause}`, [
             ...values,
             ...filterValues,
@@ -68,6 +69,8 @@ export async function updateData(table, payload, filters, syncMode, isSingle, pr
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (state.throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

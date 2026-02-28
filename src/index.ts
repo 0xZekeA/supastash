@@ -28,6 +28,7 @@ export {
   reinitializeSupastash,
 } from "./utils/supastashMode";
 export { getAllTables } from "./utils/sync/getAllTables";
+export { fetchOlderPage } from "./utils/sync/pullFromRemote/fetchOlder";
 export { updateFilters } from "./utils/sync/pullFromRemote/updateFilter";
 export {
   updateLocalDb,
@@ -70,4 +71,9 @@ export type {
   SupastashHookReturn,
   SupastashSQLiteClientTypes,
   SupastashSQLiteDatabase,
+  SupastashSQLiteExecutor,
 } from "./types/supastashConfig.types";
+export type {
+  SupastashClient,
+  SupastashTransactionClient,
+} from "./utils/query/builder";

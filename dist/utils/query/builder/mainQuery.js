@@ -1,4 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
+import { txStore } from "../../../store/tx";
 import { logWarn } from "../../logs";
 import { refreshScreen } from "../../refreshScreenCalls";
 import { assignInsertIds, getCommonError, runSyncStrategy, validatePayloadForSingleInsert, } from "../helpers/mainQueryHelpers";
@@ -22,8 +23,10 @@ export async function queryDb(state) {
             payload: updatedPayload,
             type: syncMode,
         };
+        if (state.txId && ["localFirst"].includes(updatedState.type)) {
+            txStore[state.txId].push(updatedState);
+        }
         const { localResult, remoteResult, } = await runSyncStrategy(updatedState);
-        localData = localResult?.data;
         const success = !localResult?.error && !remoteResult?.error;
         const commonError = getCommonError(table, method, localResult, remoteResult);
         if (viewRemoteResult) {
@@ -39,14 +42,26 @@ export async function queryDb(state) {
                 success,
             });
         }
+        const remoteData = remoteResult?.data;
+        const localData = localResult?.data;
+        const policy = state.fetchPolicy;
+        const fetchPolicyData = !policy
+            ? null
+            : policy === "localFirst"
+                ? localData ?? remoteData
+                : remoteData ?? localData;
+        const data = fetchPolicyData ??
+            (type === "remoteOnly" ? remoteData : localData ?? null);
         return Promise.resolve({
-            data: type === "remoteOnly" ? remoteResult?.data : localData ?? null,
+            data,
             error: commonError ?? null,
             success,
         });
     }
     catch (error) {
         logWarn(`[Supastash] ${error instanceof Error ? error.message : String(error)}`);
+        if (state.throwOnError)
+            throw error;
         if (state.viewRemoteResult) {
             return Promise.resolve({
                 remote: null,

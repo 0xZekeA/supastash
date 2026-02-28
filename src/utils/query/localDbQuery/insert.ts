@@ -1,7 +1,8 @@
 import {
+  CrudMethods,
   PayloadListResult,
   PayloadResult,
-  SyncMode,
+  SupastashQuery,
 } from "../../../types/query.types";
 import { logError } from "../../logs";
 import { assertTableExists } from "../../tableValidator";
@@ -15,25 +16,30 @@ import { insertMany } from "../helpers/localDb/insertMany";
  * @returns a data / error object
  */
 export async function insertData<T extends boolean, R, Z>(
-  table: string,
-  payload: R[] | null,
-  syncMode?: SyncMode,
-  isSingle?: T
+  state: SupastashQuery<CrudMethods, boolean, R>
 ): Promise<T extends true ? PayloadResult<Z> : PayloadListResult<Z>> {
-  if (!table) throw new Error("Table name was not provided for an insert call");
-
-  if (!payload)
-    throw new Error(
-      `Payload data was not provided for an insert call on ${table}`
-    );
+  const {
+    table,
+    tx,
+    type: syncMode,
+    isSingle,
+    withTx,
+    payload,
+  } = state as SupastashQuery<CrudMethods, boolean, R> & { payload: R[] };
 
   try {
+    if (!payload)
+      throw new Error(
+        `[Supastash] Payload data was not provided for an insert call on ${table}`
+      );
     await assertTableExists(table);
 
     const inserted = await insertMany<R>(payload, {
       table,
       syncMode,
       returnInsertedRows: true,
+      withTx: withTx,
+      tx,
     });
 
     return {
@@ -42,6 +48,8 @@ export async function insertData<T extends boolean, R, Z>(
     } as T extends true ? PayloadResult<Z> : PayloadListResult<Z>;
   } catch (error) {
     logError(`[Supastash] ${error}`);
+
+    if (state.throwOnError) throw error;
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

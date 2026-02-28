@@ -5,6 +5,7 @@ import {
   RECEIVED_DATA_COMPLETED_MAP,
 } from "../../../store/syncStatus";
 import { SupastashFilter } from "../../../types/realtimeData.types";
+import { UpsertDataParams } from "../../../types/syncEngine.types";
 import { isOnline } from "../../connection";
 import { generateUUIDv4 } from "../../genUUID";
 import { getTableSchema } from "../../getTableSchema";
@@ -69,60 +70,67 @@ export async function updateLocalDb(
       refreshNeeded = !!data?.length || !!deletedIds?.length;
 
       // Delete records that are no longer in the remote data
-      if (deletedIds && deletedIds.length > 0) {
-        const ids = deletedIds;
-        for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-          const slice = ids.slice(i, i + DELETE_CHUNK);
-          const placeholders = slice.map(() => "?").join(", ");
-          await db.runAsync(
-            `DELETE FROM ${table} WHERE id IN (${placeholders})`,
-            slice
-          );
-        }
-      }
-
-      // Get the local stamp of the records
-      let localStamp = new Map<string, string | null>();
-      if (data?.length) {
-        const ids = data.map((r: any) => r.id).filter(Boolean);
-        for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-          const slice = ids.slice(i, i + DELETE_CHUNK);
-          const placeholders = slice.map(() => "?").join(", ");
-          const rows = await db.getAllAsync(
-            `SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`,
-            slice
-          );
-          for (const row of rows ?? []) {
-            localStamp.set(row.id, row.updated_at ?? null);
+      await db.withTransaction(async (tx) => {
+        if (deletedIds && deletedIds.length > 0) {
+          const ids = deletedIds;
+          for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+            const slice = ids.slice(i, i + DELETE_CHUNK);
+            const placeholders = slice.map(() => "?").join(", ");
+            await tx.runAsync(
+              `DELETE FROM ${table} WHERE id IN (${placeholders})`,
+              slice
+            );
           }
         }
-      }
 
-      // Update local database with remote changes
-      if (data?.length) {
-        for (let i = 0; i < data.length; i++) {
-          const record = data[i];
-          if (!record?.id) continue;
-          if (deletedIdSet.has(record.id)) continue;
-
-          const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
-          const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
-          if (new Date(localUpdated) >= new Date(remoteUpdated)) {
-            // local is newer or same — skip
-            continue;
-          }
-
-          if (onReceiveData) {
-            await onReceiveData(record);
-          } else {
-            await upsertData(table, record, localStamp.has(record.id));
-          }
-
-          if ((i + 1) % BATCH_SIZE === 0) {
-            await new Promise((res) => setTimeout(res, 0));
+        // Get the local stamp of the records
+        let localStamp = new Map<string, string | null>();
+        if (data?.length) {
+          const ids = data.map((r: any) => r.id).filter(Boolean);
+          for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+            const slice = ids.slice(i, i + DELETE_CHUNK);
+            const placeholders = slice.map(() => "?").join(", ");
+            const rows = await db.getAllAsync(
+              `SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`,
+              slice
+            );
+            for (const row of rows ?? []) {
+              localStamp.set(row.id, row.updated_at ?? null);
+            }
           }
         }
-      }
+
+        // Update local database with remote changes
+        if (data?.length) {
+          for (let i = 0; i < data.length; i++) {
+            const record = data[i];
+            if (!record?.id) continue;
+            if (deletedIdSet.has(record.id)) continue;
+
+            const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
+            const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
+            if (new Date(localUpdated) >= new Date(remoteUpdated)) {
+              // local is newer or same — skip
+              continue;
+            }
+
+            if (onReceiveData) {
+              await onReceiveData(record);
+            } else {
+              await upsertData({
+                tx,
+                table,
+                record,
+                doesExist: localStamp.has(record.id),
+              });
+            }
+
+            if ((i + 1) % BATCH_SIZE === 0) {
+              await new Promise((res) => setTimeout(res, 0));
+            }
+          }
+        }
+      });
 
       if (timestamps) {
         await setSupastashSyncStatus(table, filters, {
@@ -157,11 +165,12 @@ const warned = new Map<string, boolean>();
  * @param record - The record to upsert
  * @param exists - Whether the record already exists in the database
  */
-export async function upsertData(
-  table: string,
-  record: any,
-  doesExist?: boolean
-) {
+export async function upsertData({
+  tx,
+  table,
+  record,
+  doesExist,
+}: UpsertDataParams): Promise<void> {
   if (!record?.id) return;
   let itemExists = !!doesExist;
   const cfg = getSupastashConfig();
@@ -175,7 +184,7 @@ export async function upsertData(
     itemExists = exists;
   }
   try {
-    const db = await getSupastashDb();
+    const db = tx ?? (await getSupastashDb());
 
     const columns = await getTableSchema(table);
 

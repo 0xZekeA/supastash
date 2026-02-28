@@ -75,14 +75,18 @@ Initializes Supastash. Must be called once.
 
 #### Sync switches & intervals
 
-| Option                           | Type      | Default | Notes                                                                                                                                                              |
-| -------------------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `syncEngine.push`                | `boolean` | `true`  | Push local changes to Supabase.                                                                                                                                    |
-| `syncEngine.pull`                | `boolean` | `true`  | **Enabled by default in code**. Only keep on if you’ve secured tables with RLS and/or use [`useSupastashFilters.ts`](./useSupastashFilters.md) for filtered pulls. |
-| `syncEngine.useFiltersFromStore` | `boolean` | `true`  | Applies filters captured by hooks to background pulls.                                                                                                             |
-| `pollingInterval.pull`           | `number`  | `30000` | ms between pull polls.                                                                                                                                             |
-| `pollingInterval.push`           | `number`  | `30000` | ms between push polls.                                                                                                                                             |
-| `supabaseBatchSize`              | `number`  | `100`   | Maximum number of rows sent per Supabase write request (insert/upsert). Large payloads are automatically chunked.                                                  |
+| Option                                     | Type                                  | Default         | Notes                                                                                                                                                                                         |
+| ------------------------------------------ | ------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`replicationMode`](./replication-mode.md) | `"client-side" \| "server-side"`      | `"client-side"` | Controls how incremental sync ordering is determined. `"server-side"` requires an `arrived_at` column enforced by trigger on all synced tables. Recommended for production.                   |
+| `maxSyncLookbackDays`                      | `number \| undefined`                 | `365`           | Maximum number of days Supastash will pull during incremental sync. Records older than `(now - maxSyncLookbackDays)` are ignored unless overridden per table or marked for full sync.         |
+| `perTableSyncLookbackDays`                 | `Record<string, number \| undefined>` | `undefined`     | Optional per-table override for `maxSyncLookbackDays`. If a table is listed here, its value takes precedence.                                                                                 |
+| `fullSyncTables`                           | `string[]`                            | `[]`            | List of tables that should always sync their full history, ignoring both `maxSyncLookbackDays` and `perTableSyncLookbackDays`. Useful for critical tables requiring complete synchronization. |
+| `syncEngine.push`                          | `boolean`                             | `true`          | Push local changes to Supabase.                                                                                                                                                               |
+| `syncEngine.pull`                          | `boolean`                             | `true`          | **Enabled by default in code**. Only keep on if you’ve secured tables with RLS and/or use [`useSupastashFilters.ts`](./useSupastashFilters.md) for filtered pulls.                            |
+| `syncEngine.useFiltersFromStore`           | `boolean`                             | `true`          | Applies filters captured by hooks to background pulls.                                                                                                                                        |
+| `pollingInterval.pull`                     | `number`                              | `30000`         | Milliseconds between pull polls.                                                                                                                                                              |
+| `pollingInterval.push`                     | `number`                              | `30000`         | Milliseconds between push polls.                                                                                                                                                              |
+| `supabaseBatchSize`                        | `number`                              | `100`           | Maximum number of rows sent per Supabase write request (insert/upsert). Large payloads are automatically chunked.                                                                             |
 
 > **Recommendation**: If your RLS isn’t airtight, set `syncEngine.pull = false` globally and rely on per‑screen filtered pulls via [`useSupastashFilters.ts`](./useSupastashFilters.md).
 
@@ -186,22 +190,11 @@ autoFillDefaultISO: "1970-01-01T00:00:00Z",
 | `"rn-storage"` | `{ openDatabase }`      | Legacy; widely supported.            |
 
 **Adapter contract**
-The adapter you pass must ultimately satisfy `SupastashSQLiteAdapter.openDatabaseAsync(name, sqliteClient)` and return a `SupastashSQLiteDatabase` implementing `runAsync`, `getAllAsync`, `getFirstAsync`, and `execAsync`.
+The adapter you pass must ultimately satisfy `SupastashSQLiteAdapter.openDatabaseAsync(name, sqliteClient)` and return a `SupastashSQLiteDatabase` implementing `runAsync`, `getAllAsync`, `getFirstAsync`, `withTransaction` and `execAsync`.
 
 ---
 
 ## Recipes
-
-### Enforce unique name (≤20 chars) per shop; barcodes unique per shop
-
-```ts
-configureSupastash({
-  syncPolicy: {
-    nonRetryableCodes: new Set(["23505", "23502", "23514", "23P01", "22001"]),
-    onNonRetryable: "accept-server",
-  },
-});
-```
 
 ### Delete conflicted rows automatically
 

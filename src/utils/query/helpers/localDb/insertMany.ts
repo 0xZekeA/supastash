@@ -1,5 +1,9 @@
 import { getSupastashDb } from "../../../../db/dbInitializer";
 import { SyncMode } from "../../../../types/query.types";
+import {
+  SupastashSQLiteDatabase,
+  SupastashSQLiteExecutor,
+} from "../../../../types/supastashConfig.types";
 import { getSafeValue } from "../../../serializer";
 import { parseStringifiedFields as parseRow } from "../../../sync/pushLocal/parseFields";
 
@@ -8,6 +12,8 @@ interface InsertOptions<R = any> {
   syncMode?: SyncMode;
   nowISO?: string;
   returnInsertedRows?: boolean;
+  withTx: boolean;
+  tx: SupastashSQLiteExecutor | null;
 }
 
 const MAX_PARAMS = 999;
@@ -18,7 +24,6 @@ export async function insertMany<R = any>(
   payload: R[],
   opts: InsertOptions<R>
 ): Promise<R[] | void> {
-  const db = await getSupastashDb();
   const { table, syncMode, returnInsertedRows } = opts;
   const timeStamp = opts.nowISO ?? new Date().toISOString();
 
@@ -40,6 +45,7 @@ export async function insertMany<R = any>(
     idSet.add(id);
     return id;
   });
+  const db = opts.tx ?? (await getSupastashDb());
 
   // 2) Check existing ids in DB (batched; fail-fast)
   for (let i = 0; i < ids.length; i += CHECK_BATCH) {
@@ -60,7 +66,7 @@ export async function insertMany<R = any>(
   // 3) Do inserts in a single transaction
   const insertedIds: string[] = [];
 
-  const run = async () => {
+  const run = async (db: SupastashSQLiteExecutor) => {
     for (let i = 0; i < payload.length; i++) {
       const item: any = payload[i];
       const newPayload = {
@@ -98,7 +104,13 @@ export async function insertMany<R = any>(
   };
 
   try {
-    await run();
+    if (opts.withTx && !opts.tx) {
+      await (db as SupastashSQLiteDatabase).withTransaction(async (tx) => {
+        await run(tx);
+      });
+    } else {
+      await run(opts.tx ?? db);
+    }
   } catch (e) {
     throw e;
   }

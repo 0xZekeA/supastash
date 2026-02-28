@@ -13,7 +13,8 @@ import { buildWhereClause } from "../helpers/remoteDb/queryFilterBuilder";
  * @param isSingle - Whether to return a single row or multiple rows
  * @returns a data / error object
  */
-export async function selectData(table, select, filters, limit, isSingle) {
+export async function selectData(state) {
+    const { table, filters, limit, isSingle, tx, select } = state;
     if (!table)
         throw new Error("Table name was not provided for a select call");
     await assertTableExists(table);
@@ -21,7 +22,7 @@ export async function selectData(table, select, filters, limit, isSingle) {
     const limitClause = limit ? `LIMIT ${limit}` : "";
     const query = `SELECT ${select} FROM ${table} ${clause} ${limitClause}`;
     try {
-        const db = await getSupastashDb();
+        const db = tx ?? (await getSupastashDb());
         let data;
         if (isSingle) {
             const result = await db.getFirstAsync(query, filterValues);
@@ -35,6 +36,8 @@ export async function selectData(table, select, filters, limit, isSingle) {
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (state.throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

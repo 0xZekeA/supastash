@@ -1,10 +1,8 @@
 import {
   CrudMethods,
-  FilterCalls,
   HandlerMap,
   MethodReturnTypeMap,
   SupastashQuery,
-  SyncMode,
 } from "../../../../types/query.types";
 import {
   buildDelete,
@@ -31,46 +29,14 @@ export default function getLocalMethod<
   U extends boolean,
   R,
   Z
->(
-  table: string,
-  method: T,
-  select: string | null,
-  payload: R | R[] | null,
-  filters: FilterCalls[] | null,
-  limit: number | null,
-  isSingle: U,
-  state: SupastashQuery<T, U, R>,
-  onConflictKeys?: string[],
-  syncMode?: SyncMode,
-  preserveTimestamp?: boolean
-): () => Promise<MethodReturnTypeMap<U, Z>[T]> {
+>(state: SupastashQuery<T, U, R>): () => Promise<MethodReturnTypeMap<U, Z>[T]> {
+  const { method } = state;
   const handlers: HandlerMap<U, Z> = {
-    select: buildSelect<U, R, Z>(
-      table,
-      select,
-      filters,
-      limit,
-      isSingle
-    ) as any,
-    insert: buildInsert<U, R, Z>(table, payload, syncMode, isSingle),
-    update: buildUpdate<U, R, Z>(
-      table,
-      payload as R | null,
-      filters,
-      syncMode,
-      isSingle,
-      preserveTimestamp
-    ) as any,
-    delete: buildDelete<Z>(table, filters, syncMode),
-    upsert: buildUpsert<U, R, Z>(
-      table,
-      payload,
-      state,
-      syncMode,
-      isSingle,
-      onConflictKeys,
-      preserveTimestamp
-    ),
+    select: buildSelect<U, R, Z>(state),
+    insert: buildInsert<U, R, Z>(state),
+    update: buildUpdate<U, R, Z>(state),
+    delete: buildDelete<Z>(state as any),
+    upsert: buildUpsert<U, R, Z>(state),
     none: async () => null,
   };
 

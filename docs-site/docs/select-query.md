@@ -69,6 +69,23 @@ const result = await supastash
 // result.data: { id: "user_123", email: "test@mail.com" }
 ```
 
+### 4. **Using `.cacheFirst()**`
+
+```ts
+const result = await supastash
+  .from("orders")
+  .select("id, amount")
+  .eq("status", "pending")
+  .cacheFirst()
+  .run();
+```
+
+`.cacheFirst()` attempts to resolve the query from local SQLite first. If no usable result is found, it automatically falls back to Supabase.
+
+This is useful when you want fast local reads with safe remote fallback.
+
+👉 **Read more:** [Fetch Policy](./fetchPolicy.md)
+
 ---
 
 ## 🔎 Filters and Columns

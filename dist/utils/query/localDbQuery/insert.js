@@ -8,17 +8,18 @@ import { insertMany } from "../helpers/localDb/insertMany";
  * @param payload - The payload to insert
  * @returns a data / error object
  */
-export async function insertData(table, payload, syncMode, isSingle) {
-    if (!table)
-        throw new Error("Table name was not provided for an insert call");
-    if (!payload)
-        throw new Error(`Payload data was not provided for an insert call on ${table}`);
+export async function insertData(state) {
+    const { table, tx, type: syncMode, isSingle, withTx, payload, } = state;
     try {
+        if (!payload)
+            throw new Error(`[Supastash] Payload data was not provided for an insert call on ${table}`);
         await assertTableExists(table);
         const inserted = await insertMany(payload, {
             table,
             syncMode,
             returnInsertedRows: true,
+            withTx: withTx,
+            tx,
         });
         return {
             error: null,
@@ -27,6 +28,8 @@ export async function insertData(table, payload, syncMode, isSingle) {
     }
     catch (error) {
         logError(`[Supastash] ${error}`);
+        if (state.throwOnError)
+            throw error;
         return {
             error: {
                 message: error instanceof Error ? error.message : String(error),

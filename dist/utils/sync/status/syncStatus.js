@@ -95,7 +95,7 @@ export async function setSyncLog(table, filters, opts) {
  * @param table - Table to reset.
  * @param filters - Optional filters for a scoped reset.
  * @param scope - Field(s) to reset: "all" (default),
- *   "last_synced_at", "last_created_at", or "last_deleted_at".
+ *   "last_synced_at", or "last_deleted_at".
  * @example
  * await resetSyncLog("users", undefined, "all");
  */

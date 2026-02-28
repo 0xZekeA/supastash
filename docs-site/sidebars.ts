@@ -41,7 +41,12 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Query Builder",
-      items: ["supastash-query-builder", "run-executions"],
+      items: [
+        "supastash-query-builder",
+        "run-executions",
+        "supastash-filters",
+        "fetchPolicy",
+      ],
     },
     {
       type: "category",
@@ -93,6 +98,11 @@ const sidebars: SidebarsConfig = {
       type: "doc",
       id: "configuration",
       label: "Configuration",
+    },
+    {
+      type: "doc",
+      id: "replication-mode",
+      label: "Replication Mode (New)",
     },
     {
       type: "doc",

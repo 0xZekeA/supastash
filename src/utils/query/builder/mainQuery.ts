@@ -1,4 +1,5 @@
 import { getSupastashConfig } from "../../../core/config";
+import { txStore } from "../../../store/tx";
 import {
   CrudMethods,
   MethodReturnTypeMap,
@@ -49,6 +50,10 @@ export async function queryDb<
       type: syncMode,
     } as SupastashQuery<T, U, R>;
 
+    if (state.txId && ["localFirst"].includes(updatedState.type)) {
+      txStore[state.txId].push(updatedState);
+    }
+
     const {
       localResult,
       remoteResult,
@@ -57,7 +62,6 @@ export async function queryDb<
       remoteResult: SupabaseQueryReturn<U, Z> | null;
     } = await runSyncStrategy<T, U, R, Z>(updatedState);
 
-    localData = localResult?.data;
     const success = !localResult?.error && !remoteResult?.error;
     const commonError = getCommonError<U, T, R, Z>(
       table,
@@ -81,8 +85,21 @@ export async function queryDb<
       }) as SupastashQueryResult<T, U, V, Z>;
     }
 
+    const remoteData = remoteResult?.data;
+    const localData = localResult?.data;
+    const policy = state.fetchPolicy;
+    const fetchPolicyData = !policy
+      ? null
+      : policy === "localFirst"
+      ? localData ?? remoteData
+      : remoteData ?? localData;
+
+    const data =
+      fetchPolicyData ??
+      (type === "remoteOnly" ? remoteData : localData ?? null);
+
     return Promise.resolve({
-      data: type === "remoteOnly" ? remoteResult?.data : localData ?? null,
+      data,
       error: commonError ?? null,
       success,
     }) as SupastashQueryResult<T, U, V, Z>;
@@ -90,6 +107,8 @@ export async function queryDb<
     logWarn(
       `[Supastash] ${error instanceof Error ? error.message : String(error)}`
     );
+
+    if (state.throwOnError) throw error;
 
     if (state.viewRemoteResult) {
       return Promise.resolve({

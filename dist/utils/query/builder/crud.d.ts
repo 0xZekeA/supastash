@@ -18,27 +18,27 @@ export default class SupastashCrudBuilder<T extends CrudMethods, U extends boole
      * @param data - The data to insert. Could be a single object or an array of objects.
      * @returns filter options.
      */
-    insert<Z = any>(data: R): SupastashFilterBuilder<"insert", false, R, Z>;
+    insert<Z = any>(data: R): Omit<SupastashFilterBuilder<"insert", false, R, Z>, "cacheFirst">;
     /**
      * Sets the method to update.
      *
      * @param data - The data to update.
      * @returns filter options.
      */
-    update<Z = any>(data: R): SupastashFilterBuilder<"update", false, R, Z>;
+    update<Z = any>(data: R): Omit<SupastashFilterBuilder<"update", false, R, Z>, "cacheFirst" | "run" | "go" | "execute">;
     /**
      * Sets the method to delete.
      *
      * @returns filter options.
      */
-    delete<Z = any>(): SupastashFilterBuilder<"delete", false, R, Z>;
+    delete<Z = any>(): Omit<SupastashFilterBuilder<"delete", false, R, Z>, "cacheFirst">;
     /**
      * Sets the method to select.
      *
      * @param column - The column to select.
      * @returns filter options.
      */
-    select<Z = any>(column?: string): SupastashFilterBuilder<"select", false, R, Z>;
+    select<Z = any>(column?: string): Omit<SupastashFilterBuilder<"select", false, R, Z>, "withTx">;
     /**
      * Sets the method to upsert.
      *
@@ -59,6 +59,6 @@ export default class SupastashCrudBuilder<T extends CrudMethods, U extends boole
      */
     upsert<Z = any>(data: R | R[], options?: {
         onConflictKeys?: string[];
-    }): SupastashFilterBuilder<"upsert", false, R, Z>;
+    }): Omit<SupastashFilterBuilder<"upsert", false, R, Z>, "cacheFirst">;
 }
 //# sourceMappingURL=crud.d.ts.map

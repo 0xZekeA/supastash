@@ -101,7 +101,6 @@ export async function setSyncLog(
   table: string,
   filters: SupastashFilter[] | undefined,
   opts: {
-    lastCreatedAt?: string | null;
     lastSyncedAt?: string | null;
     lastDeletedAt?: string | null;
     lastSyncedAtPk?: string | null;
@@ -121,7 +120,7 @@ export async function setSyncLog(
  * @param table - Table to reset.
  * @param filters - Optional filters for a scoped reset.
  * @param scope - Field(s) to reset: "all" (default),
- *   "last_synced_at", "last_created_at", or "last_deleted_at".
+ *   "last_synced_at", or "last_deleted_at".
  * @example
  * await resetSyncLog("users", undefined, "all");
  */

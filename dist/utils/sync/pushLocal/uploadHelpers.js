@@ -220,7 +220,7 @@ export async function rewindAndDropLocal(table, rowId, supabase) {
     }
 }
 async function replaceLocalWithServer(table, serverRow) {
-    await upsertData(table, serverRow);
+    await upsertData({ table, record: serverRow });
     await updateLocalSyncedAt(table, [serverRow.id]);
     setQueryStatus(serverRow.id, table, "success");
     supastashEventBus.emit("updateSyncStatus");
