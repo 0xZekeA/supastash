@@ -1,0 +1,9 @@
+import { RealtimeOptions } from "../../../shared/types/realtimeData.types";
+export declare function fetchCalls<R = any>(table: string, options: RealtimeOptions<R>, initialized: React.RefObject<boolean>): {
+    triggerRefresh: () => Promise<void>;
+    trigger: () => void;
+    cancel: () => void;
+    initialFetchAndSync: () => Promise<void>;
+    isFetching: boolean;
+};
+//# sourceMappingURL=fetchCalls.d.ts.map

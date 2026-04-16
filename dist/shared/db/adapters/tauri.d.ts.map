@@ -1,0 +1,1 @@
+{"version":3,"file":"tauri.d.ts","sourceRoot":"","sources":["../../../../src/shared/db/adapters/tauri.ts"],"names":[],"mappings":"AAAA,OAAO,EACL,sBAAsB,EAEtB,iBAAiB,EAClB,MAAM,mCAAmC,CAAC;AAG3C,eAAO,MAAM,kBAAkB,EAAE,sBAAsB,CAAC,iBAAiB,CAiJxE,CAAC"}

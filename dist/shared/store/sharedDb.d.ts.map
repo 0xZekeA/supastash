@@ -1,0 +1,1 @@
+{"version":3,"file":"sharedDb.d.ts","sourceRoot":"","sources":["../../../src/shared/store/sharedDb.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,uBAAuB,EAAE,MAAM,gCAAgC,CAAC;AAMzE,wBAAgB,kBAAkB,CAAC,EAAE,EAAE,uBAAuB,QAE7D;AAED,wBAAgB,kBAAkB,CAAC,QAAQ,EAAE,CAAC,MAAM,OAAO,CAAC,IAAI,CAAC,CAAC,GAAG,IAAI,QAExE;AACD,wBAAgB,WAAW,IAAI,uBAAuB,CAOrD;AAED,wBAAsB,aAAa,kBAElC"}
