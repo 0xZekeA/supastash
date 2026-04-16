@@ -3,7 +3,7 @@ import { getSupastashConfig } from "../core/config";
 export async function isOnline(): Promise<boolean> {
   const config = getSupastashConfig();
   if (config.networkAdapter)
-    return (await config.networkAdapter.fetch()).isConnected ?? true;
+    return (await config.networkAdapter.fetch()).isConnected ?? false;
   if (typeof navigator !== "undefined") return navigator.onLine;
   return true;
 }

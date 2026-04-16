@@ -14,7 +14,7 @@ import { pullData } from "./pullData";
 let isInSync = new Map();
 const DEFAULT_DATE = "1970-01-01T00:00:00Z";
 const BATCH_SIZE = 500;
-const DELETE_CHUNK = 999;
+const CHUNK_SIZE = 999;
 /**
  * Updates the local database with the remote changes
  * @param table - The table to update
@@ -58,8 +58,8 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             await db.withTransaction(async (tx) => {
                 if (deletedIds && deletedIds.length > 0) {
                     const ids = deletedIds;
-                    for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-                        const slice = ids.slice(i, i + DELETE_CHUNK);
+                    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                        const slice = ids.slice(i, i + CHUNK_SIZE);
                         const placeholders = slice.map(() => "?").join(", ");
                         await tx.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
                     }
@@ -68,8 +68,8 @@ export async function updateLocalDb(table, filters, onReceiveData) {
                 let localStamp = new Map();
                 if (data?.length) {
                     const ids = data.map((r) => r.id).filter(Boolean);
-                    for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-                        const slice = ids.slice(i, i + DELETE_CHUNK);
+                    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                        const slice = ids.slice(i, i + CHUNK_SIZE);
                         const placeholders = slice.map(() => "?").join(", ");
                         const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
                         for (const row of rows ?? []) {
@@ -79,33 +79,11 @@ export async function updateLocalDb(table, filters, onReceiveData) {
                 }
                 // Update local database with remote changes
                 if (data?.length) {
-                    for (let i = 0; i < data.length; i++) {
-                        const record = data[i];
-                        if (!record?.id)
-                            continue;
-                        if (deletedIdSet.has(record.id))
-                            continue;
-                        const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
-                        const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
-                        if (new Date(localUpdated) >= new Date(remoteUpdated)) {
-                            // local is newer or same — skip
-                            continue;
-                        }
-                        if (onReceiveData) {
-                            await onReceiveData(record);
-                        }
-                        else {
-                            await upsertData({
-                                tx,
-                                table,
-                                record,
-                                doesExist: localStamp.has(record.id),
-                            });
-                        }
-                        if ((i + 1) % BATCH_SIZE === 0) {
-                            await new Promise((res) => setTimeout(res, 0));
-                        }
-                    }
+                    await upsertChunkData({
+                        tx,
+                        table,
+                        records: data,
+                    });
                 }
             });
             if (timestamps) {
@@ -185,6 +163,104 @@ export async function upsertData({ tx, table, record, doesExist, }) {
     }
     catch (error) {
         logError(`[Supastash] Error upserting data for ${table}`, error);
+    }
+}
+/**
+    •	Bulk upserts records into a local SQLite table using a batched, conflict-aware strategy.
+    •
+    •	This function:
+    •		•	Fetches existing id and updated_at values in bulk to avoid per-row queries
+    •		•	Filters incoming records to only include new or more recent entries
+    •		•	Performs batched INSERT ... ON CONFLICT(id) DO UPDATE operations
+    •	while respecting SQLite parameter limits
+    •		•	Updates synced_at for successfully written records
+    •
+    •	Designed for high-performance sync scenarios in offline-first apps.
+    •
+    •	Key guarantees:
+    •		•	Avoids N+1 query patterns (no per-row existence checks)
+    •		•	Minimizes disk I/O pressure via batching
+    •		•	Safe for large datasets when used with chunking
+    •
+    •	Notes:
+    •		•	Assumes id is the primary or unique key
+    •		•	Requires updated_at for conflict resolution (falls back if missing)
+    •		•	Respects SQLite parameter limit (~999 variables per query)
+    •
+    •	@param tx Optional transaction instance. If not provided, a connection is used directly.
+    •	@param table Target table name
+    •	@param records Array of records to upsert
+*/
+export async function upsertChunkData({ tx, table, records, }) {
+    if (!records?.length)
+        return;
+    const cfg = getSupastashConfig();
+    if (cfg.supastashMode === "ghost")
+        return;
+    const db = tx ?? (await getSupastashDb());
+    const columns = await getTableSchema(table);
+    const syncedAt = new Date().toISOString();
+    if (cfg.debugMode) {
+        const unknownKeys = Object.keys(records[0]).filter((key) => !columns.includes(key));
+        if (unknownKeys.length > 0 && !warned.get(table)) {
+            warned.set(table, true);
+            logWarn(`⚠️ [Supastash] '${table}' payload contains keys not in local schema: ${unknownKeys.join(", ")}. ` + `They will be ignored locally.`);
+        }
+    }
+    // Step 1: Fetch existing id + updated_at for all incoming ids in bulk
+    const incomingIds = records.map((r) => r.id).filter(Boolean);
+    const localStamp = new Map();
+    for (let i = 0; i < incomingIds.length; i += CHUNK_SIZE) {
+        const slice = incomingIds.slice(i, i + CHUNK_SIZE);
+        const placeholders = slice.map(() => "?").join(", ");
+        const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
+        for (const row of rows ?? []) {
+            localStamp.set(row.id, row.updated_at ?? null);
+        }
+    }
+    // Step 2: Keep only records that are new or have a newer remote updated_at
+    const toUpsert = records.filter((record) => {
+        if (!record?.id)
+            return false;
+        const localUpdated = localStamp.get(record.id) ?? DEFAULT_DATE;
+        const remoteUpdated = record.updated_at ?? DEFAULT_DATE;
+        return new Date(remoteUpdated) > new Date(localUpdated);
+    });
+    if (!toUpsert.length)
+        return;
+    // Step 3: Build INSERT … ON CONFLICT(id) DO UPDATE in param-limit-safe chunks
+    const colList = columns.join(", ");
+    const updateSet = columns
+        .filter((key) => key !== "id")
+        .map((key) => `${key} = excluded.${key}`)
+        .join(", ");
+    const paramsPerRow = columns.length;
+    const rowsPerChunk = Math.max(1, Math.floor(999 / paramsPerRow));
+    const successfulIds = [];
+    for (let i = 0; i < toUpsert.length; i += rowsPerChunk) {
+        const chunk = toUpsert.slice(i, i + rowsPerChunk);
+        const rowPlaceholders = chunk
+            .map(() => `(${columns.map(() => "?").join(", ")})`)
+            .join(", ");
+        const values = [];
+        for (const record of chunk) {
+            const recordToSave = { ...record, synced_at: syncedAt };
+            for (const col of columns) {
+                values.push(stringifyValue(recordToSave[col]));
+            }
+        }
+        try {
+            await db.runAsync(`INSERT INTO ${table} (${colList}) VALUES ${rowPlaceholders} ON CONFLICT(id) DO UPDATE SET ${updateSet}`, values);
+            for (const record of chunk) {
+                successfulIds.push(record.id);
+            }
+        }
+        catch (error) {
+            logError(`[Supastash] Error upserting chunk for ${table}`, error);
+        }
+    }
+    if (successfulIds.length) {
+        await updateLocalSyncedAt(table, successfulIds);
     }
 }
 async function checkIfRecordExistsAndIsNewer(table, item) {

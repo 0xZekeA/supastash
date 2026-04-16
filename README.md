@@ -2,9 +2,9 @@
 
 [![npm version](https://img.shields.io/npm/v/supastash.svg)](https://www.npmjs.com/package/supastash)
 
-**Offline-First Sync Engine for Supabase + React Native**
+**Offline-First Sync Engine for Supabase + React Native & Desktop**
 
-> Supastash syncs your Supabase data with SQLite — live, offline, and conflict-safe. No boilerplate. Built for React Native and Expo.
+> Supastash syncs your Supabase data with SQLite — live, offline, and conflict-safe. No boilerplate. Built for React Native, Expo, and (experimentally) Tauri desktop apps.
 
 ---
 
@@ -22,6 +22,12 @@
 >
 > 👉 Learn more: https://0xzekea.github.io/supastash/docs/replication-mode
 
+> 🖥️ **NEW (v2.0.1+, experimental) — Desktop Support via Tauri**
+>
+> Supastash now works in Tauri desktop apps using the `tauri-plugin-sql` adapter.  
+> Same sync engine, same API — now available beyond mobile.  
+> ⚠️ Desktop support is experimental. Expect rough edges and breaking changes.
+
 ---
 
 ## ✨ Features
@@ -34,6 +40,7 @@
   - `expo-sqlite`
   - `react-native-nitro-sqlite`
   - `react-native-sqlite-storage` (beta)
+  - `tauri-plugin-sql` (desktop, experimental)
 
 - 🧠 Built-in:
 
@@ -60,6 +67,14 @@ npm install @supabase/supabase-js \
              react-native
 ```
 
+> **Breaking change (v2.0.1+):** You must now pass `networkAdapter: NetInfo` explicitly in `configureSupastash`. Import it as:
+>
+> ```ts
+> import * as NetInfo from "@react-native-community/netinfo"; // React Native only
+> ```
+>
+> For Tauri desktop apps, `networkAdapter` is not required — network detection is handled natively.
+
 ### 🧱 Choose a SQLite Adapter
 
 Choose **only one**, based on your stack:
@@ -75,7 +90,7 @@ npm install react-native-nitro-sqlite
 npm install react-native-sqlite-storage
 ```
 
-> Match with `sqliteClientType`: `"expo"`, `"rn-nitro"`, or `"rn-storage"`
+> Match with `sqliteClientType`: `"expo"`, `"rn-nitro"`, `"rn-storage"`, or `"tauri"` (experimental)
 
 ---
 
@@ -88,12 +103,14 @@ npm install react-native-sqlite-storage
 import { configureSupastash, defineLocalSchema } from "supastash";
 import { supabase } from "./supabase";
 import { openDatabaseAsync } from "expo-sqlite"; // or your adapter
+import * as NetInfo from "@react-native-community/netinfo"; // react-native only
 
 configureSupastash({
   supabaseClient: supabase,
   dbName: "supastash_db",
   sqliteClient: { openDatabaseAsync },
   sqliteClientType: "expo",
+  networkAdapter: NetInfo,
 
   onSchemaInit: () => {
     defineLocalSchema("users", {

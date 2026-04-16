@@ -17,7 +17,7 @@ export { useSupastash } from "./hooks/supastashLogic";
 export { syncAllTables, syncTable } from "./hooks/syncEngine";
 export { dropAllTables, dropTable, wipeAllTables, wipeOldDataForAllTables, wipeOldDataForATable, wipeTable, } from "./utils/schema/wipeTables";
 export { fetchOlderPage } from "./utils/sync/pullFromRemote/fetchOlder";
-export { updateLocalDb, upsertData, } from "./utils/sync/pullFromRemote/updateLocalDb";
+export { updateLocalDb, upsertChunkData, upsertData, } from "./utils/sync/pullFromRemote/updateLocalDb";
 export { clearAllLocalDeleteLog, clearAllLocalSyncLog, clearLocalDeleteLog, clearLocalSyncLog, clearSyncLog, getLocalDeleteLog, getSyncLog, resetSyncLog, setLocalDeleteLog, setLocalSyncLog, setSyncLog, } from "./utils/sync/status/syncStatus";
 export type { CrudMethods } from "../shared/types/query.types";
 export type { RealtimeOptions, SupastashDataResult, SupastashFilter, } from "../shared/types/realtimeData.types";

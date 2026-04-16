@@ -43,6 +43,7 @@ export {
 export { fetchOlderPage } from "./utils/sync/pullFromRemote/fetchOlder";
 export {
   updateLocalDb,
+  upsertChunkData,
   upsertData,
 } from "./utils/sync/pullFromRemote/updateLocalDb";
 export {

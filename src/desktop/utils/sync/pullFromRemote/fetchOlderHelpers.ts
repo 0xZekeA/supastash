@@ -6,7 +6,7 @@ import { SupastashError } from "../../../../shared/utils/errorHandler";
 import { logWarn } from "../../../../shared/utils/logs";
 import { ReusedHelpers } from "../../../../shared/utils/reusedHelpers";
 import { supabaseClientErr } from "../../../../shared/utils/supabaseClientErr";
-import { upsertData } from "./updateLocalDb";
+import { upsertChunkData } from "./updateLocalDb";
 
 const DEFAULT_DATE = "2000-01-01T00:00:00Z";
 const DEFAULT_ID = "00000000-0000-0000-0000-000000000000";
@@ -148,16 +148,9 @@ export const FetchOlderHelpers = {
 
   async storeToDb({ table, data }: { table: string; data: PayloadData[] }) {
     if (data.length === 0) return;
-    const batchSize = 500;
     const db = await getSupastashDb();
     await db.withTransaction(async (tx) => {
-      for (let i = 0; i < data.length; i++) {
-        await upsertData({ tx, table, record: data[i] });
-
-        if ((i + 1) % batchSize === 0) {
-          await new Promise((res) => setTimeout(res, 0));
-        }
-      }
+      await upsertChunkData({ tx, table, records: data });
     });
   },
 };

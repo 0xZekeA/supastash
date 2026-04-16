@@ -1,4 +1,4 @@
-import { namedToPositional } from "../normalizer";
+import { interpolate, namedToPositional } from "../normalizer";
 export const SQLiteAdapterTauri = {
     async openDatabaseAsync(name, sqliteClient) {
         const db = await sqliteClient.load(`sqlite:${name}`);
@@ -98,18 +98,3 @@ export const SQLiteAdapterTauri = {
         };
     },
 };
-function interpolate(sql, params) {
-    let i = 0;
-    return sql.replace(/\?|\$\d+/g, () => {
-        const val = params[i++];
-        if (val === null || val === undefined)
-            return "NULL";
-        if (typeof val === "number")
-            return Number.isFinite(val) ? String(val) : "NULL";
-        if (typeof val === "boolean")
-            return val ? "1" : "0";
-        if (val instanceof Uint8Array || val instanceof ArrayBuffer)
-            return "X'" + Buffer.from(val).toString("hex") + "'";
-        return `'${String(val).replace(/'/g, "''")}'`;
-    });
-}

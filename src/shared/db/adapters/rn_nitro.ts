@@ -85,63 +85,79 @@ export const SQLiteAdapterNitro: SupastashSQLiteAdapter<RNSqliteNitroClient> = {
       withTransaction: async (
         fn: (tx: SupastashSQLiteExecutor) => Promise<void> | void
       ): Promise<void> => {
-        await db.transaction(async (tx) => {
-          const txExecutor: SupastashSQLiteExecutor = {
-            runAsync: async (sql: string, params?: any[]) =>
-              await tx.executeAsync(sql, params ?? []),
-            execAsync: async (statement: string) => {
-              await tx.executeAsync(statement);
-            },
-            getAllAsync: async (
-              sql: string,
-              params?: any[]
-            ): Promise<any[]> => {
-              const result = await tx.executeAsync(sql, params ?? []);
-              const mainResult = result.rows?._array ?? [];
-              return mainResult;
-            },
-            getFirstAsync: async (
-              sql: string,
-              params?: any[]
-            ): Promise<any | null> => {
-              const result = await tx.executeAsync(sql, params ?? []);
-              return result.rows?._array?.[0] ?? null;
-            },
-            query: async (
-              sql: string,
-              params?: Record<string, any>
-            ): Promise<any[]> => {
-              const { sql: q, params: p } = params
-                ? namedToPositional(sql, params)
-                : { sql, params: [] };
-              const result = await db.executeAsync(q, p ?? []);
-              const mainResult = result.rows?._array ?? [];
-              return mainResult;
-            },
+        const statements: Array<{ sql: string; params: any[] }> = [];
 
-            queryOne: async (
-              sql: string,
-              params?: Record<string, any>
-            ): Promise<any | null> => {
-              const { sql: q, params: p } = params
-                ? namedToPositional(sql, params)
-                : { sql, params: [] };
-              const result = await db.executeAsync(q, p ?? []);
-              return result.rows?._array?.[0] ?? null;
-            },
+        const enqueue = (sql: string, params: any[]) => {
+          statements.push({ sql, params });
+        };
 
-            execute: async (
-              sql: string,
-              params?: Record<string, any>
-            ): Promise<any> => {
-              const { sql: q, params: p } = params
-                ? namedToPositional(sql, params)
-                : { sql, params: [] };
-              return await db.executeAsync(q, p ?? []);
-            },
-          };
-          return await fn(txExecutor);
-        });
+        const txExecutor: SupastashSQLiteExecutor = {
+          runAsync: async (sql: string, params?: any[]) => {
+            enqueue(sql, params ?? []);
+          },
+          execAsync: async (statement: string) => {
+            enqueue(statement, []);
+          },
+          getAllAsync: async (
+            sql: string,
+            params?: any[]
+          ): Promise<any[]> => {
+            const result = await db.executeAsync(sql, params ?? []);
+            return result.rows?._array ?? [];
+          },
+          getFirstAsync: async (
+            sql: string,
+            params?: any[]
+          ): Promise<any | null> => {
+            const result = await db.executeAsync(sql, params ?? []);
+            return result.rows?._array?.[0] ?? null;
+          },
+          query: async (
+            sql: string,
+            params?: Record<string, any>
+          ): Promise<any[]> => {
+            const { sql: q, params: p } = params
+              ? namedToPositional(sql, params)
+              : { sql, params: [] };
+            const result = await db.executeAsync(q, p ?? []);
+            return result.rows?._array ?? [];
+          },
+          queryOne: async (
+            sql: string,
+            params?: Record<string, any>
+          ): Promise<any | null> => {
+            const { sql: q, params: p } = params
+              ? namedToPositional(sql, params)
+              : { sql, params: [] };
+            const result = await db.executeAsync(q, p ?? []);
+            return result.rows?._array?.[0] ?? null;
+          },
+          execute: async (
+            sql: string,
+            params?: Record<string, any>
+          ): Promise<any> => {
+            const { sql: q, params: p } = params
+              ? namedToPositional(sql, params)
+              : { sql, params: [] };
+            enqueue(q, p ?? []);
+            return {};
+          },
+        };
+
+        await fn(txExecutor);
+
+        if (statements.length === 0) return;
+
+        await db.executeAsync("BEGIN");
+        try {
+          for (const { sql, params } of statements) {
+            await db.executeAsync(sql, params);
+          }
+          await db.executeAsync("COMMIT");
+        } catch (err) {
+          await db.executeAsync("ROLLBACK").catch(() => {});
+          throw err;
+        }
       },
     };
   },

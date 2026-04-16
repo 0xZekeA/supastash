@@ -3,7 +3,7 @@ import {
   SupastashSQLiteExecutor,
   TauriSQLiteClient,
 } from "../../types/supastashConfig.types";
-import { namedToPositional } from "../normalizer";
+import { interpolate, namedToPositional } from "../normalizer";
 
 export const SQLiteAdapterTauri: SupastashSQLiteAdapter<TauriSQLiteClient> = {
   async openDatabaseAsync(name: string, sqliteClient: TauriSQLiteClient) {
@@ -152,16 +152,3 @@ export const SQLiteAdapterTauri: SupastashSQLiteAdapter<TauriSQLiteClient> = {
   },
 };
 
-function interpolate(sql: string, params: any[]): string {
-  let i = 0;
-  return sql.replace(/\?|\$\d+/g, () => {
-    const val = params[i++];
-    if (val === null || val === undefined) return "NULL";
-    if (typeof val === "number")
-      return Number.isFinite(val) ? String(val) : "NULL";
-    if (typeof val === "boolean") return val ? "1" : "0";
-    if (val instanceof Uint8Array || val instanceof ArrayBuffer)
-      return "X'" + Buffer.from(val as ArrayBufferLike).toString("hex") + "'";
-    return `'${String(val).replace(/'/g, "''")}'`;
-  });
-}
