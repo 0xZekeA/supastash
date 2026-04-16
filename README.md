@@ -22,7 +22,7 @@
 >
 > 👉 Learn more: https://0xzekea.github.io/supastash/docs/replication-mode
 
-> 🖥️ **NEW (v2.0.1+, experimental) — Desktop Support via Tauri**
+> 🖥️ **NEW (v0.2.1+, experimental) — Desktop Support via Tauri**
 >
 > Supastash now works in Tauri desktop apps using the `tauri-plugin-sql` adapter.  
 > Same sync engine, same API — now available beyond mobile.  
@@ -67,7 +67,7 @@ npm install @supabase/supabase-js \
              react-native
 ```
 
-> **Breaking change (v2.0.1+):** You must now pass `networkAdapter: NetInfo` explicitly in `configureSupastash`. Import it as:
+> **Breaking change (v0.2.1+):** You must now pass `networkAdapter: NetInfo` explicitly in `configureSupastash`. Import it as:
 >
 > ```ts
 > import * as NetInfo from "@react-native-community/netinfo"; // React Native only
