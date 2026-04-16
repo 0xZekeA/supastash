@@ -68,7 +68,8 @@ export class SupastashQueryBuilder<
    * In this example, both inserts succeed or both fail.
    */
   withTransaction(
-    fn: (tx: SupastashTransactionalBuilder<T, U, R>) => Promise<void> | void
+    fn: (tx: SupastashTransactionalBuilder<T, U, R>) => Promise<void> | void,
+    options?: { syncMode?: "fire-and-forget" | "await-all" }
   ) {
     const query = async () => {
       // Create a new transaction id
@@ -105,8 +106,18 @@ export class SupastashQueryBuilder<
               };
             });
 
-          for (const state of newStates) {
-            queueRemoteCall(state);
+          const queue = async () => {
+            for (const state of newStates) {
+              await queueRemoteCall(state);
+            }
+          };
+
+          if (options?.syncMode === "await-all") {
+            // wait for all (fail fast)
+            await queue();
+          } else {
+            // fire and forget (default)
+            queue();
           }
         }
       } finally {

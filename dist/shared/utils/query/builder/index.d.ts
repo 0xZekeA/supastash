@@ -42,7 +42,9 @@ export declare class SupastashQueryBuilder<T extends CrudMethods, U extends bool
      *
      * In this example, both inserts succeed or both fail.
      */
-    withTransaction(fn: (tx: SupastashTransactionalBuilder<T, U, R>) => Promise<void> | void): Promise<void>;
+    withTransaction(fn: (tx: SupastashTransactionalBuilder<T, U, R>) => Promise<void> | void, options?: {
+        syncMode?: "fire-and-forget" | "await-all";
+    }): Promise<void>;
 }
 type SupastashTransactionalBuilder<T extends CrudMethods, U extends boolean, R> = Omit<SupastashQueryBuilder<T, U, R>, "withTransaction">;
 export type SupastashTransactionClient = SupastashTransactionalBuilder<CrudMethods, boolean, PayloadData>;

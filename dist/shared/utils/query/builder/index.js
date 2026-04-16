@@ -50,7 +50,7 @@ export class SupastashQueryBuilder {
      *
      * In this example, both inserts succeed or both fail.
      */
-    withTransaction(fn) {
+    withTransaction(fn, options) {
         const query = async () => {
             // Create a new transaction id
             const newTxId = generateUUIDv4();
@@ -81,8 +81,17 @@ export class SupastashQueryBuilder {
                             type: "remoteOnly",
                         };
                     });
-                    for (const state of newStates) {
-                        queueRemoteCall(state);
+                    if (options?.syncMode === "await-all") {
+                        // wait for all (fail fast)
+                        for (const state of newStates) {
+                            await queueRemoteCall(state);
+                        }
+                    }
+                    else {
+                        // fire and forget (default)
+                        for (const state of newStates) {
+                            queueRemoteCall(state);
+                        }
                     }
                 }
             }
