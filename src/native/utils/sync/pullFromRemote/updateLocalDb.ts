@@ -331,6 +331,7 @@ export async function upsertChunkData({
       }
     } catch (error) {
       logError(`[Supastash] Error upserting chunk for ${table}`, error);
+      throw error;
     }
   }
 

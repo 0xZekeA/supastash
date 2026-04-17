@@ -211,7 +211,6 @@ export async function upsertChunkData({ tx, table, records, }) {
         const slice = incomingIds.slice(i, i + CHUNK_SIZE);
         const placeholders = slice.map(() => "?").join(", ");
         const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
-        console.log("rows", rows.length);
         for (const row of rows ?? []) {
             localStamp.set(row.id, row.updated_at ?? null);
         }
@@ -228,7 +227,6 @@ export async function upsertChunkData({ tx, table, records, }) {
             return true;
         return new Date(remoteUpdated) > new Date(localUpdated);
     });
-    console.log("toUpsert", toUpsert.length);
     if (!toUpsert.length)
         return;
     // Step 3: Build INSERT … ON CONFLICT(id) DO UPDATE in param-limit-safe chunks
@@ -260,6 +258,7 @@ export async function upsertChunkData({ tx, table, records, }) {
         }
         catch (error) {
             logError(`[Supastash] Error upserting chunk for ${table}`, error);
+            throw error;
         }
     }
     if (successfulIds.length) {

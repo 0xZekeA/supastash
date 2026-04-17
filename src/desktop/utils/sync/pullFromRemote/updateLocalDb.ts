@@ -282,7 +282,6 @@ export async function upsertChunkData({
       `SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`,
       slice
     );
-    console.log("rows", rows.length);
     for (const row of rows ?? []) {
       localStamp.set(row.id, row.updated_at ?? null);
     }
@@ -298,8 +297,6 @@ export async function upsertChunkData({
     if (!localUpdated) return true;
     return new Date(remoteUpdated) > new Date(localUpdated);
   });
-
-  console.log("toUpsert", toUpsert.length);
 
   if (!toUpsert.length) return;
 
@@ -338,6 +335,7 @@ export async function upsertChunkData({
       }
     } catch (error) {
       logError(`[Supastash] Error upserting chunk for ${table}`, error);
+      throw error;
     }
   }
 

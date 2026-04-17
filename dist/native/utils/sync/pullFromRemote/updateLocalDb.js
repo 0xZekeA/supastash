@@ -253,6 +253,7 @@ export async function upsertChunkData({ tx, table, records, }) {
         }
         catch (error) {
             logError(`[Supastash] Error upserting chunk for ${table}`, error);
+            throw error;
         }
     }
     if (successfulIds.length) {
