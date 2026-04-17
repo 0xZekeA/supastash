@@ -50,61 +50,43 @@ export const SQLiteAdapterNitro = {
                 await db.close?.();
             },
             withTransaction: async (fn) => {
-                const statements = [];
-                const enqueue = (sql, params) => {
-                    statements.push({ sql, params });
-                };
-                const txExecutor = {
-                    runAsync: async (sql, params) => {
-                        enqueue(sql, params ?? []);
-                    },
-                    execAsync: async (statement) => {
-                        enqueue(statement, []);
-                    },
-                    getAllAsync: async (sql, params) => {
-                        const result = await db.executeAsync(sql, params ?? []);
-                        return result.rows?._array ?? [];
-                    },
-                    getFirstAsync: async (sql, params) => {
-                        const result = await db.executeAsync(sql, params ?? []);
-                        return result.rows?._array?.[0] ?? null;
-                    },
-                    query: async (sql, params) => {
-                        const { sql: q, params: p } = params
-                            ? namedToPositional(sql, params)
-                            : { sql, params: [] };
-                        const result = await db.executeAsync(q, p ?? []);
-                        return result.rows?._array ?? [];
-                    },
-                    queryOne: async (sql, params) => {
-                        const { sql: q, params: p } = params
-                            ? namedToPositional(sql, params)
-                            : { sql, params: [] };
-                        const result = await db.executeAsync(q, p ?? []);
-                        return result.rows?._array?.[0] ?? null;
-                    },
-                    execute: async (sql, params) => {
-                        const { sql: q, params: p } = params
-                            ? namedToPositional(sql, params)
-                            : { sql, params: [] };
-                        enqueue(q, p ?? []);
-                        return {};
-                    },
-                };
-                await fn(txExecutor);
-                if (statements.length === 0)
-                    return;
-                await db.executeAsync("BEGIN");
-                try {
-                    for (const { sql, params } of statements) {
-                        await db.executeAsync(sql, params);
-                    }
-                    await db.executeAsync("COMMIT");
-                }
-                catch (err) {
-                    await db.executeAsync("ROLLBACK").catch(() => { });
-                    throw err;
-                }
+                await db.transaction(async (tx) => {
+                    const txExecutor = {
+                        runAsync: async (sql, params) => await tx.executeAsync(sql, params ?? []),
+                        execAsync: async (statement) => {
+                            await tx.executeAsync(statement);
+                        },
+                        getAllAsync: async (sql, params) => {
+                            const result = await tx.executeAsync(sql, params ?? []);
+                            return result.rows?._array ?? [];
+                        },
+                        getFirstAsync: async (sql, params) => {
+                            const result = await tx.executeAsync(sql, params ?? []);
+                            return result.rows?._array?.[0] ?? null;
+                        },
+                        query: async (sql, params) => {
+                            const { sql: q, params: p } = params
+                                ? namedToPositional(sql, params)
+                                : { sql, params: [] };
+                            const result = await tx.executeAsync(q, p ?? []);
+                            return result.rows?._array ?? [];
+                        },
+                        queryOne: async (sql, params) => {
+                            const { sql: q, params: p } = params
+                                ? namedToPositional(sql, params)
+                                : { sql, params: [] };
+                            const result = await tx.executeAsync(q, p ?? []);
+                            return result.rows?._array?.[0] ?? null;
+                        },
+                        execute: async (sql, params) => {
+                            const { sql: q, params: p } = params
+                                ? namedToPositional(sql, params)
+                                : { sql, params: [] };
+                            return await tx.executeAsync(q, p ?? []);
+                        },
+                    };
+                    await fn(txExecutor);
+                });
             },
         };
     },

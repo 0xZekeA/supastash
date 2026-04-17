@@ -148,9 +148,6 @@ export const FetchOlderHelpers = {
 
   async storeToDb({ table, data }: { table: string; data: PayloadData[] }) {
     if (data.length === 0) return;
-    const db = await getSupastashDb();
-    await db.withTransaction(async (tx) => {
-      await upsertChunkData({ tx, table, records: data });
-    });
+    await upsertChunkData({ table, records: data });
   },
 };

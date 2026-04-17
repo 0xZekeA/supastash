@@ -42,7 +42,6 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             const data = dataResult?.data;
             const timestamps = dataResult.timestamps;
             const deletedIds = dataResult.deletedIds;
-            const deletedIdSet = new Set(deletedIds ?? []);
             SyncInfoUpdater.setUnsyncedDataCount({
                 amount: data?.length ?? 0,
                 type: "pull",
@@ -55,37 +54,34 @@ export async function updateLocalDb(table, filters, onReceiveData) {
             });
             refreshNeeded = !!data?.length || !!deletedIds?.length;
             // Delete records that are no longer in the remote data
-            await db.withTransaction(async (tx) => {
-                if (deletedIds && deletedIds.length > 0) {
-                    const ids = deletedIds;
-                    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-                        const slice = ids.slice(i, i + CHUNK_SIZE);
-                        const placeholders = slice.map(() => "?").join(", ");
-                        await tx.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
+            if (deletedIds && deletedIds.length > 0) {
+                const ids = deletedIds;
+                for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                    const slice = ids.slice(i, i + CHUNK_SIZE);
+                    const placeholders = slice.map(() => "?").join(", ");
+                    await db.runAsync(`DELETE FROM ${table} WHERE id IN (${placeholders})`, slice);
+                }
+            }
+            // Get the local stamp of the records
+            let localStamp = new Map();
+            if (data?.length) {
+                const ids = data.map((r) => r.id).filter(Boolean);
+                for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                    const slice = ids.slice(i, i + CHUNK_SIZE);
+                    const placeholders = slice.map(() => "?").join(", ");
+                    const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
+                    for (const row of rows ?? []) {
+                        localStamp.set(row.id, row.updated_at ?? null);
                     }
                 }
-                // Get the local stamp of the records
-                let localStamp = new Map();
-                if (data?.length) {
-                    const ids = data.map((r) => r.id).filter(Boolean);
-                    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-                        const slice = ids.slice(i, i + CHUNK_SIZE);
-                        const placeholders = slice.map(() => "?").join(", ");
-                        const rows = await db.getAllAsync(`SELECT id, updated_at FROM ${table} WHERE id IN (${placeholders})`, slice);
-                        for (const row of rows ?? []) {
-                            localStamp.set(row.id, row.updated_at ?? null);
-                        }
-                    }
-                }
-                // Update local database with remote changes
-                if (data?.length) {
-                    await upsertChunkData({
-                        tx,
-                        table,
-                        records: data,
-                    });
-                }
-            });
+            }
+            // Update local database with remote changes
+            if (data?.length) {
+                await upsertChunkData({
+                    table,
+                    records: data,
+                });
+            }
             if (timestamps) {
                 await setSupastashSyncStatus(table, filters, {
                     lastSyncedAt: timestamps.updatedMax,

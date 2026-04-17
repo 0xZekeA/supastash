@@ -81,17 +81,18 @@ export class SupastashQueryBuilder {
                             type: "remoteOnly",
                         };
                     });
-                    if (options?.syncMode === "await-all") {
-                        // wait for all (fail fast)
+                    const queue = async () => {
                         for (const state of newStates) {
                             await queueRemoteCall(state);
                         }
+                    };
+                    if (options?.syncMode === "await-all") {
+                        // wait for all (fail fast)
+                        await queue();
                     }
                     else {
                         // fire and forget (default)
-                        for (const state of newStates) {
-                            queueRemoteCall(state);
-                        }
+                        queue();
                     }
                 }
             }
