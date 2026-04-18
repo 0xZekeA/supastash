@@ -11,9 +11,11 @@ export declare const ADD_PK_TO_SYNC_MARKS_SQL = "\n  ALTER TABLE supastash_sync_
 export declare const INDEX_SYNC_MARKS_SQL = "\n  CREATE INDEX IF NOT EXISTS idx_supastash_marks_updated\n    ON supastash_sync_marks(updated_at);\n";
 export declare const INDEX_SERVER_SYNC_MARKS_SQL = "\n  CREATE INDEX IF NOT EXISTS idx_supastash_server_marks_updated\n    ON supastash_server_sync_marks(updated_at);\n";
 /**
- * Creates the supastash_sync_marks table if it doesn't exist
- *
- * New table for sync marks
+ * Creates the supastash_sync_marks table if it doesn't exist.
+ * Guarded by a singleton promise so concurrent callers share one
+ * initialization pass instead of racing on DDL writes.
  */
 export declare function createSyncStatusTable(): Promise<void>;
+/** Reset the singleton (useful for tests or after closeSupastashDb). */
+export declare function resetSyncStatusTableCache(): void;
 //# sourceMappingURL=createSyncStatus.d.ts.map

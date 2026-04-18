@@ -2,6 +2,10 @@ import { interpolate, namedToPositional } from "../normalizer";
 export const SQLiteAdapterTauri = {
     async openDatabaseAsync(name, sqliteClient) {
         const db = await sqliteClient.load(`sqlite:${name}`);
+        // Enable WAL mode for concurrent read/write and set a busy timeout so
+        // writers wait instead of immediately returning SQLITE_BUSY (code 5).
+        await db.execute("PRAGMA journal_mode=WAL;", []);
+        await db.execute("PRAGMA busy_timeout=5000;", []);
         const normalizeParams = (params) => {
             return (params ?? []).map((v) => typeof v === "boolean" ? (v ? 1 : 0) : v);
         };

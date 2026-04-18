@@ -54,29 +54,39 @@ export const INDEX_SERVER_SYNC_MARKS_SQL = `
     ON supastash_server_sync_marks(updated_at);
 `;
 
-let addedPk = false;
+let syncStatusTablePromise: Promise<void> | null = null;
 
 /**
- * Creates the supastash_sync_marks table if it doesn't exist
- *
- * New table for sync marks
+ * Creates the supastash_sync_marks table if it doesn't exist.
+ * Guarded by a singleton promise so concurrent callers share one
+ * initialization pass instead of racing on DDL writes.
  */
 export async function createSyncStatusTable() {
-  const db = await getSupastashDb();
+  if (syncStatusTablePromise) return syncStatusTablePromise;
 
-  const cfg = getSupastashConfig();
-  if (cfg.replicationMode === "server-side") {
-    await db.execAsync(SERVER_SYNC_STATUS_TABLES_SQL);
-    await db.execAsync(INDEX_SERVER_SYNC_MARKS_SQL);
-  } else {
-    await db.execAsync(SYNC_STATUS_TABLES_SQL);
-    await db.execAsync(INDEX_SYNC_MARKS_SQL);
-  }
-  try {
-    if (addedPk) return;
-    addedPk = true;
-    await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
-  } catch (error) {
-    // Ignore error if column already exists
-  }
+  syncStatusTablePromise = (async () => {
+    const db = await getSupastashDb();
+    const cfg = getSupastashConfig();
+
+    if (cfg.replicationMode === "server-side") {
+      await db.execAsync(SERVER_SYNC_STATUS_TABLES_SQL);
+      await db.execAsync(INDEX_SERVER_SYNC_MARKS_SQL);
+    } else {
+      await db.execAsync(SYNC_STATUS_TABLES_SQL);
+      await db.execAsync(INDEX_SYNC_MARKS_SQL);
+    }
+
+    try {
+      await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
+    } catch {
+      // Ignore — column already exists
+    }
+  })();
+
+  return syncStatusTablePromise;
+}
+
+/** Reset the singleton (useful for tests or after closeSupastashDb). */
+export function resetSyncStatusTableCache() {
+  syncStatusTablePromise = null;
 }
