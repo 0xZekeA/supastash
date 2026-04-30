@@ -43,7 +43,7 @@ export async function queryDb(state) {
             });
         }
         const remoteData = remoteResult?.data;
-        const localData = localResult?.data;
+        localData = localResult?.data;
         const policy = state.fetchPolicy;
         const fetchPolicyData = !policy
             ? null
