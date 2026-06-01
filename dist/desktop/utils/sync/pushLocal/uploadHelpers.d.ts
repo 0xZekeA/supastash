@@ -1,6 +1,6 @@
 import { SupastashConfig } from "../../../../shared/types/supastashConfig.types";
 import { RowLike } from "../../../../shared/types/syncEngine.types";
-export declare function classifyFailure(cfg: SupastashConfig<any>, code?: string | number): "HTTP" | "UNKNOWN" | "NON_RETRYABLE" | "FK_BLOCK" | "RETRYABLE";
+export declare function classifyFailure(cfg: SupastashConfig<any>, code?: string | number): "HTTP" | "UNKNOWN" | "NON_RETRYABLE" | "FK_BLOCK" | "UNIQUE_VIOLATION" | "RETRYABLE";
 declare function batchUpsert(table: string, rows: RowLike[], supabase: any): Promise<any>;
 declare function singleUpsert(table: string, row: RowLike, supabase: any): Promise<any>;
 declare function backoff(attempts: number): Promise<void>;

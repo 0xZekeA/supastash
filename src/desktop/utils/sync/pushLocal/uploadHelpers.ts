@@ -19,6 +19,7 @@ export function classifyFailure(
   const s = String(code);
   if (p.nonRetryableCodes?.has?.(s)) return "NON_RETRYABLE";
   if (s === (p.fkCode ?? "23503")) return "FK_BLOCK";
+  if (s === "23505") return "UNIQUE_VIOLATION";
   if (p.retryableCodes?.has?.(s)) return "RETRYABLE";
   return "UNKNOWN";
 }
@@ -229,6 +230,16 @@ async function handleRowFailure(
       cfg.syncPolicy?.onRowAcceptedServer?.(table, row.id);
       return "DROP";
     }
+  }
+
+  if (klass === "UNIQUE_VIOLATION") {
+    logWarn(
+      `[Supastash] Row ${row.id} on ${table} violated a unique constraint (23505) → deleting local copy`,
+      JSON.stringify(err)
+    );
+    await deleteLocalRow(table, row.id, supabase);
+    cfg.syncPolicy?.onRowDroppedLocal?.(table, row.id);
+    return "DROP";
   }
 
   if (klass === "FK_BLOCK") {
