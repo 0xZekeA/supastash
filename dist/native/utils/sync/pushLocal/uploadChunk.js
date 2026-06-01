@@ -32,6 +32,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     const hasRPCPath = !!config.pushRPCPath;
     const ids = chunk.map((row) => row.id);
     const toPush = [];
+    let remoteExistsMap = new Map();
     // If we have a RPC path, we can push the whole chunk. Server validates freshness.
     if (hasRPCPath) {
         toPush.push(...chunk);
@@ -39,6 +40,8 @@ async function uploadChunk(table, chunk, onPushToRemote) {
     else {
         // Fetch remote data for the current chunk
         const remoteIds = await fetchRemoteHeadsChunked(table, ids, supabase);
+        for (const id of ids)
+            remoteExistsMap.set(id, remoteIds.has(id));
         // Loop through the initial chunk and check if the id is in the remote data
         const filtered = filterRowsByUpdatedAt(table, chunk, remoteIds);
         toPush.push(...filtered);
@@ -74,7 +77,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
         let batchOk = false;
         // RPC return values
         let completed = [];
-        let existsMap = new Map();
+        let existsMap = new Map(remoteExistsMap);
         if (onPushToRemote) {
             const ok = await onPushToRemote(pending);
             if (ok)
@@ -86,12 +89,43 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             pending = [...res.data.skipped];
             existsMap = res.data.existsMap;
             batchOk = res.error == null && pending.length === 0;
-            // If there was an RPC error, we need to retry the main function
             if (res.error) {
-                attempts++;
-                await backoff(attempts);
-                pending = [...preflightOK];
-                continue;
+                if (!(await isOnline())) {
+                    attempts++;
+                    await backoff(attempts);
+                    pending = [...preflightOK];
+                    continue;
+                }
+                // Online: RPC failed — run per-row single upserts immediately, no retry.
+                // pending was reassigned to res.data.skipped (empty on error), so use preflightOK.
+                const rowsToProcess = [...preflightOK];
+                try {
+                    const heads = await fetchRemoteHeadsChunked(table, rowsToProcess.map((r) => r.id), supabase);
+                    for (const r of rowsToProcess)
+                        existsMap.set(r.id, heads.has(r.id));
+                }
+                catch {
+                    // existsMap stays empty — singleUpsert will fall back to upsert
+                }
+                const syncedNow = [];
+                const keep = [];
+                for (const row of rowsToProcess) {
+                    const rowRes = await singleUpsert(table, row, supabase, existsMap);
+                    if (!rowRes.error) {
+                        syncedNow.push(row.id);
+                        continue;
+                    }
+                    errorCount++;
+                    lastError = rowRes.error;
+                    const decision = await handleRowFailure(config, table, row, rowRes.error, supabase);
+                    if (decision !== "KEEP")
+                        continue;
+                    keep.push(row);
+                }
+                if (syncedNow.length)
+                    await markSynced(table, syncedNow);
+                pending = keep;
+                break;
             }
         }
         else {
@@ -119,7 +153,7 @@ async function uploadChunk(table, chunk, onPushToRemote) {
                 res = await rpcUpsertSingle({ table, row, supabase, existsMap });
             }
             else {
-                res = await singleUpsert(table, row, supabase);
+                res = await singleUpsert(table, row, supabase, existsMap);
             }
             if (!res.error) {
                 syncedNow.push(row.id);
@@ -137,10 +171,18 @@ async function uploadChunk(table, chunk, onPushToRemote) {
             await markSynced(table, syncedNow);
         if (keep.length === 0)
             return;
-        // Backoff before next batch round (exponential, bounded by policy)
-        attempts++;
-        await backoff(attempts);
-        pending = keep;
+        if (!(await isOnline())) {
+            attempts++;
+            await backoff(attempts);
+            pending = keep;
+        }
+        else {
+            // Online: errors are genuine failures, not network issues — don't retry
+            for (const r of keep)
+                setQueryStatus(r.id, table, "error");
+            pending = keep; // update pending so post-loop markLogError reflects only true failures
+            break;
+        }
     }
     if (pending.length > 0) {
         SyncInfoUpdater.markLogError({

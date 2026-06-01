@@ -26,8 +26,30 @@ export function classifyFailure(cfg, code) {
 async function batchUpsert(table, rows, supabase) {
     return await supabase.from(table).upsert(rows);
 }
-async function singleUpsert(table, row, supabase) {
-    return await supabase.from(table).upsert(row).select("id").maybeSingle();
+async function singleUpsert(table, row, supabase, existsMap) {
+    const exists = existsMap?.get(row.id);
+    if (exists === true) {
+        const { data, error } = await supabase
+            .from(table)
+            .update(row)
+            .eq("id", row.id)
+            .select("id")
+            .maybeSingle();
+        if (!error)
+            return { data, error: null };
+        // RLS may block update — fall through to upsert
+    }
+    else if (exists === false) {
+        const { data, error } = await supabase
+            .from(table)
+            .insert(row)
+            .select("id")
+            .maybeSingle();
+        if (!error)
+            return { data, error: null };
+        // RLS may block insert — fall through to upsert
+    }
+    return supabase.from(table).upsert(row).select("id").maybeSingle();
 }
 async function backoff(attempts) {
     const config = getSupastashConfig();
