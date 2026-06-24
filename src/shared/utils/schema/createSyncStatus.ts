@@ -76,21 +76,21 @@ export async function createSyncStatusTable() {
       await db.execAsync(INDEX_SYNC_MARKS_SQL);
     }
 
-    try {
-      const columns = await db.getAllAsync<{ name: string }>(
-        `SELECT name FROM pragma_table_info('supastash_sync_marks')`,
-      );
+    // try {
+    //   const columns = await db.getAllAsync<{ name: string }>(
+    //     `SELECT name FROM pragma_table_info('supastash_sync_marks')`,
+    //   );
 
-      const hasColumn = columns.some(
-        (column) => column.name === "last_synced_at_pk",
-      );
+    //   const hasColumn = columns.some(
+    //     (column) => column.name === "last_synced_at_pk",
+    //   );
 
-      if (!hasColumn) {
-        await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
-      }
-    } catch {
-      // Ignore — column already exists
-    }
+    //   if (!hasColumn) {
+    //     await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
+    //   }
+    // } catch {
+    //   // Ignore — column already exists
+    // }
   })();
 
   return syncStatusTablePromise;
