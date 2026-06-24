@@ -26,4 +26,5 @@ export type { LocalSchemaDefinition } from "../shared/types/schemaManager.types"
 export type { ExpoSQLiteClient, RNSqliteNitroClient, RNStorageSQLiteClient, SupastashConfig, SupastashHookReturn, SupastashSQLiteClientTypes, SupastashSQLiteDatabase, SupastashSQLiteExecutor, TauriSQLiteClient, } from "../shared/types/supastashConfig.types";
 export type { SupastashClient, SupastashTransactionClient, } from "../shared/utils/query/builder";
 export type { SyncInfo } from "../shared/types/syncEngine.types";
+export type { SyncCountResult } from "../shared/types/rpcFilter.types";
 //# sourceMappingURL=index.d.ts.map
