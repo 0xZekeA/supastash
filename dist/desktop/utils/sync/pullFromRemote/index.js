@@ -5,9 +5,10 @@ import log from "../../../../shared/utils/logs";
 import { getAllTables } from "../../../../shared/utils/sync/getAllTables";
 import { runLimitedConcurrency } from "../../../../shared/utils/sync/pullFromRemote/runLimitedConcurrency";
 import { SyncInfoUpdater } from "../../../../shared/utils/sync/queryStatus";
-import { updateLocalDb } from "../../../utils/sync/pullFromRemote/updateLocalDb";
+import { updateLocalDb } from "./updateLocalDb";
 /**
- * Pulls the data from the remote database to the local database
+ * Pulls the data from the remote database to the local database (per-table path).
+ * For the batch RPC path, see pullFromRemoteBatch — routed via syncEngine.
  */
 export async function pullFromRemote() {
     let numberOfTables = 0;

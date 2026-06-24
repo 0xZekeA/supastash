@@ -98,6 +98,52 @@ export function appendSyncedAt(schema) {
     ];
 }
 const localSchemaCache = new Map();
+/**
+ * Fetches column metadata for all supplied tables in a single RPC call
+ * and warms both the in-memory cache and the SQLite fallback store.
+ *
+ * Requires `useBatchSchemaFetch: true` in config and the
+ * `get_table_schemas` Postgres function to be deployed.
+ *
+ * Tables already in the memory cache are skipped.
+ * Validation errors for individual tables are logged and skipped —
+ * they will surface as normal errors when that table is first used.
+ */
+export async function prefetchRemoteTableSchemas(tables) {
+    const config = getSupastashConfig();
+    const supabase = config?.supabaseClient;
+    if (!supabase)
+        return;
+    const online = await isOnline();
+    if (!online)
+        return;
+    const toFetch = tables.filter((t) => !tableSchemaData.has(t));
+    if (!toFetch.length)
+        return;
+    const { data, error } = await supabase.rpc("get_table_schemas", {
+        p_tables: toFetch,
+    });
+    if (error || !data) {
+        if (error && !isNetworkError(error)) {
+            log(`[Supastash] Error batch-fetching table schemas: ${error.message}
+      You can find more information in the Supastash docs: ${SERVER_SIDE_DOCS_URL}`);
+        }
+        return;
+    }
+    await ensureRemoteSchemaTableExists();
+    for (const [table, schema] of Object.entries(data)) {
+        if (!Array.isArray(schema))
+            continue;
+        try {
+            validatePayloadForTable(schema, table);
+            await upsertRemoteSchema(table, schema);
+            tableSchemaData.set(table, schema);
+        }
+        catch (e) {
+            logWarn(`[Supastash] Schema validation failed for "${table}" during batch fetch: ${e?.message}`);
+        }
+    }
+}
 export async function getRemoteTableSchema(table) {
     const config = getSupastashConfig();
     const supabase = config?.supabaseClient;

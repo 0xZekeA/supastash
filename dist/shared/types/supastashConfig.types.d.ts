@@ -89,12 +89,12 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
   sqliteClient: T extends "expo"
     ? ExpoSQLiteClient
     : T extends "rn-storage"
-    ? RNStorageSQLiteClient
-    : T extends "rn-nitro"
-    ? RNSqliteNitroClient
-    : T extends "tauri"
-    ? TauriSQLiteClient
-    : null;
+      ? RNStorageSQLiteClient
+      : T extends "rn-nitro"
+        ? RNSqliteNitroClient
+        : T extends "tauri"
+          ? TauriSQLiteClient
+          : null;
 
   /**
    * Runtime platform.
@@ -320,6 +320,34 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
    */
   pushRPCPath?: string;
   /**
+   * When true, pull sync uses a single `supastash_pull_sync` RPC call to fetch
+   * all tables in one round trip instead of per-table queries.
+   *
+   * The RPC handles pagination internally via `remaining_tables` — Supastash
+   * will keep calling until all tables are fully synced.
+   *
+   * Use `updateRpcFilters` to set per-table filters for this mode.
+   *
+   * ⚠️ Requires the `supastash_pull_sync` Postgres function to be deployed
+   * and RLS to be enabled on every table you expose.
+   *
+   * @default false
+   */
+  useBatchPullSync?: boolean;
+  /**
+   * When true, Supastash fetches column metadata for all tables in a single
+   * `get_table_schemas` RPC call at the start of each sync cycle instead of
+   * calling `get_table_schema` once per table on demand.
+   *
+   * Warms the in-memory and SQLite schema caches up front so every subsequent
+   * per-table lookup is served from cache with zero extra network calls.
+   *
+   * Requires the `get_table_schemas` Postgres function to be deployed.
+   *
+   * @default false
+   */
+  useBatchSchemaFetch?: boolean;
+  /**
    * Controls how Supastash operates at runtime.
    *
    * - "live":
@@ -443,7 +471,7 @@ export interface SupastashSQLiteExecutor {
    */
   queryOne<T = any>(
     sql: string,
-    params?: Record<string, any>
+    params?: Record<string, any>,
   ): Promise<T | null>;
   /**
    * Executes a write or mutation statement.
@@ -500,14 +528,14 @@ export interface SupastashSQLiteDatabase extends SupastashSQLiteExecutor {
    * @returns A Promise that resolves when the transaction is complete
    */
   withTransaction(
-    fn: (tx: SupastashSQLiteExecutor) => Promise<void> | void
+    fn: (tx: SupastashSQLiteExecutor) => Promise<void> | void,
   ): Promise<void>;
 }
 
 export interface SupastashSQLiteAdapter<TClient = any> {
   openDatabaseAsync(
     name: string,
-    sqliteClient: TClient
+    sqliteClient: TClient,
   ): Promise<SupastashSQLiteDatabase>;
 }
 
@@ -515,7 +543,7 @@ export interface ExpoSQLiteClient {
   openDatabaseAsync: (
     databaseName: string,
     options?: SQLiteOpenOptions | undefined,
-    directory?: string | undefined
+    directory?: string | undefined,
   ) => Promise<ExpoSQLiteDatabase>;
 }
 

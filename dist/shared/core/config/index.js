@@ -16,6 +16,8 @@ let _config = {
     },
     platform: "native",
     replicationMode: "client-side",
+    useBatchPullSync: false,
+    useBatchSchemaFetch: false,
     hasEnabledSimpleNullHandling: false,
     maxSyncLookbackDays: 365,
     perTableSyncLookbackDays: undefined,

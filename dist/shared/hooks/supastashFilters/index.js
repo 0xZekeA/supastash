@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { filterTracker, tableFilters, tableFiltersUsed, } from "../../store/tableFilters";
 import { logWarn } from "../../utils/logs";
 import { ReusedHelpers } from "../../utils/reusedHelpers";
+import { updateRpcFilters } from "../../utils/sync/pullFromRemote/updateRpcFilters";
 import { warnOnMisMatch } from "../../utils/sync/pullFromRemote/validateFilters";
 import { checkIfTableExist } from "../../utils/tableValidator";
 /**
@@ -31,16 +32,23 @@ import { checkIfTableExist } from "../../utils/tableValidator";
  * });
  * ```
  *
- * @param {SupastashFilter} filters - An object where each key is a table name, and its value is
- *   an array of `SupastashFilter` objects that define the filter criteria for that table's pull sync.
+ * @param {Record<string, SupastashFilter[]>} filters - Per-table filters applied to both the
+ *   per-table pull path and (automatically converted) the batch RPC pull path.
+ *   Covers eq, neq, gt, gte, lt, lte, in, is (null / not-null), and or-groups.
+ * @param {RpcTableFilters} rpcFilters - Optional supplemental RPC filter nodes for the batch
+ *   pull path only. Only needed when you require `and` groups, which `SupastashFilter` doesn't
+ *   support. These are merged with the auto-converted `filters` before the RPC call.
  *
- * @note This hook does not re-run unless the `filters` object reference changes.
+ * @note This hook does not re-run unless the `filters` or `rpcFilters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).
  */
-export function useSupastashFilters(filters) {
+export function useSupastashFilters(filters, rpcFilters) {
     useEffect(() => {
         let cancelled = false;
         async function run() {
+            if (rpcFilters) {
+                await updateRpcFilters(rpcFilters);
+            }
             if (!filters)
                 return;
             const incoming = Object.keys(filters);
@@ -82,5 +90,5 @@ export function useSupastashFilters(filters) {
         return () => {
             cancelled = true;
         };
-    }, [filters]);
+    }, [filters, rpcFilters]);
 }

@@ -4,19 +4,30 @@ import {
   tableFiltersUsed,
 } from "../../../store/tableFilters";
 import { SupastashFilter } from "../../../types/realtimeData.types";
+import { RpcTableFilters } from "../../../types/rpcFilter.types";
 import { logWarn } from "../../logs";
 import { ReusedHelpers } from "../../reusedHelpers";
 import { checkIfTableExist } from "../../tableValidator";
+import { updateRpcFilters } from "./updateRpcFilters";
 import { warnOnMisMatch } from "./validateFilters";
 
 /**
- * Updates the filter for the given table
- * Non-hook version of useSupastashFilters
+ * Updates the filter for the given table.
+ * Non-hook version of useSupastashFilters.
  *
- * Filters are validated and stored in the tableFilters store
- * @param filters - The filters to update
+ * @param filters - PostgREST filters for the standard pull path. Automatically converted
+ *   and applied in the batch RPC pull path too.
+ * @param rpcFilters - Optional supplemental RPC filter nodes. Only needed for `and` groups
+ *   or other constructs SupastashFilter can't express.
  */
-export async function updateFilters(filters: SupastashFilter) {
+export async function updateFilters(
+  filters: SupastashFilter,
+  rpcFilters?: RpcTableFilters,
+) {
+  if (rpcFilters) {
+    await updateRpcFilters(rpcFilters);
+  }
+
   const incoming = Object.keys(filters ?? {});
   // Remove stale tables
   for (const t of Array.from(tableFilters.keys())) {
@@ -29,7 +40,7 @@ export async function updateFilters(filters: SupastashFilter) {
 
   // Existence check + per-table registration
   const existence = await Promise.all(
-    incoming.map(async (t) => [t, await checkIfTableExist(t)] as const)
+    incoming.map(async (t) => [t, await checkIfTableExist(t)] as const),
   );
 
   for (const [table, exists] of existence) {
@@ -52,7 +63,7 @@ export async function updateFilters(filters: SupastashFilter) {
     warnOnMisMatch(table, valid);
     tableFilters.set(
       table,
-      valid.map((v) => ({ ...v }))
+      valid.map((v) => ({ ...v })),
     );
     tableFiltersUsed.add(table);
   }

@@ -116,6 +116,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "doc",
+      id: "batch-pull-sync",
+      label: "Batch Pull Sync (New)",
+    },
+    {
+      type: "doc",
       id: "supastash-runtime-modes",
       label: "Runtime Modes (New)",
     },

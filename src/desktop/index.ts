@@ -16,6 +16,7 @@ export {
 } from "../shared/utils/supastashMode";
 export { getAllTables } from "../shared/utils/sync/getAllTables";
 export { updateFilters } from "../shared/utils/sync/pullFromRemote/updateFilter";
+export { updateRpcFilters } from "../shared/utils/sync/pullFromRemote/updateRpcFilters";
 export {
   refreshAllTables,
   refreshTable,
@@ -66,6 +67,7 @@ export type {
   SupastashDataResult,
   SupastashFilter,
 } from "../shared/types/realtimeData.types";
+export type { LocalSchemaDefinition } from "../shared/types/schemaManager.types";
 export type {
   ExpoSQLiteClient,
   RNSqliteNitroClient,
@@ -77,11 +79,10 @@ export type {
   SupastashSQLiteExecutor,
   TauriSQLiteClient,
 } from "../shared/types/supastashConfig.types";
-
-export type { LocalSchemaDefinition } from "../shared/types/schemaManager.types";
-
-export type { SyncInfo } from "../shared/types/syncEngine.types";
 export type {
   SupastashClient,
   SupastashTransactionClient,
 } from "../shared/utils/query/builder";
+
+export type { SyncInfo } from "../shared/types/syncEngine.types";
+export type { SyncCountResult } from "../shared/types/rpcFilter.types";

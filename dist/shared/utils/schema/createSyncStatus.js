@@ -68,7 +68,11 @@ export async function createSyncStatusTable() {
             await db.execAsync(INDEX_SYNC_MARKS_SQL);
         }
         try {
-            await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
+            const columns = await db.getAllAsync(`SELECT name FROM pragma_table_info('supastash_sync_marks')`);
+            const hasColumn = columns.some((column) => column.name === "last_synced_at_pk");
+            if (!hasColumn) {
+                await db.execAsync(ADD_PK_TO_SYNC_MARKS_SQL);
+            }
         }
         catch {
             // Ignore — column already exists

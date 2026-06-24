@@ -21,6 +21,8 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   },
   platform: "native",
   replicationMode: "client-side",
+  useBatchPullSync: false,
+  useBatchSchemaFetch: false,
   hasEnabledSimpleNullHandling: false,
   maxSyncLookbackDays: 365,
   perTableSyncLookbackDays: undefined,
@@ -89,7 +91,7 @@ let _configured = false;
  */
 
 export function configureSupastash<T extends SupastashSQLiteClientTypes>(
-  config: SupastashConfig<T> & { sqliteClientType: T }
+  config: SupastashConfig<T> & { sqliteClientType: T },
 ) {
   _config = {
     ..._config,
@@ -146,7 +148,7 @@ export function configureSupastash<T extends SupastashSQLiteClientTypes>(
  * const dbName = config.dbName;
  */
 export function getSupastashConfig<
-  T extends SupastashSQLiteClientTypes
+  T extends SupastashSQLiteClientTypes,
 >(): SupastashConfig<T> {
   return _config as SupastashConfig<T>;
 }
@@ -174,7 +176,7 @@ export function getSupastashConfig<
  * });
  */
 export function defineSupastashConfig<
-  T extends SupastashSQLiteClientTypes
+  T extends SupastashSQLiteClientTypes,
 >(config: {
   dbOptions: SupastashConfig<T> & {
     onSchemaInit?: () => void;

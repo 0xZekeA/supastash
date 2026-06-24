@@ -1,0 +1,1 @@
+{"version":3,"file":"postgrestToRpc.d.ts","sourceRoot":"","sources":["../../../../../src/shared/utils/sync/pullFromRemote/postgrestToRpc.ts"],"names":[],"mappings":"AAAA,OAAO,EAAU,eAAe,EAAE,MAAM,mCAAmC,CAAC;AAC5E,OAAO,EAAE,aAAa,EAAe,MAAM,gCAAgC,CAAC;AA+B5E;;;;GAIG;AACH,wBAAgB,qBAAqB,CACnC,OAAO,EAAE,eAAe,EAAE,GAAG,SAAS,GACrC,aAAa,EAAE,CAgBjB"}

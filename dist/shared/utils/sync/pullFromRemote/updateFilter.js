@@ -2,15 +2,21 @@ import { filterTracker, tableFilters, tableFiltersUsed, } from "../../../store/t
 import { logWarn } from "../../logs";
 import { ReusedHelpers } from "../../reusedHelpers";
 import { checkIfTableExist } from "../../tableValidator";
+import { updateRpcFilters } from "./updateRpcFilters";
 import { warnOnMisMatch } from "./validateFilters";
 /**
- * Updates the filter for the given table
- * Non-hook version of useSupastashFilters
+ * Updates the filter for the given table.
+ * Non-hook version of useSupastashFilters.
  *
- * Filters are validated and stored in the tableFilters store
- * @param filters - The filters to update
+ * @param filters - PostgREST filters for the standard pull path. Automatically converted
+ *   and applied in the batch RPC pull path too.
+ * @param rpcFilters - Optional supplemental RPC filter nodes. Only needed for `and` groups
+ *   or other constructs SupastashFilter can't express.
  */
-export async function updateFilters(filters) {
+export async function updateFilters(filters, rpcFilters) {
+    if (rpcFilters) {
+        await updateRpcFilters(rpcFilters);
+    }
     const incoming = Object.keys(filters ?? {});
     // Remove stale tables
     for (const t of Array.from(tableFilters.keys())) {

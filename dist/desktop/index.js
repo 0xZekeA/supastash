@@ -9,6 +9,7 @@ export { refreshScreen } from "../shared/utils/refreshScreenCalls";
 export { getSupastashRuntimeMode, reinitializeSupastash, } from "../shared/utils/supastashMode";
 export { getAllTables } from "../shared/utils/sync/getAllTables";
 export { updateFilters } from "../shared/utils/sync/pullFromRemote/updateFilter";
+export { updateRpcFilters } from "../shared/utils/sync/pullFromRemote/updateRpcFilters";
 export { refreshAllTables, refreshTable, refreshTableWithPayload, } from "../shared/utils/sync/refreshTables";
 export { clearSyncCalls, getAllSyncTables, getSyncCall, registerSyncCall, unregisterSyncCall, } from "../shared/utils/sync/registration/syncCalls";
 export { defineLocalSchema } from "./core/schemaManager";

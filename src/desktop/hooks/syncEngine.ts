@@ -7,8 +7,8 @@ import { isOnline } from "../../shared/utils/connection";
 import log from "../../shared/utils/logs";
 import { subscribeToAppVisibility } from "../adapters/appstate";
 import { pullFromRemote as doPullFromRemote } from "../utils/sync/pullFromRemote";
+import { pullFromRemoteBatch } from "../utils/sync/pullFromRemote/pullFromRemoteBatch";
 import { updateLocalDb } from "../utils/sync/pullFromRemote/updateLocalDb";
-import { pushLocalData as doPushLocalData } from "../utils/sync/pushLocal";
 import { pushLocalDataToRemote } from "../utils/sync/pushLocal/sendUnsyncedToSupabase";
 
 // -----------------------------
@@ -86,7 +86,11 @@ async function pushLocalDataSafe(): Promise<void> {
 
   isPushing = true;
   try {
-    await doPushLocalData();
+    if (cfg.useBatchPullSync) {
+      await pullFromRemoteBatch();
+    } else {
+      await doPullFromRemote();
+    }
     lastPushAt = Date.now();
   } catch (e: any) {
     log("[Supastash] push error", {

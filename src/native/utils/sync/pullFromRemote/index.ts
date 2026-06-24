@@ -5,10 +5,12 @@ import log from "../../../../shared/utils/logs";
 import { getAllTables } from "../../../../shared/utils/sync/getAllTables";
 import { runLimitedConcurrency } from "../../../../shared/utils/sync/pullFromRemote/runLimitedConcurrency";
 import { SyncInfoUpdater } from "../../../../shared/utils/sync/queryStatus";
+import { prefetchRemoteTableSchemas } from "../../../../shared/utils/sync/status/remoteSchema";
 import { updateLocalDb } from "./updateLocalDb";
 
 /**
- * Pulls the data from the remote database to the local database
+ * Pulls the data from the remote database to the local database (per-table path).
+ * For the batch RPC path, see pullFromRemoteBatch — routed via syncEngine.
  */
 export async function pullFromRemote() {
   let numberOfTables = 0;
@@ -28,6 +30,11 @@ export async function pullFromRemote() {
     );
 
     numberOfTables = tablesToPull.length;
+
+    // Warm schema cache for all tables in one call if enabled
+    if (getSupastashConfig().useBatchSchemaFetch) {
+      await prefetchRemoteTableSchemas(tablesToPull);
+    }
 
     SyncInfoUpdater.setInProgress({
       action: "start",

@@ -14,6 +14,7 @@ export {
 } from "./shared/utils/supastashMode";
 export { getAllTables } from "./shared/utils/sync/getAllTables";
 export { updateFilters } from "./shared/utils/sync/pullFromRemote/updateFilter";
+export { updateRpcFilters } from "./shared/utils/sync/pullFromRemote/updateRpcFilters";
 export {
   refreshAllTables,
   refreshTable,
@@ -48,6 +49,7 @@ export type {
   TauriSQLiteClient,
 } from "./shared/types/supastashConfig.types";
 export type { SyncInfo } from "./shared/types/syncEngine.types";
+export type { SyncCountResult } from "./shared/types/rpcFilter.types";
 export type {
   SupastashClient,
   SupastashTransactionClient,

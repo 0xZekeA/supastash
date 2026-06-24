@@ -1,4 +1,5 @@
 import { SupastashFilter } from "../../types/realtimeData.types";
+import { RpcTableFilters } from "../../types/rpcFilter.types";
 /**
  * useSupastashFilters
  *
@@ -26,11 +27,15 @@ import { SupastashFilter } from "../../types/realtimeData.types";
  * });
  * ```
  *
- * @param {SupastashFilter} filters - An object where each key is a table name, and its value is
- *   an array of `SupastashFilter` objects that define the filter criteria for that table's pull sync.
+ * @param {Record<string, SupastashFilter[]>} filters - Per-table filters applied to both the
+ *   per-table pull path and (automatically converted) the batch RPC pull path.
+ *   Covers eq, neq, gt, gte, lt, lte, in, is (null / not-null), and or-groups.
+ * @param {RpcTableFilters} rpcFilters - Optional supplemental RPC filter nodes for the batch
+ *   pull path only. Only needed when you require `and` groups, which `SupastashFilter` doesn't
+ *   support. These are merged with the auto-converted `filters` before the RPC call.
  *
- * @note This hook does not re-run unless the `filters` object reference changes.
+ * @note This hook does not re-run unless the `filters` or `rpcFilters` object reference changes.
  *       To force re-evaluation, pass a fresh object (not just mutated data).
  */
-export declare function useSupastashFilters(filters?: Record<string, SupastashFilter[]>): void;
+export declare function useSupastashFilters(filters?: Record<string, SupastashFilter[]>, rpcFilters?: RpcTableFilters): void;
 //# sourceMappingURL=index.d.ts.map
