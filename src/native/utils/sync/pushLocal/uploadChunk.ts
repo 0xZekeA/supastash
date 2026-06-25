@@ -254,7 +254,7 @@ export async function uploadData(
   const supabase = cfg.supabaseClient;
   if (!supabase) throw new Error("[Supastash] Supabase client not configured");
 
-  const pushFilterColumns = cfg.filterColumns?.push?.[table] ?? [];
+  const pushFilterColumns = cfg.ignoredColumns?.push?.[table] ?? [];
   const cleaned = unsyncedRecords.map(
     ({ synced_at, deleted_at, arrived_at, ...rest }) => {
       const row = enforceTimestamps(normalizeForSupabase(rest));

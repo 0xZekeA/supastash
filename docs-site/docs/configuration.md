@@ -102,8 +102,8 @@ Initializes Supastash. Must be called once.
 | ------------------------- | -------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
 | `excludeTables.pull`      | `string[]`                 | `[]`        | Don’t pull these tables.                                                                       |
 | `excludeTables.push`      | `string[]`                 | `[]`        | Don’t push these tables.                                                                       |
-| `filterColumns.push`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is upserted to Supabase.               |
-| `filterColumns.pull`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is written to the local SQLite DB.     |
+| `ignoredColumns.push`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is upserted to Supabase.               |
+| `ignoredColumns.pull`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is written to the local SQLite DB.     |
 
 #### Conflict policy & field enforcement
 
@@ -219,7 +219,7 @@ configureSupastash({
 
 ```ts
 configureSupastash({
-  filterColumns: {
+  ignoredColumns: {
     // Strip these columns before pushing rows to Supabase
     push: {
       orders: ["internal_notes", "cost_price"],
@@ -232,7 +232,7 @@ configureSupastash({
 });
 ```
 
-> Columns listed in `filterColumns` are removed at the upsert boundary — your remote and local schemas remain unchanged.
+> Columns listed in `ignoredColumns` are removed at the upsert boundary — your remote and local schemas remain unchanged.
 
 ### Override polling & exclude tables
 

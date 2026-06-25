@@ -154,12 +154,12 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
    * - `pull`: columns removed from each row before it is written to the local SQLite DB.
    *
    * @example
-   * filterColumns: {
+   * ignoredColumns: {
    *   push: { orders: ["internal_notes", "cost_price"] },
    *   pull: { users:  ["password_hash", "secret_token"] },
    * }
    */
-  filterColumns?: {
+  ignoredColumns?: {
     push?: Record<string, string[]>;
     pull?: Record<string, string[]>;
   };

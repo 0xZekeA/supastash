@@ -129,7 +129,7 @@ export async function upsertData({ tx, table, record, doesExist, }) {
     try {
         const db = tx ?? (await getSupastashDb());
         const allColumns = await getTableSchema(table);
-        const pullFilterColumns = new Set(cfg.filterColumns?.pull?.[table] ?? []);
+        const pullFilterColumns = new Set(cfg.ignoredColumns?.pull?.[table] ?? []);
         const columns = pullFilterColumns.size
             ? allColumns.filter((c) => !pullFilterColumns.has(c))
             : allColumns;
@@ -200,7 +200,7 @@ export async function upsertChunkData({ tx, table, records, }) {
         return;
     const db = tx ?? (await getSupastashDb());
     const allColumns = await getTableSchema(table);
-    const pullFilterColumns = new Set(cfg.filterColumns?.pull?.[table] ?? []);
+    const pullFilterColumns = new Set(cfg.ignoredColumns?.pull?.[table] ?? []);
     const columns = pullFilterColumns.size
         ? allColumns.filter((c) => !pullFilterColumns.has(c))
         : allColumns;
