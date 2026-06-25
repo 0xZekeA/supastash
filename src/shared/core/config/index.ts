@@ -35,6 +35,10 @@ let _config: SupastashConfig<SupastashSQLiteClientTypes> = {
   deleteConflictedRows: false,
   pushRPCPath: undefined,
   supastashMode: "live",
+  filterColumns: {
+    push: {},
+    pull: {},
+  },
 };
 
 let _configured = false;
@@ -127,6 +131,10 @@ export function configureSupastash<T extends SupastashSQLiteClientTypes>(
       ...DEFAULT_FIELDS,
       ..._config.fieldEnforcement,
       ...config.fieldEnforcement,
+    },
+    filterColumns: {
+      push: config.filterColumns?.push ?? _config.filterColumns?.push ?? {},
+      pull: config.filterColumns?.pull ?? _config.filterColumns?.pull ?? {},
     },
   };
 

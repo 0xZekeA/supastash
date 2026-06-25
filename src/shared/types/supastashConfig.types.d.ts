@@ -143,6 +143,27 @@ export type SupastashConfig<T extends SupastashSQLiteClientTypes> = {
     push?: string[];
   };
 
+  /**
+   * Per-table column blocklists for upsert operations.
+   *
+   * Columns listed here are stripped from records **before** they are written,
+   * allowing you to prevent specific fields from being synced in either direction
+   * without altering your remote or local schema.
+   *
+   * - `push`: columns removed from each row before it is upserted to Supabase.
+   * - `pull`: columns removed from each row before it is written to the local SQLite DB.
+   *
+   * @example
+   * filterColumns: {
+   *   push: { orders: ["internal_notes", "cost_price"] },
+   *   pull: { users:  ["password_hash", "secret_token"] },
+   * }
+   */
+  filterColumns?: {
+    push?: Record<string, string[]>;
+    pull?: Record<string, string[]>;
+  };
+
   // --------------------------------------------------
   // Sync Polling Intervals
   // --------------------------------------------------

@@ -62,16 +62,20 @@ Initializes Supastash. Must be called once.
 
 #### Core options
 
-| Option             | Type                                           | Default          | Notes                                                                                                                         |
-| ------------------ | ---------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `dbName`           | `string`                                       | `"supastash_db"` | Name of local SQLite DB.                                                                                                      |
-| `supabaseClient`   | `SupabaseClient \| null`                       | **required**     | A configured Supabase client.                                                                                                 |
-| `sqliteClient`     | adapter for chosen engine                      | **required**     | Shape depends on `sqliteClientType` (see below).                                                                              |
-| `sqliteClientType` | `"expo" \| "rn-storage" \| "rn-nitro" \| null` | **required**     | Selects SQLite engine.                                                                                                        |
-| `onSchemaInit`     | `() => Promise<void>`                          | `undefined`      | Optional hook to define local schema with `defineLocalSchema`. Runs once after DB creation.                                   |
-| `debugMode`        | `boolean`                                      | `true`           | Verbose logs for sync/DB.                                                                                                     |
-| `listeners`        | `number`                                       | `250`            | Max event listeners.                                                                                                          |
-| `pushRPCPath`      | `string`                                       | `undefined`      | Path to your custom batch-sync RPC for push operations ([see docs link](./sync-calls.md#-pushrpcpath-custom-batch-sync-rpc)). |
+| Option                        | Type                                           | Default          | Notes                                                                                                                         |
+| ----------------------------- | ---------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `dbName`                      | `string`                                       | `"supastash_db"` | Name of local SQLite DB.                                                                                                      |
+| `supabaseClient`              | `SupabaseClient \| null`                       | **required**     | A configured Supabase client.                                                                                                 |
+| `sqliteClient`                | adapter for chosen engine                      | **required**     | Shape depends on `sqliteClientType` (see below).                                                                              |
+| `sqliteClientType`            | `"expo" \| "rn-storage" \| "rn-nitro" \| null` | **required**     | Selects SQLite engine.                                                                                                        |
+| `platform`                    | `"native" \| "desktop"`                        | `"native"`       | Runtime platform. Controls which adapters (DB, storage, lifecycle) are used.                                                  |
+| `onSchemaInit`                | `() => Promise<void>`                          | `undefined`      | Optional hook to define local schema with `defineLocalSchema`. Runs once after DB creation.                                   |
+| `debugMode`                   | `boolean`                                      | `true`           | Verbose logs for sync/DB.                                                                                                     |
+| `listeners`                   | `number`                                       | `250`            | Max event listeners.                                                                                                          |
+| `networkAdapter`              | `{ fetch: () => Promise<{ isConnected: boolean \| null }> } \| null` | `undefined` | Custom network connectivity adapter. Pass `NetInfo` from `@react-native-community/netinfo` on React Native for reliable detection. |
+| `hasEnabledSimpleNullHandling` | `boolean`                                     | `false`          | Suppresses the simple null handling warning for Nitro SQLite. Only set if you've explicitly opted in to simple null mode.     |
+| `supastashMode`               | `"live" \| "ghost"`                            | `"live"`         | `"ghost"` disables all network activity (no sync, no realtime, no retries). Useful for demo, testing, or sandbox environments. |
+| `pushRPCPath`                 | `string`                                       | `undefined`      | Path to your custom batch-sync RPC for push operations ([see docs link](./sync-calls.md#-pushrpcpath-custom-batch-sync-rpc)). |
 
 #### Sync switches & intervals
 
@@ -86,16 +90,20 @@ Initializes Supastash. Must be called once.
 | `syncEngine.useFiltersFromStore`           | `boolean`                             | `true`          | Applies filters captured by hooks to background pulls.                                                                                                                                        |
 | `pollingInterval.pull`                     | `number`                              | `30000`         | Milliseconds between pull polls.                                                                                                                                                              |
 | `pollingInterval.push`                     | `number`                              | `30000`         | Milliseconds between push polls.                                                                                                                                                              |
-| `supabaseBatchSize`                        | `number`                              | `100`           | Maximum number of rows sent per Supabase write request (insert/upsert). Large payloads are automatically chunked.                                                                             |
+| `supabaseBatchSize`                        | `number`                              | `800`           | Maximum number of rows sent per Supabase write request (insert/upsert). Large payloads are automatically chunked.                                                                             |
+| `useBatchPullSync`                         | `boolean`                             | `false`         | When `true`, pull sync uses a single `supastash_pull_sync` RPC call to fetch all tables in one round trip. Requires the `supastash_pull_sync` Postgres function to be deployed.               |
+| `useBatchSchemaFetch`                      | `boolean`                             | `false`         | When `true`, fetches column metadata for all tables in a single `get_table_schemas` RPC call at sync start. Requires the `get_table_schemas` Postgres function to be deployed.                |
 
 > **Recommendation**: If your RLS isn’t airtight, set `syncEngine.pull = false` globally and rely on per‑screen filtered pulls via [`useSupastashFilters.ts`](./useSupastashFilters.md).
 
-#### Table selection
+#### Table selection & column filtering
 
-| Option               | Type       | Default | Notes                    |
-| -------------------- | ---------- | ------- | ------------------------ |
-| `excludeTables.pull` | `string[]` | `[]`    | Don’t pull these tables. |
-| `excludeTables.push` | `string[]` | `[]`    | Don’t push these tables. |
+| Option                    | Type                       | Default     | Notes                                                                                          |
+| ------------------------- | -------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `excludeTables.pull`      | `string[]`                 | `[]`        | Don’t pull these tables.                                                                       |
+| `excludeTables.push`      | `string[]`                 | `[]`        | Don’t push these tables.                                                                       |
+| `filterColumns.push`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is upserted to Supabase.               |
+| `filterColumns.pull`      | `Record<string, string[]>` | `{}`        | Per-table columns stripped from each row **before** it is written to the local SQLite DB.     |
 
 #### Conflict policy & field enforcement
 
@@ -206,6 +214,25 @@ configureSupastash({
   },
 });
 ```
+
+### Filter columns from push / pull upserts
+
+```ts
+configureSupastash({
+  filterColumns: {
+    // Strip these columns before pushing rows to Supabase
+    push: {
+      orders: ["internal_notes", "cost_price"],
+    },
+    // Strip these columns before writing rows to the local SQLite DB
+    pull: {
+      users: ["password_hash", "secret_token"],
+    },
+  },
+});
+```
+
+> Columns listed in `filterColumns` are removed at the upsert boundary — your remote and local schemas remain unchanged.
 
 ### Override polling & exclude tables
 

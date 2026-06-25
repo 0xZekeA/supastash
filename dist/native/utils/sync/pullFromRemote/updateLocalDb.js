@@ -127,13 +127,17 @@ export async function upsertData({ tx, table, record, doesExist, }) {
     }
     try {
         const db = tx ?? (await getSupastashDb());
-        const columns = await getTableSchema(table);
+        const allColumns = await getTableSchema(table);
+        const pullFilterColumns = new Set(cfg.filterColumns?.pull?.[table] ?? []);
+        const columns = pullFilterColumns.size
+            ? allColumns.filter((c) => !pullFilterColumns.has(c))
+            : allColumns;
         const recordToSave = {
             ...record,
             synced_at: new Date().toISOString(),
         };
-        if (getSupastashConfig().debugMode) {
-            const unknownKeys = Object.keys(record).filter((key) => !columns.includes(key));
+        if (cfg.debugMode) {
+            const unknownKeys = Object.keys(record).filter((key) => !allColumns.includes(key));
             if (unknownKeys.length > 0 && !warned.get(table)) {
                 warned.set(table, true);
                 logWarn(`⚠️ [Supastash] '${table}' payload contains keys not in local schema: ${unknownKeys.join(", ")}. ` + `They will be ignored locally.`);
@@ -194,10 +198,14 @@ export async function upsertChunkData({ tx, table, records, }) {
     if (cfg.supastashMode === "ghost")
         return;
     const db = tx ?? (await getSupastashDb());
-    const columns = await getTableSchema(table);
+    const allColumns = await getTableSchema(table);
+    const pullFilterColumns = new Set(cfg.filterColumns?.pull?.[table] ?? []);
+    const columns = pullFilterColumns.size
+        ? allColumns.filter((c) => !pullFilterColumns.has(c))
+        : allColumns;
     const syncedAt = new Date().toISOString();
     if (cfg.debugMode) {
-        const unknownKeys = Object.keys(records[0]).filter((key) => !columns.includes(key));
+        const unknownKeys = Object.keys(records[0]).filter((key) => !allColumns.includes(key));
         if (unknownKeys.length > 0 && !warned.get(table)) {
             warned.set(table, true);
             logWarn(`⚠️ [Supastash] '${table}' payload contains keys not in local schema: ${unknownKeys.join(", ")}. ` + `They will be ignored locally.`);

@@ -30,6 +30,10 @@ let _config = {
     deleteConflictedRows: false,
     pushRPCPath: undefined,
     supastashMode: "live",
+    filterColumns: {
+        push: {},
+        pull: {},
+    },
 };
 let _configured = false;
 /**
@@ -113,6 +117,10 @@ export function configureSupastash(config) {
             ...DEFAULT_FIELDS,
             ..._config.fieldEnforcement,
             ...config.fieldEnforcement,
+        },
+        filterColumns: {
+            push: config.filterColumns?.push ?? _config.filterColumns?.push ?? {},
+            pull: config.filterColumns?.pull ?? _config.filterColumns?.pull ?? {},
         },
     };
     _configured = true;

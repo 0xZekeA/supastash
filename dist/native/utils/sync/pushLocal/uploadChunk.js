@@ -207,7 +207,13 @@ export async function uploadData(table, unsyncedRecords, onPushToRemote) {
     const supabase = cfg.supabaseClient;
     if (!supabase)
         throw new Error("[Supastash] Supabase client not configured");
-    const cleaned = unsyncedRecords.map(({ synced_at, deleted_at, arrived_at, ...rest }) => enforceTimestamps(normalizeForSupabase(rest)));
+    const pushFilterColumns = cfg.filterColumns?.push?.[table] ?? [];
+    const cleaned = unsyncedRecords.map(({ synced_at, deleted_at, arrived_at, ...rest }) => {
+        const row = enforceTimestamps(normalizeForSupabase(rest));
+        for (const col of pushFilterColumns)
+            delete row[col];
+        return row;
+    });
     for (let i = 0; i < cleaned.length; i += DEFAULT_CHUNK_SIZE) {
         const chunk = cleaned.slice(i, i + DEFAULT_CHUNK_SIZE);
         await uploadChunk(table, chunk, onPushToRemote);
