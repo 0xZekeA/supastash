@@ -2,21 +2,24 @@ import { getSupastashConfig } from "../../../../shared/core/config";
 import { getSupastashDb } from "../../../../shared/db/dbInitializer";
 import { rpcTableFilters } from "../../../../shared/store/rpcTableFilters";
 import { tableFilters } from "../../../../shared/store/tableFilters";
-import { RpcFilterNode, RpcTableFilters } from "../../../../shared/types/rpcFilter.types";
-import { postgrestFiltersToRpc } from "../../../../shared/utils/sync/pullFromRemote/postgrestToRpc";
+import {
+  RpcFilterNode,
+  RpcTableFilters,
+} from "../../../../shared/types/rpcFilter.types";
+import log, { logError, logWarn } from "../../../../shared/utils/logs";
+import { refreshScreen } from "../../../../shared/utils/refreshScreenCalls";
+import { supabaseClientErr } from "../../../../shared/utils/supabaseClientErr";
 import { getAllTables } from "../../../../shared/utils/sync/getAllTables";
 import {
   getMaxSyncLookBack,
   logNoUpdates,
   returnMaxDate,
 } from "../../../../shared/utils/sync/pullFromRemote/helpers";
+import { postgrestFiltersToRpc } from "../../../../shared/utils/sync/pullFromRemote/postgrestToRpc";
 import { SyncInfoUpdater } from "../../../../shared/utils/sync/queryStatus";
-import { refreshScreen } from "../../../../shared/utils/refreshScreenCalls";
-import log, { logError, logWarn } from "../../../../shared/utils/logs";
-import { supabaseClientErr } from "../../../../shared/utils/supabaseClientErr";
 import { prefetchRemoteTableSchemas } from "../../../../shared/utils/sync/status/remoteSchema";
-import { setSupastashSyncStatus } from "../status/services";
 import { selectSyncStatus } from "../status/repo";
+import { setSupastashSyncStatus } from "../status/services";
 import { upsertChunkData } from "./updateLocalDb";
 
 const CHUNK_SIZE = 999;
@@ -24,7 +27,7 @@ const CHUNK_SIZE = 999;
 function buildCursorFilter(
   tsCol: string,
   lastSyncedAt: string,
-  lastPk: string | null
+  lastPk: string | null,
 ): RpcFilterNode {
   if (lastPk) {
     return {
@@ -33,7 +36,7 @@ function buildCursorFilter(
         {
           and: [
             { col: tsCol, op: "eq", val: lastSyncedAt },
-            { col: "id",   op: "gt", val: lastPk },
+            { col: "id", op: "gt", val: lastPk },
           ],
         },
       ],
@@ -49,13 +52,16 @@ function buildCursorFilter(
  * Requires `useBatchPullSync: true` in config and the
  * `supastash_pull_sync` Postgres function to be deployed.
  */
-export async function pullFromRemoteBatch(): Promise<void> {
+export async function pullFromRemoteBatch(
+  specificTables?: string[],
+): Promise<void> {
   const cfg = getSupastashConfig();
   const supabase = cfg.supabaseClient;
-  if (!supabase) throw new Error(`No supabase client found: ${supabaseClientErr}`);
+  if (!supabase)
+    throw new Error(`No supabase client found: ${supabaseClientErr}`);
   if (cfg.supastashMode === "ghost") return;
 
-  const tables = await getAllTables();
+  const tables = specificTables ?? (await getAllTables());
   if (!tables) {
     log("[Supastash] Batch pull: no tables found");
     return;
@@ -65,12 +71,16 @@ export async function pullFromRemoteBatch(): Promise<void> {
   const tablesToPull = tables.filter((t) => !excludeTables.includes(t));
   if (!tablesToPull.length) return;
 
-  const tsCol = cfg.replicationMode === "server-side" ? "arrived_at" : "updated_at";
+  const tsCol =
+    cfg.replicationMode === "server-side" ? "arrived_at" : "updated_at";
   const db = await getSupastashDb();
   const completedTables = new Set<string>();
 
   SyncInfoUpdater.setInProgress({ action: "start", type: "pull" });
-  SyncInfoUpdater.setNumberOfTables({ amount: tablesToPull.length, type: "pull" });
+  SyncInfoUpdater.setNumberOfTables({
+    amount: tablesToPull.length,
+    type: "pull",
+  });
 
   // Warm schema cache for all tables in one call if enabled
   if (cfg.useBatchSchemaFetch) {
@@ -85,7 +95,11 @@ export async function pullFromRemoteBatch(): Promise<void> {
       const p_filters: RpcTableFilters = {};
 
       for (const table of remainingTables) {
-        const syncStatus = await selectSyncStatus(db, table, tableFilters.get(table) ?? []);
+        const syncStatus = await selectSyncStatus(
+          db,
+          table,
+          tableFilters.get(table) ?? [],
+        );
 
         // Mirror pageThrough: cap the cursor to maxSyncLookbackDays so a
         // first-time sync doesn't try to pull decades of data.
@@ -100,7 +114,7 @@ export async function pullFromRemoteBatch(): Promise<void> {
         const cursorFilter = buildCursorFilter(
           tsCol,
           effectiveSince,
-          syncStatus.last_synced_at_pk
+          syncStatus.last_synced_at_pk,
         );
         // Merge explicit RPC filters + PostgREST filters auto-converted at query time
         const rpcBase = rpcTableFilters.get(table) ?? [];
@@ -138,17 +152,29 @@ export async function pullFromRemoteBatch(): Promise<void> {
 
           const toDelete: string[] = [];
           const toUpsert: any[] = [];
-          let prevMaxSyncedAt: { value: string; pk: string | null } | null = null;
-          let prevMaxDeletedAt: { value: string; pk: string | null } | null = null;
+          let prevMaxSyncedAt: { value: string; pk: string | null } | null =
+            null;
+          let prevMaxDeletedAt: { value: string; pk: string | null } | null =
+            null;
 
           for (const row of rows) {
             if (!row?.id) {
-              logWarn(`[Supastash] Batch: skipped row without id from "${table}"`);
+              logWarn(
+                `[Supastash] Batch: skipped row without id from "${table}"`,
+              );
               continue;
             }
 
-            prevMaxSyncedAt = returnMaxDate({ row, prevMax: prevMaxSyncedAt, col: tsCol });
-            prevMaxDeletedAt = returnMaxDate({ row, prevMax: prevMaxDeletedAt, col: "deleted_at" });
+            prevMaxSyncedAt = returnMaxDate({
+              row,
+              prevMax: prevMaxSyncedAt,
+              col: tsCol,
+            });
+            prevMaxDeletedAt = returnMaxDate({
+              row,
+              prevMax: prevMaxDeletedAt,
+              col: "deleted_at",
+            });
 
             if (row.deleted_at) {
               toDelete.push(row.id);
@@ -157,8 +183,16 @@ export async function pullFromRemoteBatch(): Promise<void> {
             }
           }
 
-          SyncInfoUpdater.setUnsyncedDataCount({ amount: toUpsert.length, type: "pull", table });
-          SyncInfoUpdater.setUnsyncedDeletedCount({ amount: toDelete.length, type: "pull", table });
+          SyncInfoUpdater.setUnsyncedDataCount({
+            amount: toUpsert.length,
+            type: "pull",
+            table,
+          });
+          SyncInfoUpdater.setUnsyncedDeletedCount({
+            amount: toDelete.length,
+            type: "pull",
+            table,
+          });
 
           // Delete soft-deleted rows
           if (toDelete.length > 0) {
@@ -167,7 +201,7 @@ export async function pullFromRemoteBatch(): Promise<void> {
               const placeholders = slice.map(() => "?").join(", ");
               await db.runAsync(
                 `DELETE FROM ${table} WHERE id IN (${placeholders})`,
-                slice
+                slice,
               );
             }
           }
@@ -193,7 +227,7 @@ export async function pullFromRemoteBatch(): Promise<void> {
 
           log(
             `[Supastash] Batch received ${rows.length} rows for "${table}" ` +
-            `(u${toUpsert.length}/d${toDelete.length})`
+              `(u${toUpsert.length}/d${toDelete.length})`,
           );
 
           SyncInfoUpdater.markLogSuccess({ type: "pull", table });

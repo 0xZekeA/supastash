@@ -1,1 +1,1 @@
-{"version":3,"file":"pullFromRemoteBatch.d.ts","sourceRoot":"","sources":["../../../../../src/desktop/utils/sync/pullFromRemote/pullFromRemoteBatch.ts"],"names":[],"mappings":"AA+CA;;;;;;GAMG;AACH,wBAAsB,mBAAmB,IAAI,OAAO,CAAC,IAAI,CAAC,CA4MzD"}
+{"version":3,"file":"pullFromRemoteBatch.d.ts","sourceRoot":"","sources":["../../../../../src/desktop/utils/sync/pullFromRemote/pullFromRemoteBatch.ts"],"names":[],"mappings":"AA+CA;;;;;;GAMG;AACH,wBAAsB,mBAAmB,CACvC,cAAc,CAAC,EAAE,MAAM,EAAE,GACxB,OAAO,CAAC,IAAI,CAAC,CA4Mf"}

@@ -9,6 +9,7 @@ import { subscribeToAppVisibility } from "../adapters/appstate";
 import { pullFromRemote as doPullFromRemote } from "../utils/sync/pullFromRemote";
 import { pullFromRemoteBatch } from "../utils/sync/pullFromRemote/pullFromRemoteBatch";
 import { updateLocalDb } from "../utils/sync/pullFromRemote/updateLocalDb";
+import { pushLocalData as doPushLocalData } from "../utils/sync/pushLocal";
 import { pushLocalDataToRemote } from "../utils/sync/pushLocal/sendUnsyncedToSupabase";
 // -----------------------------
 // Module-scoped state & tunables
@@ -85,12 +86,7 @@ async function pushLocalDataSafe() {
         return;
     isPushing = true;
     try {
-        if (cfg.useBatchPullSync) {
-            await pullFromRemoteBatch();
-        }
-        else {
-            await doPullFromRemote();
-        }
+        await doPushLocalData();
         lastPushAt = Date.now();
     }
     catch (e) {
@@ -108,7 +104,6 @@ async function pullFromRemoteSafe() {
         return;
     if (!(await isOnline()))
         return;
-    // If in ghost mode, don't pull
     const cfg = getSupastashConfig();
     if (cfg.supastashMode === "ghost")
         return;
@@ -116,7 +111,12 @@ async function pullFromRemoteSafe() {
         return;
     isPulling = true;
     try {
-        await doPullFromRemote();
+        if (cfg.useBatchPullSync) {
+            await pullFromRemoteBatch();
+        }
+        else {
+            await doPullFromRemote();
+        }
         lastPullAt = Date.now();
     }
     catch (e) {
@@ -206,7 +206,12 @@ export async function syncTable(table) {
     // Pull
     if (cfg.syncEngine?.pull) {
         try {
-            await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+            if (cfg.useBatchPullSync) {
+                await pullFromRemoteBatch([table]);
+            }
+            else {
+                await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+            }
         }
         catch (e) {
             log("[Supastash] syncTable pull error", {

@@ -17,7 +17,7 @@ let isInSync = new Map<string, boolean>();
 export async function pushLocalDataToRemote(
   table: string,
   onPushToRemote?: (payload: any[]) => Promise<boolean>,
-  noSync?: string[]
+  noSync?: string[],
 ) {
   if (isInSync.get(table)) return;
   const cfg = getSupastashConfig();

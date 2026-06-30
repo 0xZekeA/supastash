@@ -208,7 +208,12 @@ export async function syncTable(table) {
     // Pull
     if (cfg.syncEngine?.pull) {
         try {
-            await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+            if (cfg.useBatchPullSync) {
+                await pullFromRemoteBatch([table]);
+            }
+            else {
+                await updateLocalDb(table, filter, syncCalls.get(table)?.pull);
+            }
         }
         catch (e) {
             log("[Supastash] syncTable pull error", {

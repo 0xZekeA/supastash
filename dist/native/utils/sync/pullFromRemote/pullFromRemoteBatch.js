@@ -2,16 +2,16 @@ import { getSupastashConfig } from "../../../../shared/core/config";
 import { getSupastashDb } from "../../../../shared/db/dbInitializer";
 import { rpcTableFilters } from "../../../../shared/store/rpcTableFilters";
 import { tableFilters } from "../../../../shared/store/tableFilters";
-import { postgrestFiltersToRpc } from "../../../../shared/utils/sync/pullFromRemote/postgrestToRpc";
+import log, { logError, logWarn } from "../../../../shared/utils/logs";
+import { refreshScreen } from "../../../../shared/utils/refreshScreenCalls";
+import { supabaseClientErr } from "../../../../shared/utils/supabaseClientErr";
 import { getAllTables } from "../../../../shared/utils/sync/getAllTables";
 import { getMaxSyncLookBack, logNoUpdates, returnMaxDate, } from "../../../../shared/utils/sync/pullFromRemote/helpers";
+import { postgrestFiltersToRpc } from "../../../../shared/utils/sync/pullFromRemote/postgrestToRpc";
 import { SyncInfoUpdater } from "../../../../shared/utils/sync/queryStatus";
-import { refreshScreen } from "../../../../shared/utils/refreshScreenCalls";
-import log, { logError, logWarn } from "../../../../shared/utils/logs";
-import { supabaseClientErr } from "../../../../shared/utils/supabaseClientErr";
 import { prefetchRemoteTableSchemas } from "../../../../shared/utils/sync/status/remoteSchema";
-import { setSupastashSyncStatus } from "../status/services";
 import { selectSyncStatus } from "../status/repo";
+import { setSupastashSyncStatus } from "../status/services";
 import { upsertChunkData } from "./updateLocalDb";
 const CHUNK_SIZE = 999;
 function buildCursorFilter(tsCol, lastSyncedAt, lastPk) {
@@ -37,14 +37,14 @@ function buildCursorFilter(tsCol, lastSyncedAt, lastPk) {
  * Requires `useBatchPullSync: true` in config and the
  * `supastash_pull_sync` Postgres function to be deployed.
  */
-export async function pullFromRemoteBatch() {
+export async function pullFromRemoteBatch(specificTables) {
     const cfg = getSupastashConfig();
     const supabase = cfg.supabaseClient;
     if (!supabase)
         throw new Error(`No supabase client found: ${supabaseClientErr}`);
     if (cfg.supastashMode === "ghost")
         return;
-    const tables = await getAllTables();
+    const tables = specificTables ?? (await getAllTables());
     if (!tables) {
         log("[Supastash] Batch pull: no tables found");
         return;
@@ -57,7 +57,10 @@ export async function pullFromRemoteBatch() {
     const db = await getSupastashDb();
     const completedTables = new Set();
     SyncInfoUpdater.setInProgress({ action: "start", type: "pull" });
-    SyncInfoUpdater.setNumberOfTables({ amount: tablesToPull.length, type: "pull" });
+    SyncInfoUpdater.setNumberOfTables({
+        amount: tablesToPull.length,
+        type: "pull",
+    });
     // Warm schema cache for all tables in one call if enabled
     if (cfg.useBatchSchemaFetch) {
         await prefetchRemoteTableSchemas(tablesToPull);
@@ -112,8 +115,16 @@ export async function pullFromRemoteBatch() {
                             logWarn(`[Supastash] Batch: skipped row without id from "${table}"`);
                             continue;
                         }
-                        prevMaxSyncedAt = returnMaxDate({ row, prevMax: prevMaxSyncedAt, col: tsCol });
-                        prevMaxDeletedAt = returnMaxDate({ row, prevMax: prevMaxDeletedAt, col: "deleted_at" });
+                        prevMaxSyncedAt = returnMaxDate({
+                            row,
+                            prevMax: prevMaxSyncedAt,
+                            col: tsCol,
+                        });
+                        prevMaxDeletedAt = returnMaxDate({
+                            row,
+                            prevMax: prevMaxDeletedAt,
+                            col: "deleted_at",
+                        });
                         if (row.deleted_at) {
                             toDelete.push(row.id);
                         }
@@ -121,8 +132,16 @@ export async function pullFromRemoteBatch() {
                             toUpsert.push(row);
                         }
                     }
-                    SyncInfoUpdater.setUnsyncedDataCount({ amount: toUpsert.length, type: "pull", table });
-                    SyncInfoUpdater.setUnsyncedDeletedCount({ amount: toDelete.length, type: "pull", table });
+                    SyncInfoUpdater.setUnsyncedDataCount({
+                        amount: toUpsert.length,
+                        type: "pull",
+                        table,
+                    });
+                    SyncInfoUpdater.setUnsyncedDeletedCount({
+                        amount: toDelete.length,
+                        type: "pull",
+                        table,
+                    });
                     // Delete soft-deleted rows
                     if (toDelete.length > 0) {
                         for (let i = 0; i < toDelete.length; i += CHUNK_SIZE) {

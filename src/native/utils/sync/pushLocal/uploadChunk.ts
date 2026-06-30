@@ -36,7 +36,7 @@ import {
 async function uploadChunk(
   table: string,
   chunk: PayloadData[],
-  onPushToRemote?: (payload: any) => Promise<boolean>
+  onPushToRemote?: (payload: any) => Promise<boolean>,
 ) {
   const config = getSupastashConfig();
   const supabase = config.supabaseClient;
@@ -126,7 +126,7 @@ async function uploadChunk(
           const heads = await fetchRemoteHeadsChunked(
             table,
             rowsToProcess.map((r) => r.id),
-            supabase
+            supabase,
           );
           for (const r of rowsToProcess) existsMap.set(r.id, heads.has(r.id));
         } catch {
@@ -147,7 +147,7 @@ async function uploadChunk(
             table,
             row,
             rowRes.error,
-            supabase
+            supabase,
           );
           if (decision !== "KEEP") continue;
           keep.push(row);
@@ -164,14 +164,14 @@ async function uploadChunk(
     if (batchOk) {
       await markSynced(
         table,
-        pending.map((r) => r.id)
+        pending.map((r) => r.id),
       );
       return;
     }
     if (completed.length > 0) {
       await markSynced(
         table,
-        completed.map((r) => r.id)
+        completed.map((r) => r.id),
       );
     }
 
@@ -202,7 +202,7 @@ async function uploadChunk(
         table,
         row,
         res.error,
-        supabase
+        supabase,
       );
 
       if (decision === "DROP" || decision === "REPLACED") {
@@ -248,7 +248,7 @@ async function uploadChunk(
 export async function uploadData(
   table: string,
   unsyncedRecords: PayloadData[],
-  onPushToRemote?: (payload: any[]) => Promise<boolean>
+  onPushToRemote?: (payload: any[]) => Promise<boolean>,
 ) {
   const cfg = getSupastashConfig();
   const supabase = cfg.supabaseClient;
@@ -260,7 +260,7 @@ export async function uploadData(
       const row = enforceTimestamps(normalizeForSupabase(rest));
       for (const col of pushFilterColumns) delete row[col];
       return row;
-    }
+    },
   );
 
   for (let i = 0; i < cleaned.length; i += DEFAULT_CHUNK_SIZE) {

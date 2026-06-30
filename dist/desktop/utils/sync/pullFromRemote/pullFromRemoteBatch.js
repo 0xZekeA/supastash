@@ -37,14 +37,14 @@ function buildCursorFilter(tsCol, lastSyncedAt, lastPk) {
  * Requires `useBatchPullSync: true` in config and the
  * `supastash_pull_sync` Postgres function to be deployed.
  */
-export async function pullFromRemoteBatch() {
+export async function pullFromRemoteBatch(specificTables) {
     const cfg = getSupastashConfig();
     const supabase = cfg.supabaseClient;
     if (!supabase)
         throw new Error(`No supabase client found: ${supabaseClientErr}`);
     if (cfg.supastashMode === "ghost")
         return;
-    const tables = await getAllTables();
+    const tables = specificTables ?? (await getAllTables());
     if (!tables) {
         log("[Supastash] Batch pull: no tables found");
         return;

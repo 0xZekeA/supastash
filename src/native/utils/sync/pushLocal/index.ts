@@ -27,7 +27,7 @@ export async function pushLocalData() {
     const excludeTables = getSupastashConfig()?.excludeTables?.push || [];
 
     const tablesToPush = tables.filter(
-      (table) => !excludeTables?.includes(table)
+      (table) => !excludeTables?.includes(table),
     );
     numberOfTables = tablesToPush.length;
     SyncInfoUpdater.setInProgress({
@@ -99,7 +99,7 @@ export async function pushLocalData() {
         log(
           `[Supastash] No pushable data for: ${noSyncTables} (empty passes: ${emptyPassCount})${
             gap ? ` in the last ${gap}ms` : ""
-          }`
+          }`,
         );
       }
     } else {
